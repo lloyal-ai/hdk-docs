@@ -54,21 +54,75 @@
             <div class="code-tabs">
               <button class="tab-btn active" onclick="switchTab('single')">useAgent</button>
               <button class="tab-btn" onclick="switchTab('pool')">agentPool</button>
+              <button class="tab-btn" onclick="switchTab('source')">Source</button>
+              <button class="tab-btn" onclick="switchTab('swarm')">Swarm</button>
             </div>
           </div>
           
           <div id="tab-single" class="code-content active">
             <pre><code><span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { MailSource } <span class="keyword">from</span> <span class="string">'./local-db'</span>; 
+<span class="keyword">import</span> { SupportSource, reportTool } <span class="keyword">from</span> <span class="string">'./kb'</span>; 
 
-<span class="comment">// Drop an agent into your local app</span>
+<span class="keyword">const</span> kb = <span class="keyword">new</span> <span class="class">SupportSource</span>(db);
 <span class="keyword">const</span> agent = <span class="keyword">yield*</span> <span class="function">useAgent</span>({
-  task: <span class="string">"Find my latest Amazon tracking number"</span>,
-  tools: [...<span class="keyword">new</span> <span class="class">MailSource</span>(db).tools, reportTool],
+  systemPrompt: <span class="string">"Support specialist. Help users resolve technical issues."</span>,
+  task: <span class="string">"Find the 'Error 500' fix in Version 2.0"</span>,
+  tools: [...kb.tools, reportTool],
   terminalTool: <span class="string">'report'</span>,
 });
 
 <span class="function">console.log</span>(agent.result);</code></pre>
+          </div>
+
+          <!-- Source Implementation -->
+          <div id="tab-source" class="code-content">
+            <pre><code><span class="keyword">import</span> { Source } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { FetchPageTool, type Reranker } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+
+<span class="comment">// Sources pair tools with late-bound runtime deps. The reranker</span>
+<span class="comment">// makes FetchPageTool return only the verbatim top-K chunks &mdash;</span>
+<span class="comment">// saving ~90% of KV context on long documents.</span>
+<span class="keyword">class</span> IntranetSource <span class="keyword">extends</span> <span class="class">Source</span>&lt;{ reranker: <span class="class">Reranker</span> }&gt; {
+  name = <span class="string">"intranet"</span>;
+  fetchPage = <span class="keyword">new</span> <span class="class">FetchPageTool</span>({ topK: <span class="number">5</span>, tokenBudget: <span class="number">2048</span> });
+  tools = [<span class="keyword">this</span>.fetchPage];
+
+  <span class="comment">// Late-bind: wire the reranker once it's available.</span>
+  *<span class="function">bind</span>(ctx: { reranker: <span class="class">Reranker</span> }) {
+    <span class="keyword">this</span>.fetchPage.<span class="function">setReranker</span>(ctx.reranker);
+  }
+}</code></pre>
+          </div>
+
+          <!-- Swarm / DelegateTool -->
+          <div id="tab-swarm" class="code-content">
+            <pre><code><span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { DelegateTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+<span class="keyword">import</span> { BankSource, TradeTool, reportTool, account } <span class="keyword">from</span> <span class="string">'./finance'</span>;
+
+<span class="comment">// Recursive expert swarm. Sub-agents fork from the calling agent's branch &mdash;</span>
+<span class="comment">// they inherit its full KV attention state (Continuous Context), so private</span>
+<span class="comment">// account data flows through tools, not prompts.</span>
+<span class="keyword">const</span> bank = <span class="keyword">new</span> <span class="class">BankSource</span>();
+<span class="keyword">const</span> advisor = <span class="keyword">yield*</span> <span class="function">useAgent</span>({
+  systemPrompt: <span class="string">"Senior portfolio advisor. Decompose into specialist sub-tasks."</span>,
+  task: <span class="string">"Optimize my portfolio for tax-loss harvesting before year-end."</span>,
+  tools: [
+    ...bank.tools,
+    <span class="keyword">new</span> <span class="class">DelegateTool</span>({
+      systemPrompt: <span class="string">"Tax-specialized financial strategist."</span>,
+      poolOpts: {
+        tools: [...bank.tools, reportTool],
+        terminalTool: <span class="string">'report'</span>,
+        echoThreshold: <span class="number">0.8</span>,        <span class="comment">// reject sub-tasks that paraphrase the parent</span>
+        checkAncestorEcho: <span class="keyword">true</span>,   <span class="comment">// reject loops up the call chain</span>
+      },
+    }),
+    <span class="keyword">new</span> <span class="class">TradeTool</span>(account),
+    reportTool,
+  ],
+  terminalTool: <span class="string">'report'</span>,
+});</code></pre>
           </div>
 
           <!-- Agent Pool (Accordion) -->
@@ -81,22 +135,20 @@
                   <span class="icon">[-]</span> parallel: Ingest scanned receipts en-masse into Xero
                 </button>
                 <div class="accordion-body">
-                  <pre><code><span class="keyword">import</span> { 
-  agentPool, parallel 
-} <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { FS, Xero } <span class="keyword">from</span> <span class="string">'./local-app'</span>;
+                  <pre><code><span class="keyword">import</span> { agentPool, parallel } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { FS, Xero, reportTool } <span class="keyword">from</span> <span class="string">'./local-app'</span>;
 
 <span class="comment">// Process receipts into Xero concurrently</span>
+<span class="keyword">const</span> receipts = <span class="keyword">yield*</span> FS.<span class="function">scanDir</span>(<span class="string">'./inbox/receipts'</span>);
 <span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
   orchestrate: <span class="function">parallel</span>(
     receipts.<span class="function">map</span>(file => ({
       content: <span class="string">`Extract vendor and amount: ${file.name}`</span>,
-      <span class="comment">// Sibling awareness isolates each worker</span>
-      systemPrompt: <span class="function">getWorkerPrompt</span>(file, siblingFiles)
+      systemPrompt: <span class="string">"Accounting clerk. Extract data accurately."</span>
     }))
   ),
-  tools: [FS.readImage, Xero.logExpense],
-  terminalTool: <span class="string">'sync_xero'</span>,
+  tools: [FS.readImage, Xero.logExpense, reportTool],
+  terminalTool: <span class="string">'report'</span>,
 });</code></pre>
                 </div>
               </div>
@@ -107,28 +159,18 @@
                   <span class="icon">[+]</span> chain: Resolve multi-step QuickBooks exceptions in-process
                 </button>
                 <div class="accordion-body">
-                  <pre><code><span class="keyword">import</span> { 
-  agentPool, chain 
-} <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { FS, QuickBooks, UI } <span class="keyword">from</span> <span class="string">'./local-app'</span>;
+                  <pre><code><span class="keyword">import</span> { agentPool, chain } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { FS, QuickBooks, reportTool } <span class="keyword">from</span> <span class="string">'./local-app'</span>;
 
-<span class="comment">// Build context across sequential desktop tasks</span>
+<span class="comment">// Step 2 inherits step 1's KV context in O(1) time</span>
 <span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
-  orchestrate: <span class="function">chain</span>([
-    { task: <span class="string">'extract_invoice'</span>, tools: [FS.readPdf] },
-    { task: <span class="string">'log_expense'</span>, tools: [QuickBooks.api] }
-  ], (stage) => ({
-    task: { content: stage.task, systemPrompt: <span class="function">getPrompt</span>() },
-    <span class="comment">// Step 2 inherits step 1's data in O(1) time</span>
-    userContent: <span class="string">`Findings from ${stage.task}:`</span>,
-    
-    <span class="comment">// Natively update UI via Effection hooks</span>
-    *<span class="function">afterExtend</span>() {
-      <span class="keyword">yield*</span> UI.<span class="function">updateProgress</span>(<span class="string">`${stage.task} done`</span>);
-    }
+  systemPrompt: <span class="string">"Bookkeeping assistant."</span>,
+  orchestrate: <span class="function">chain</span>([<span class="string">'extract'</span>, <span class="string">'log'</span>], (step) => ({
+    task: { content: step, systemPrompt: <span class="string">""</span> },
+    userContent: <span class="string">`Findings from ${step}:`</span>
   })),
-  tools: [mailgun.sendEmail],
-  terminalTool: <span class="string">'send_email'</span>,
+  tools: [FS.readPdf, QuickBooks.api, reportTool],
+  terminalTool: <span class="string">'report'</span>,
 });</code></pre>
                 </div>
               </div>
@@ -139,22 +181,20 @@
                   <span class="icon">[+]</span> dag: Publish autonomous marketing campaigns across channels
                 </button>
                 <div class="accordion-body">
-                  <pre><code><span class="keyword">import</span> { 
-  agentPool, dag 
-} <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { CMS, Gen, FS } <span class="keyword">from</span> <span class="string">'./local-tools'</span>;
+                  <pre><code><span class="keyword">import</span> { agentPool, dag } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { CMS, Gen, FS, reportTool } <span class="keyword">from</span> <span class="string">'./local-tools'</span>;
 
-<span class="comment">// Pipeline demonstrating fan-out and convergence</span>
+<span class="comment">// copy + imagery fan out from notes, then converge on publish.</span>
 <span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
+  systemPrompt: <span class="string">"Marketing strategist."</span>,
   orchestrate: <span class="function">dag</span>([
-    { id: <span class="string">"notes"</span>, tools: [FS.readDir] },
-    { id: <span class="string">"copy"</span>, dependsOn: [<span class="string">"notes"</span>], tools: [CMS.tone] },
-    { id: <span class="string">"img"</span>, dependsOn: [<span class="string">"copy"</span>], tools: [Gen.image] },
-    { id: <span class="string">"seo"</span>, dependsOn: [<span class="string">"copy"</span>], tools: [CMS.seo] },
-    { id: <span class="string">"pub"</span>, dependsOn: [<span class="string">"img"</span>, <span class="string">"seo"</span>], tools: [CMS.post] }
+    { id: <span class="string">"notes"</span>,   task: { content: <span class="string">"Read campaign brief"</span>,    systemPrompt: <span class="string">""</span> }, userContent: <span class="string">"Brief"</span>  },
+    { id: <span class="string">"copy"</span>,    task: { content: <span class="string">"Draft channel copy"</span>,     systemPrompt: <span class="string">""</span> }, dependsOn: [<span class="string">"notes"</span>], userContent: <span class="string">"Copy"</span>   },
+    { id: <span class="string">"imagery"</span>, task: { content: <span class="string">"Generate hero images"</span>,   systemPrompt: <span class="string">""</span> }, dependsOn: [<span class="string">"notes"</span>], userContent: <span class="string">"Images"</span> },
+    { id: <span class="string">"publish"</span>, task: { content: <span class="string">"Publish across channels"</span>, systemPrompt: <span class="string">""</span> }, dependsOn: [<span class="string">"copy"</span>, <span class="string">"imagery"</span>] }
   ]),
-  tools: [slack.notifyComms],
-  terminalTool: <span class="string">'notify_comms'</span>,
+  tools: [FS.readDir, CMS.tone, Gen.image, reportTool],
+  terminalTool: <span class="string">'report'</span>,
 });</code></pre>
                 </div>
               </div>
