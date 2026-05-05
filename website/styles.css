@@ -370,8 +370,89 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
-  padding: 4rem 0 8rem;
+  padding: 4rem 0;
   border-top: 1px solid var(--border-color);
+}
+
+/* Mobile proof section */
+.mobile-proof {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  padding: 6rem 0 8rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.mobile-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+}
+
+.mobile-desc {
+  color: var(--text-secondary);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.mobile-desc code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  background-color: var(--btn-secondary-hover);
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.mobile-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.25rem;
+  padding-top: 0.5rem;
+}
+
+.mobile-cta-caption {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.mobile-shots {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.mobile-shot {
+  width: 48%;
+  max-width: 260px;
+  height: auto;
+  border-radius: 28px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 12px 32px rgba(0, 0, 0, 0.12),
+    0 24px 64px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-color);
+}
+
+body.dark-mode .mobile-shot {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 24px 64px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.mobile-shot-offset {
+  margin-top: 2.5rem;
 }
 
 .card {
@@ -405,6 +486,20 @@ body {
   .features {
     grid-template-columns: 1fr;
     gap: 1.5rem;
+  }
+  .mobile-proof {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    padding: 4rem 0 6rem;
+  }
+  .mobile-title {
+    font-size: 2rem;
+  }
+  .mobile-shots {
+    gap: 1rem;
+  }
+  .mobile-shot {
+    max-width: 220px;
   }
 }
 

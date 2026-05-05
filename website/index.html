@@ -52,14 +52,14 @@
         <div class="code-window">
           <div class="window-header">
             <div class="code-tabs">
-              <button class="tab-btn active" onclick="switchTab('single')">useAgent</button>
-              <button class="tab-btn" onclick="switchTab('pool')">agentPool</button>
-              <button class="tab-btn" onclick="switchTab('source')">Source</button>
+              <button class="tab-btn active" onclick="switchTab('pool')">agentPool</button>
+              <button class="tab-btn" onclick="switchTab('single')">useAgent</button>
               <button class="tab-btn" onclick="switchTab('swarm')">Swarm</button>
+              <button class="tab-btn" onclick="switchTab('source')">Source</button>
             </div>
           </div>
-          
-          <div id="tab-single" class="code-content active">
+
+          <div id="tab-single" class="code-content">
             <pre><code><span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
 <span class="keyword">import</span> { SupportSource, reportTool } <span class="keyword">from</span> <span class="string">'./kb'</span>; 
 
@@ -126,7 +126,7 @@
           </div>
 
           <!-- Agent Pool (Accordion) -->
-          <div id="tab-pool" class="code-content">
+          <div id="tab-pool" class="code-content active">
             <div class="accordion">
               
               <!-- Parallel -->
@@ -219,6 +219,21 @@
       <div class="card">
         <h3 class="card-title">Retrieval-Interleaved Generation</h3>
         <p class="card-desc">Break the RAG bottleneck. Agents dynamically search, read, and rerank chunks <em>during</em> the generation loop. Connect local databases or the live web instantly via the pluggable <code>Source</code> contract.</p>
+      </div>
+    </section>
+
+    <section class="mobile-proof">
+      <div class="mobile-copy">
+        <h2 class="headline">Yes, on-device. Multi-agent.</h2>
+        <p class="caption">Two agents running <code>web_search</code> and <code>fetch_page</code> in parallel on iPhone &mdash; no API calls, no streaming server, no cloud round-trip. The Node SDK is open source and ships anywhere Node runs &mdash; server, CLI, or desktop via Electron or Tauri. The native iOS &amp; Android runtime is currently in commercial preview.</p>
+        <div class="mobile-cta">
+          <a href="mailto:hello@lloyal.ai?subject=HDK%20Mobile%20Runtime%20%E2%80%94%20Request%20Access" class="btn btn-primary">Request Access</a>
+          <span class="mobile-cta-caption">Native iOS &amp; Android runtime &middot; early access</span>
+        </div>
+      </div>
+      <div class="mobile-shots">
+        <img src="img/mobile-conversation.png" alt="iPhone running a multi-agent research query in-process" class="mobile-shot" />
+        <img src="img/mobile-research.png" alt="Two agents running web_search and fetch_page in parallel on iPhone" class="mobile-shot mobile-shot-offset" />
       </div>
     </section>
   </main>
