@@ -69,12 +69,13 @@
               "reference/agent-policy",
               "reference/search-strategy",
               "reference/prefix-sharing",
-              "reference/skill-catalog",
+              "reference/playbooks",
               "reference/continuous-context-spine",
               "reference/grammar-and-ordering",
               "reference/scratchpad-extraction",
               "reference/prompt-composition",
-              "reference/branch-lifecycle"
+              "reference/branch-lifecycle",
+              "reference/changelog"
             ]
           },
           {
@@ -83,7 +84,6 @@
               "reference/rig/overview",
               "reference/rig/corpus-source",
               "reference/rig/web-source",
-              "reference/rig/custom-sources",
               "reference/rig/bridges",
               "reference/rig/pipeline"
             ]

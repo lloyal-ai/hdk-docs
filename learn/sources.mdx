@@ -1,6 +1,6 @@
 ---
 title: Sources
-description: The Source abstraction — any system with searchable content.
+description: The Source abstraction — what it is, why it's pluggable. For implementation, see the custom-source guide.
 ---
 
 
@@ -47,21 +47,17 @@ import type { Tool } from "@lloyal-labs/lloyal-agents";
 import type { Operation } from "effection";
 
 class MySource extends Source<MyContext, MyChunk> {
-  // 1. Human-readable label for this source
-  readonly name = "jira";
+  readonly name = "jira";                            // 1. Label
 
-  // 2. Data access tools this source provides
-  get tools(): Tool[] {
+  get tools(): Tool[] {                              // 2. Data-access tools
     return [this._searchTool, this._readTool];
   }
 
-  // 3. Late-bind runtime dependencies not available at construction
-  *bind(ctx: MyContext): Operation<void> {
+  *bind(ctx: MyContext): Operation<void> {           // 3. Late-bind runtime deps
     this._searchTool = new JiraSearchTool(this._client, ctx.reranker);
   }
 
-  // 4. Post-use chunks for reranking
-  getChunks(): MyChunk[] {
+  getChunks(): MyChunk[] {                           // 4. Post-use chunks for reranking
     return this._buffer.getAll();
   }
 }
@@ -85,50 +81,6 @@ class MySource extends Source<MyContext, MyChunk> {
   </Step>
 </Steps>
 
-## How sources compose
-
-A pipeline can use multiple sources. The harness iterates through them, using `agentPool()` to orchestrate agents with each source's tools:
-
-```typescript
-import { agentPool, reduce } from "@lloyal-labs/lloyal-agents";
-
-const sources = [
-  new CorpusSource(resources, chunks),
-  new WebSource(new TavilyProvider()),
-];
-
-const findings = yield* reduce(sources, { sections: [], questions }, function*(acc, source) {
-  yield* source.bind({ reranker });
-
-  const pool = yield* agentPool({
-    orchestrate: parallel(
-      acc.questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
-    ),
-    tools: [
-      ...source.tools,
-      new DelegateTool({
-        name: "research",
-        extractTasks: (args) => args.questions as string[],
-        systemPrompt: RESEARCH_PROMPT,
-        poolOpts: { tools: [...source.tools, reportTool], terminalTool: "report" },
-      }),
-      reportTool,
-    ],
-    terminalTool: "report",
-    policy: researchPolicy,
-    pruneOnReport: true,
-  });
-
-  return { sections: [...acc.sections, ...collectFindings(pool)], questions: acc.questions };
-});
-```
-
-Each source is independent. It provides tools. The harness provides prompts, orchestration config, and recursion shape. The same `agentPool()` call works with any source — web, corpus, database, API.
-
-<Tip>
-Sources are ordered deliberately. Put high-confidence sources first (local corpus, verified databases). Web or broad API sources go last. Between sources, a bridge stage can structure early findings as context for later sources.
-</Tip>
-
 ## Shipped implementations
 
 lloyal ships two source implementations in `@lloyal-labs/rig`:
@@ -144,61 +96,11 @@ lloyal ships two source implementations in `@lloyal-labs/rig`:
 
 Both are platform-agnostic — no `node:fs` dependency. They work identically on Node.js and React Native. Import from `@lloyal-labs/rig` on any platform.
 
-## Building your own source
+## Building your own
 
-Start with the question: what can you search, and what do you get back?
+To implement a `Source` for a new backend (Slack, JIRA, Postgres, a vector store, an internal API), follow the step-by-step walkthrough:
 
-```typescript
-class SlackSource extends Source<{ reranker: Reranker }, SlackChunk> {
-  readonly name = "slack";
-  private _client: SlackClient;
-  private _buffer: SlackChunk[] = [];
-  private _searchTool!: SlackSearchTool;
-  private _threadTool!: SlackThreadTool;
-
-  constructor(token: string) {
-    super();
-    this._client = new SlackClient(token);
-  }
-
-  get tools(): Tool[] {
-    return [this._searchTool, this._threadTool];
-  }
-
-  *bind(ctx: { reranker: Reranker }): Operation<void> {
-    this._searchTool = new SlackSearchTool(this._client, ctx.reranker);
-    this._threadTool = new SlackThreadTool(this._client);
-  }
-
-  getChunks(): SlackChunk[] { return this._buffer; }
-}
-```
-
-The harness orchestrates agents with the source's tools:
-
-```typescript
-yield* source.bind({ reranker });
-
-const pool = yield* agentPool({
-  orchestrate: parallel(
-    questions.map(q => ({ content: q, systemPrompt: SLACK_RESEARCH_PROMPT })),
-  ),
-  tools: [
-    ...source.tools,
-    new DelegateTool({
-      name: "investigate",
-      extractTasks: (args) => args.tasks as string[],
-      systemPrompt: SLACK_RESEARCH_PROMPT,
-      poolOpts: { tools: [...source.tools, reportTool], terminalTool: "report" },
-    }),
-    reportTool,
-  ],
-  terminalTool: "report",
-  policy: new DefaultAgentPolicy({ recovery: { prompt: REPORT } }),
-});
-```
-
-The source provides data access. The harness provides the prompt, the recursion shape, and the orchestration policy. The same source can be used in a research pipeline, a support triage pipeline, or a monitoring pipeline — with different prompts and different orchestration for each.
+→ **[Build a Custom Source](/guides/custom-source)** — the full Database walkthrough plus pattern skeletons for vector stores and REST APIs.
 
 <Note>
 The source abstraction is intentionally thin. Three members: `name`, `tools`, `bind`. No orchestration, no prompts, no policy. You subclass `Source`, implement the contract, and pass instances to your harness.

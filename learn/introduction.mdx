@@ -113,10 +113,10 @@ Re-encoding 900 tokens of system prompt and tool schemas per agent step is prohi
 With Continuous Context, that prefix is decoded once and inherited by every fork. Measured across a real pipeline: **4.4× fewer tokens processed** than a prompt-rebuilding approach. Same harness code runs on a 32K cloud GPU or a 16K laptop — depth adapts to the hardware.
 
 <CardGroup cols={3}>
-  <Card title="Skill catalog" icon="book-open" href="/reference/skill-catalog">
+  <Card title="Playbooks" icon="book-open" href="/reference/playbooks">
     **Mixed-role pools without per-agent schema bloat.** Tool schemas and role
-    descriptions live at the root once; every agent inherits the catalog via
-    prefix-share and selects its skill by name.
+    descriptions live at the root once; every agent inherits the playbooks via
+    prefix-share and selects its playbook by name.
   </Card>
   <Card
     title="Recursive delegation"

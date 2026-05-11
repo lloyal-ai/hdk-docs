@@ -1,9 +1,11 @@
 ---
 title: "Deployment"
-description: "Model selection, context sizing, KV quantization, and runtime configuration."
+description: "Production tuning checklist — model choice, nCtx, KV quantization, policy thresholds. Actionable recipes that reference the underlying mechanics."
 ---
 
 This guide covers model selection, context sizing, KV quantization, and runtime configuration for deploying a lloyal-agents pipeline.
+
+> **See also.** This guide is the *tuning checklist*. For the policy interface (the hooks you're tuning), see [Agent Policy](/reference/agent-policy). For why the pressure thresholds matter (the budget model), see [KV Pressure](/reference/kv-pressure).
 
 ## Model selection
 

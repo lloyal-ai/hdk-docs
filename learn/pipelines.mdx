@@ -6,7 +6,7 @@ description: Composing generator stages into multi-step workflows.
 
 A pipeline is a sequence of generator stages. Each stage `yield*`s into a framework primitive — `agent`, `agentPool`, `diverge`. The output of one stage feeds the next.
 
-There is no pipeline framework. No DAG builder. No node graph. You compose generators with `yield*` and the type system keeps you honest.
+Composition is code-first: stages are TypeScript generators with Effection scopes, wired together with `yield*`. There is no separate pipeline DSL or visual builder. Within a single `agentPool` call, structured **orchestrators** — `parallel`, `chain`, `fanout`, `dag`, `dagWithEvents`, `reduce` — describe how that pool's agents relate to one another (fan-out, sequential, multi-parent dependency graphs). They're optional building blocks; the contract is one function — `Orchestrator = (ctx: PoolContext) => Operation<void>` — and the built-ins are 10–30 line implementations of it.
 
 ## The pattern
 
@@ -64,22 +64,48 @@ Stages are independent generators. You can test them in isolation, reorder them,
 
 ## The building blocks
 
-Four primitives serve as stage implementations:
+Three primitives implement the work inside a stage:
 
-<CardGroup cols={2}>
+<CardGroup cols={3}>
   <Card title="agent()" icon="wand-magic-sparkles">
     Single agent. Plan decomposition (with `schema`), JSON extraction, evaluation. Returns an Agent with result and raw output.
   </Card>
   <Card title="agentPool()" icon="users">
-    Parallel agent pool with tools. Research, investigation, synthesis. Returns per-agent findings and statistics.
+    Multi-agent pool with tools and an `orchestrate` argument that picks how the pool's agents relate (parallel / chain / fanout / dag).
   </Card>
   <Card title="diverge()" icon="code-branch">
     Multi-branch perplexity selection. Fork N attempts, generate in parallel, select the lowest-perplexity output. Verification and confidence checking.
   </Card>
-  <Card title="reduce()" icon="arrows-down-to-line">
-    Sequential fold across items where each iteration is an Operation. Thread accumulated state through stages — sources, questions, findings.
+</CardGroup>
+
+`reduce()` is a stage-level combinator (covered in [Multi-source pipelines](#multi-source-pipelines-with-reduce) below) — it threads accumulated state across stages rather than describing relationships within one pool.
+
+## Orchestrators
+
+A pool's `orchestrate` argument selects how its agents relate. The SDK ships five composable shapes plus an escape hatch — pick the simplest one that fits your dependency pattern.
+
+<CardGroup cols={2}>
+  <Card title="parallel(specs)" icon="grip-lines-vertical">
+    Fan-out. All agents fork from the shared root concurrently. Use when sub-tasks are independent.
+  </Card>
+  <Card title="chain(items, toStep)" icon="link">
+    Sequential. Each step extends the spine before the next forks — later agents see earlier findings via KV attention. Use when later tasks build on earlier ones.
+  </Card>
+  <Card title="fanout(landscape, domains)" icon="diagram-project">
+    Landscape pass + N domain agents from the post-landscape root. Use when one shared scouting step should anchor several specialized investigations.
+  </Card>
+  <Card title="dag(nodes)" icon="circle-nodes">
+    Arbitrary acyclic graph with multi-parent dependencies. Lazy spawn on dependency resolution; independent nodes run in parallel. Use when the dependency shape isn't a chain or pure fan-out.
+  </Card>
+  <Card title="dagWithEvents(nodes, emit)" icon="bell">
+    `dag` with a progress-event hook for TUI / telemetry. Same semantics, plus emit-on-spawn / emit-on-complete callbacks.
+  </Card>
+  <Card title="(custom)" icon="code">
+    `Orchestrator = (ctx: PoolContext) => Operation<void>`. The built-ins are 10-30 line implementations of this. Write your own when none of the above fits.
   </Card>
 </CardGroup>
+
+A worked DAG example (compare two sources, write up the diff) lives in [`examples/compare`](/examples/compare) and is forked / reshaped step-by-step in the [custom-pipeline guide](/guides/custom-pipeline).
 
 ## Example pipelines
 
@@ -194,7 +220,7 @@ function* handleQuery(query: string): Operation<QueryResult> {
 ```
 
 <Note>
-There is no state machine, no DAG, no node connections to define. Conditional logic is an `if` statement. Looping is a `for` loop. Retry is calling the stage again. The generator pattern makes control flow explicit and readable.
+Cross-stage control flow is plain code: `if` for conditionals, `for` for loops, calling the stage again for retry. Within a stage, when one pool's agents form a dependency graph, reach for the structured orchestrators — `dag` for arbitrary acyclic deps, `chain` for sequential, `parallel` or `fanout` for fan-out shapes (see [Orchestrators](#orchestrators) below).
 </Note>
 
 ## Findings convergence

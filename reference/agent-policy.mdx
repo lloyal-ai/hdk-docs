@@ -1,9 +1,11 @@
 ---
 title: "Agent Policy"
-description: "Lifecycle decisions, budget enforcement, tool guards, explore/exploit switching, and scratchpad recovery."
+description: "The policy interface — lifecycle hooks (produce / settle / recover), budget gating, tool guards, scratchpad recovery."
 ---
 
 Every agent lifecycle decision passes through a policy. When an agent hits a stop token, when a tool result won't fit in KV, when a tool call is about to dispatch — the pool consults the policy and executes the returned action. The pool handles mechanics (transitions, prefills, prunes). The policy handles judgment.
+
+> **See also.** This page documents the policy *interface*. For the underlying budget model and pressure thresholds, see [KV pressure](/reference/kv-pressure). For production tuning of `softLimit` / `hardLimit` / `recovery` per-deployment, see [Deployment](/guides/deployment).
 
 ## The interface
 

@@ -264,3 +264,126 @@ const synthTools = [...sourceTools, reportTool];
 ```
 
 This gives the synthesis agent direct access to your data tools when needed -- without running a full agent swarm. When findings converge, grounding tools are not added.
+
+## Source patterns for other backends
+
+The Database walkthrough above is the canonical pattern. Other backends slot into the same shape — implement `Source<TCtx, TChunk>` with a `name`, a `tools` getter returning the data-access tools, an optional `bind()` for runtime deps, and `getChunks()` for post-use reranking. Two more skeletons:
+
+### Vector store (Pinecone, Qdrant, Chroma, pgvector)
+
+The retrieval tool runs semantic search; chunks are the scored passages.
+
+```typescript
+import { Source } from "@lloyal-labs/lloyal-agents";
+import { Tool } from "@lloyal-labs/lloyal-agents";
+
+interface VectorChunk {
+  id: string;
+  text: string;
+  metadata: Record<string, unknown>;
+  score: number;
+}
+
+class VectorSearchTool extends Tool<{ query: string; topK?: number }> {
+  readonly name = "vector_search";
+  readonly description = "Semantic search over the vector store.";
+  readonly parameters = {
+    type: "object" as const,
+    properties: {
+      query: { type: "string", description: "Search query" },
+      topK: { type: "number", description: "Number of results (default: 10)" },
+    },
+    required: ["query"],
+  };
+
+  constructor(private client: VectorClient, private collection: string) { super(); }
+
+  *execute(args: { query: string; topK?: number }) {
+    return yield* call(() =>
+      this.client.search(this.collection, { query: args.query, limit: args.topK ?? 10 }),
+    );
+  }
+}
+
+class VectorDBSource extends Source<{ reranker: Reranker }, VectorChunk> {
+  readonly name = "vectordb";
+  private _searchTool: VectorSearchTool;
+  private _results: VectorChunk[] = [];
+
+  constructor(client: VectorClient, collection: string) {
+    super();
+    this._searchTool = new VectorSearchTool(client, collection);
+  }
+
+  get tools(): Tool[] { return [this._searchTool]; }
+  getChunks(): VectorChunk[] { return this._results; }
+}
+```
+
+### REST API (search + detail tool pair)
+
+Two-tool pattern: a search tool returns matches, a detail tool fetches full records by ID. Useful for ticketing systems (JIRA, Linear), CRMs, internal services.
+
+```typescript
+class ApiSearchTool extends Tool<{ query: string }> {
+  readonly name = "api_search";
+  readonly description = "Search the API for relevant records.";
+  readonly parameters = {
+    type: "object" as const,
+    properties: { query: { type: "string", description: "Search query" } },
+    required: ["query"],
+  };
+
+  constructor(private baseUrl: string, private headers: Record<string, string>) { super(); }
+
+  *execute(args: { query: string }) {
+    return yield* call(async () => {
+      const res = await fetch(
+        `${this.baseUrl}/search?q=${encodeURIComponent(args.query)}`,
+        { headers: this.headers },
+      );
+      return res.json();
+    });
+  }
+}
+
+class ApiDetailTool extends Tool<{ id: string }> {
+  readonly name = "api_detail";
+  readonly description = "Fetch full details for a specific record by ID.";
+  readonly parameters = {
+    type: "object" as const,
+    properties: { id: { type: "string", description: "Record ID" } },
+    required: ["id"],
+  };
+
+  constructor(private baseUrl: string, private headers: Record<string, string>) { super(); }
+
+  *execute(args: { id: string }) {
+    return yield* call(async () => {
+      const res = await fetch(
+        `${this.baseUrl}/records/${args.id}`,
+        { headers: this.headers },
+      );
+      return res.json();
+    });
+  }
+}
+
+class APISource extends Source<{ reranker: Reranker }, ApiResult> {
+  readonly name = "api";
+  private _searchTool: ApiSearchTool;
+  private _detailTool: ApiDetailTool;
+  private _results: ApiResult[] = [];
+
+  constructor(baseUrl: string, headers: Record<string, string> = {}) {
+    super();
+    this._searchTool = new ApiSearchTool(baseUrl, headers);
+    this._detailTool = new ApiDetailTool(baseUrl, headers);
+  }
+
+  get tools(): Tool[] { return [this._searchTool, this._detailTool]; }
+  getChunks(): ApiResult[] { return this._results; }
+}
+```
+
+The shape is the same across backends: a `Tool` per data-access operation, a `Source` subclass that exposes them via the `tools` getter, optional `bind()` for runtime context, and a buffer + `getChunks()` if you want post-use reranking. Pass instances to the harness — the orchestration code doesn't change.

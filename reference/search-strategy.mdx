@@ -1,7 +1,9 @@
 ---
 title: "Search Strategy"
-description: "Entailment scoring, three-query convention, steering vs content boundaries, and explore/exploit mode."
+description: "How the cross-encoder reranker scores content at decision boundaries — three-query convention, steering vs content boundaries, explore/exploit mode."
 ---
+
+> **See also.** [Introduction → RIG section](/learn/introduction#retrieval-interleaved-generation) introduces the reranker concept at a high level. This page is the mechanism: how scoring is split across boundaries and how explore/exploit mode flips under pressure.
 
 When agents recurse and delegate, their local hypotheses can drift from the original query. An agent reads about "speculative execution in Apple Silicon" (CPU architecture), extracts domain terms, and delegates about them — following the wrong thread for 4 levels. The model can't distinguish lexical similarity from semantic relevance.
 

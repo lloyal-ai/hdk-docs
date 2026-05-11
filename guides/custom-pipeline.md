@@ -3,7 +3,7 @@ title: "Build a Custom Pipeline"
 description: "Fork the compare harness, reshape the DAG, swap sources, and customize budget and recovery."
 ---
 
-This guide walks through forking the [compare example](/examples/compare) and customizing it. Compare is a 6-node DAG that researches two subjects in parallel, compares them across three axes, and synthesizes — and it demonstrates the [skill catalog](/reference/skill-catalog) convention for mixed-role pools. It's a good fork target because the topology is non-trivial (multi-parent edges, multi-child convergence) but small enough to read end-to-end.
+This guide walks through forking the [compare example](/examples/compare) and customizing it. Compare is a 6-node DAG that researches two subjects in parallel, compares them across three axes, and synthesizes — and it demonstrates the [playbooks](/reference/playbooks) convention for mixed-role pools. It's a good fork target because the topology is non-trivial (multi-parent edges, multi-child convergence) but small enough to read end-to-end.
 
 For the architectural patterns behind these customizations, see the [RIG Pipeline reference](/reference/rig/pipeline).
 
@@ -19,7 +19,7 @@ The key files:
 |---|---|
 | `harness.ts` | DAG topology, orchestrator, pool setup |
 | `main.ts` | CLI entry, model loading, source configuration |
-| `prompts/*.eta` | Per-skill system prompts + skill catalog |
+| `prompts/*.eta` | Per-playbook system prompts + playbooks |
 | `tui/` | Ink TUI (optional — drop this if you don't need a renderer) |
 
 The harness is **source-agnostic** — sources are loaded in `main.ts` and passed to `handleCompare`. The DAG topology is hard-coded in `harness.ts` and easy to reshape.
@@ -72,16 +72,16 @@ Suppose you want a fact-check stage between `compare_axis_*` and `synthesize`. V
 },
 ```
 
-Add a `FACTCHECK` template under `prompts/` and load it like the other templates. If the fact-check skill needs additional tools beyond the existing palette, list them in the skill catalog so the model knows they exist.
+Add a `FACTCHECK` template under `prompts/` and load it like the other templates. If the fact-check playbook needs additional tools beyond the existing palette, list them in the playbooks so the model knows they exist.
 
-## Change skills
+## Change playbooks
 
-Each per-spec `systemPrompt` starts with `Apply the **<skill>** skill.` The skills are described in `prompts/skill-catalog.eta`, which is what gets prefilled onto `queryRoot`:
+Each per-spec `systemPrompt` starts with `Apply the **<playbook>** playbook.` The playbooks are described in `prompts/playbooks.eta`, which is what gets prefilled onto `queryRoot`:
 
 ```eta
-The agent system message will tell you which skill to apply. Use only that skill's tools.
+The agent system message will tell you which playbook to apply. Use only that playbook's tools.
 
-## Skills
+## Playbooks
 
 ### web_research
 - Tools: web_search, fetch_page, report
@@ -96,14 +96,14 @@ The agent system message will tell you which skill to apply. Use only that skill
 - Use when integrating multiple comparisons into a final report.
 ```
 
-To add a new skill:
+To add a new playbook:
 
-1. Document it in `skill-catalog.eta` with its tool subset and intended use.
-2. Add the per-skill system prompt template to `prompts/`.
+1. Document it in `playbooks.eta` with its tool subset and intended use.
+2. Add the per-playbook system prompt template to `prompts/`.
 3. Load and render it in `harness.ts`.
-4. The new skill's nodes prepend `Apply the **<your_skill>** skill.` in their system prompt.
+4. The new playbook's nodes prepend `Apply the **<your_playbook>** playbook.` in their system prompt.
 
-The schemas for the new skill's tools must already be in the toolkit at `withSharedRoot({ toolsJson })` — only role-level skill selection happens via prompt; tool registration happens in `main.ts` when sources are bound.
+The schemas for the new playbook's tools must already be in the toolkit at `withSharedRoot({ toolsJson })` — only role-level playbook selection happens via prompt; tool registration happens in `main.ts` when sources are bound.
 
 ## Configure sources
 
@@ -194,6 +194,6 @@ If you want to keep the Ink TUI but render a different topology, the renderer is
 
 - [Compare example](/examples/compare) — the canonical fork target
 - [RIG Pipeline reference](/reference/rig/pipeline) — architectural patterns for retrieval-interleaved harnesses
-- [Skill Catalog](/reference/skill-catalog) — the convention for mixed-role pools
+- [Playbooks](/reference/playbooks) — the convention for mixed-role pools
 - [Concurrency](/reference/concurrency) — orchestrator catalog and the five-phase tick loop
 - [Sources](/learn/sources) — implementing `Source<TCtx, TChunk>` for custom backends

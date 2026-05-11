@@ -206,19 +206,9 @@ When you want delegation, instantiate a `DelegateTool` and add it to the `tools`
 
 ## Tool ordering rules
 
-The order of tools in the `tools` array matters. Tool schemas are serialized into the system prompt, and LLM recency bias affects tool selection at generation decision boundaries.
+Tool order in the `tools` array matters — terminal tools should not be last, particularly when they share a name prefix with another tool. The recency bias of the model's logit distribution favors trailing tool names, which can flip an agent's behavior toward early termination.
 
-**Rule: terminal tools must not be last in the array.** Place them before any tool that shares a name prefix.
-
-```typescript
-// Correct: report before research (both start with "r")
-tools: [search, readFile, grep, report, research]
-
-// Wrong: report last -- model favors early termination
-tools: [search, readFile, grep, research, report]
-```
-
-This was the root cause of a real regression where agents lost depth-first investigation behavior. The grammar is order-agnostic (it allows all valid tokens), but the system prompt ordering shifts the model's logit distribution over tool names.
+→ **[Grammar & tool ordering](/reference/grammar-and-ordering)** has the full rule, the failure case, and the GBNF construction details.
 
 ## Terminal tool pattern
 

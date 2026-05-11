@@ -154,7 +154,7 @@ This matters in flat-mode DAGs where multiple sibling tasks complete near-simult
 Spine extensions write to the pool's `spineRoot`. Two configurations decide which branch that is:
 
 - **`agentPool` invoked WITHOUT `systemPrompt`** (the common case for chains that need cross-pool spine persistence). `spineRoot = warmParent` — the root the harness passed in via `parent:`. The harness's outer `withSharedRoot` owns this root for its full scope, so extensions persist past pool exit and a post-pool `useAgent({ parent: queryRoot })` forks the spine and attends to all chain extensions.
-- **`agentPool` invoked WITH `systemPrompt`** (catalog mode). `agentPool` internally creates a *nested* `withSharedRoot` whose root carries the catalog. `spineRoot = inner root`. Extensions write to that inner root, which gets pruned at `agentPool` exit. A post-pool `useAgent({ parent: queryRoot })` would fork the OUTER queryRoot and find an empty branch — chain extensions disappeared with the inner root.
+- **`agentPool` invoked WITH `systemPrompt`** (shared-mode). `agentPool` internally creates a *nested* `withSharedRoot` whose root carries the playbooks. `spineRoot = inner root`. Extensions write to that inner root, which gets pruned at `agentPool` exit. A post-pool `useAgent({ parent: queryRoot })` would fork the OUTER queryRoot and find an empty branch — chain extensions disappeared with the inner root.
 
 Two patterns both work; pick by where the synth runs:
 
@@ -163,7 +163,7 @@ Two patterns both work; pick by where the synth runs:
 yield* withSharedRoot({ parent: session.trunk }, function*(queryRoot) {
   return yield* agentPool({
     orchestrate: dag(nodes),    // research → compare → synth as nodes
-    systemPrompt: skillCatalog, // catalog mode is fine: synth's branch
+    systemPrompt: playbooks, // shared-mode is fine: synth's branch
                                 // forks the inner spineRoot
     parent: queryRoot,
     tools, terminalTool: 'report',
@@ -174,7 +174,7 @@ yield* withSharedRoot({ parent: session.trunk }, function*(queryRoot) {
 yield* withSharedRoot(
   {
     parent: session.trunk,
-    systemPrompt: skillCatalog,    // ← catalog on harness root
+    systemPrompt: playbooks,    // ← playbooks on harness root
     toolsJson: toolkit.toolsJson,  // ← so spine extensions land here
   },
   function*(queryRoot) {
@@ -190,7 +190,7 @@ yield* withSharedRoot(
 );
 ```
 
-See [Skill Catalog](/reference/skill-catalog) for the catalog convention and [Concurrency](/reference/concurrency#rootfmt--catalog-mode) for the `RootFmt` context that drives shared-mode behavior.
+See [Playbooks](/reference/playbooks) for the playbooks convention and [Concurrency](/reference/concurrency#rootfmt--shared-mode) for the `RootFmt` context that drives shared-mode behavior.
 
 ### How they compose
 

@@ -207,11 +207,11 @@ Default 100 — almost always too generous. Research pools cap at 10. This is a 
 
 Set `true` for parallel pools where each agent's branch grows large and you want sibling agents to recover headroom mid-flight. The agent's branch is pruned immediately after the terminal tool fires. Spine extensions (which live on a separate root) are unaffected.
 
-#### "I have many agents sharing the same tool palette" — `systemPrompt` (catalog mode)
+#### "I have many agents sharing the same tool palette" — `systemPrompt` (shared-mode)
 
-When set, `agentPool` runs in catalog mode: the chat header (system + tool schemas) is prefilled onto an inner queryRoot once at setup; every agent inherits via metadata-only KV prefix-share instead of re-emitting the schemas in its own suffix. See [Skill Catalog](/reference/skill-catalog) for the full convention and tradeoffs (notably: in catalog mode, `extendRoot` writes to the inner root, not the warmParent).
+When set, `agentPool` runs in shared-mode: the chat header (system + tool schemas) is prefilled onto an inner queryRoot once at setup; every agent inherits via metadata-only KV prefix-share instead of re-emitting the schemas in its own suffix. See [Playbooks](/reference/playbooks) for the full convention and tradeoffs (notably: in shared-mode, `extendRoot` writes to the inner root, not the warmParent).
 
-For chains where you want spine extensions to persist past pool exit (so post-pool synth can attend to them), put the catalog on the **harness's** outer `withSharedRoot`, not on `agentPool` directly.
+For chains where you want spine extensions to persist past pool exit (so post-pool synth can attend to them), put the playbooks on the **harness's** outer `withSharedRoot`, not on `agentPool` directly.
 
 #### "I'm running a thinking-mode model" — `enableThinking`
 
@@ -248,7 +248,7 @@ const pool = yield* agentPool({
 
 Per-spec prompts are formatted independently by each agent's `setupAgent` call — the shared root provides the KV prefix, individual agents diverge after fork.
 
-If you want a single role + tool palette amortized at the root once across N agents, opt into the **catalog convention**: pass `systemPrompt` on `agentPool` (or, more typically, on a wrapping `withSharedRoot`). See [Skill Catalog](/reference/skill-catalog).
+If you want a single role + tool palette amortized at the root once across N agents, opt into the **playbooks convention**: pass `systemPrompt` on `agentPool` (or, more typically, on a wrapping `withSharedRoot`). See [Playbooks](/reference/playbooks).
 
 ### Recursive agents (delegation)
 
@@ -429,14 +429,14 @@ Pressure management is automatic. You don't check headroom in your tools. The po
 
 ## Prefix sharing
 
-Every agent forks from a shared root branch — that's the cheap part (`Branch.forkSync` is metadata-only). What gets prefilled onto the root, and inherited via KV prefix-share, depends on whether you opt into the catalog convention:
+Every agent forks from a shared root branch — that's the cheap part (`Branch.forkSync` is metadata-only). What gets prefilled onto the root, and inherited via KV prefix-share, depends on whether you opt into the playbooks convention:
 
 - **Default (no `systemPrompt` on `withSharedRoot` / `agentPool`):** the shared root holds only a turn separator. Each agent's `setupAgent` formats its own `[system + tools + user]` suffix and tokenizes that onto its branch. Tools are re-emitted per spawn — fine for small pools, wasteful for many siblings sharing the same tool palette.
-- **Catalog mode (`systemPrompt` + `toolsJson` on `withSharedRoot`):** the root is prefilled with the chat header (system + embedded tool schemas) once. Every agent inherits those tokens via metadata-only KV share. Agent suffixes carry only the per-spec `[system, user]` (a thin role assignment + task), no tools. See [Skill Catalog](/reference/skill-catalog).
+- **Shared-mode (`systemPrompt` + `toolsJson` on `withSharedRoot`):** the root is prefilled with the chat header (system + embedded tool schemas) once. Every agent inherits those tokens via metadata-only KV share. Agent suffixes carry only the per-spec `[system, user]` (a thin role assignment + task), no tools. See [Playbooks](/reference/playbooks).
 
 ```
 Default:        3 agents x ~900 tokens of prompt+tools = 2,700 unique cells
-Catalog mode:   ~900 shared root + 3 x ~30 per-agent suffix = ~990 unique cells
+Shared-mode:   ~900 shared root + 3 x ~30 per-agent suffix = ~990 unique cells
 Savings:        ~64% fewer decode operations
 ```
 

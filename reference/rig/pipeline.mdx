@@ -17,7 +17,7 @@ Not every pipeline needs every stage. A simple harness might be `Research → Sy
 
 Each stage runs inside the [tick loop](/reference/concurrency). Stages share two coordination patterns:
 
-1. **Single `withSharedRoot` at the harness level.** The catalog (system prompt + tool palette) is amortized at `queryRoot` once. All pools and post-pool `useAgent` calls inherit it via prefix-share. See [Skill Catalog](/reference/skill-catalog).
+1. **Single `withSharedRoot` at the harness level.** The playbooks (system prompt + tool palette) is amortized at `queryRoot` once. All pools and post-pool `useAgent` calls inherit it via prefix-share. See [Playbooks](/reference/playbooks).
 2. **Spine accumulation via `extendRoot`.** Per-stage findings are prefilled onto `queryRoot` as user+assistant turns. Downstream agents fork `queryRoot` and attend to the accumulated spine via KV — no re-encoding, no message threading.
 
 ## Stage Walkthrough
@@ -154,10 +154,10 @@ Pipelines typically handle both cold starts (first query) and warm continuations
 
 <Tabs>
   <Tab title="Cold (first query)">
-    Research runs inside `withSharedRoot`. A shared prefix branch is created, agents fork from it. After synthesis, `promoteTrunk` creates a new trunk with the query-response pair for future warm turns.
+    Research runs inside `withSharedRoot`. A shared prefix branch is created, agents fork from it. After synthesis, `session.commitTurn(query, answer)` creates the trunk with the query-response pair for future warm turns.
   </Tab>
   <Tab title="Warm (follow-up)">
-    Prior conversation tokens are physically present in the trunk's KV cache. Research runs against the existing trunk via a warm path — sources bind and execute without creating a new shared root. After synthesis, `appendTurn` prefills the new query-response pair onto the existing trunk.
+    Prior conversation tokens are physically present in the trunk's KV cache. Research runs against the existing trunk via a warm path — sources bind and execute without creating a new shared root. After synthesis, the same `session.commitTurn(query, answer)` extends the existing trunk with the new query-response pair.
   </Tab>
 </Tabs>
 
@@ -174,7 +174,7 @@ Tighten or loosen these as your harness matures. The framework's defaults err on
 
 ## See also
 
-- [Skill Catalog](/reference/skill-catalog) — the catalog convention for mixed-role pools
+- [Playbooks](/reference/playbooks) — the playbooks convention for mixed-role pools
 - [Continuous Context Spine](/reference/continuous-context-spine) — how `extendRoot` and prefix sharing compose
 - [Concurrency Model](/reference/concurrency) — the five-phase tick loop and DAG orchestration
 - [Sources](/learn/sources) — the `Source<TCtx, TChunk>` contract

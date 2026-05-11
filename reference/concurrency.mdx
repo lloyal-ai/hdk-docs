@@ -131,7 +131,7 @@ Inner agent events flow through the same `Events` channel. The TUI or event coll
 
 Each pool level runs its own `formatChatSync()` call, producing its own grammar, lazy grammar triggers, and parser spec. The inner pool's agents have their own tool schemas. `parseChatOutput()` uses the per-agent format stored at setup time. There is no cross-contamination between inner and outer tool parsing.
 
-### `RootFmt` — catalog mode
+### `RootFmt` — shared-mode
 
 When `withSharedRoot` is given a `systemPrompt` + `toolsJson`, it formats the chat header once at setup, prefills it onto the root, and stashes the resulting `FormatConfig` (parser, grammar, format, triggers) on the `RootFmt` Effection context:
 
@@ -143,7 +143,7 @@ export const RootFmt = createContext<FormatConfig | null>('lloyal.rootFmt', null
 
 When `RootFmt` is unset (`withSharedRoot` called without `systemPrompt`), each agent emits its own tools in its own suffix as in earlier versions of the framework — the pool runs in "non-shared mode" and `extendRoot` writes to `warmParent` (the harness-supplied root) rather than the inner withSharedRoot's root. This is the right default for chains that need spine extensions to persist past pool exit.
 
-See [Skill Catalog](/reference/skill-catalog) for the prompt convention this enables.
+See [Playbooks](/reference/playbooks) for the prompt convention this enables.
 
 ### `dag()` is Task-as-Future
 

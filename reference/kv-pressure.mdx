@@ -1,9 +1,11 @@
 ---
 title: "KV Pressure"
-description: "Budget model, startup invariant, enforcement points, budget-aware nudges, recovery extraction, sizing."
+description: "The pressure budget model — how `ContextPressure` partitions the KV cache and where enforcement happens in the tick loop."
 ---
 
 Agent pools share a single KV cache. As agents generate tokens and prefill tool results, the cache fills. `ContextPressure` tracks how much room remains and enforces thresholds at multiple points in the tick loop to prevent out-of-memory crashes. When an agent is killed by pressure, an inline recovery protocol extracts its findings before the pool continues, using the `hardLimit` reserve as a parallel report budget.
+
+> **See also.** This page documents the *budget model and enforcement mechanics*. For the policy hooks that act on pressure events (`onProduced`, `shouldExit`, `onRecovery`), see [Agent Policy](/reference/agent-policy). For picking `nCtx` / `softLimit` / KV quantization values for a given deployment, see [Deployment](/guides/deployment).
 
 ## The budget model
 
