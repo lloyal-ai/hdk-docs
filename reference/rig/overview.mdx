@@ -5,11 +5,21 @@ description: "Retrieval-Interleaved Generation — multi-hop reasoning through i
 
 ## RIG vs RAG
 
-RAG retrieves first, then generates. Query the vector DB, get top-k passages, inject them into the prompt, call the model once. Retrieval and generation are separate phases.
+Vanilla RAG retrieves once and generates once: query the vector DB, get top-k passages, inject them into the prompt, call the model. Retrieval and generation are separate phases. Modern variants — agentic RAG, self-RAG, multi-stage retrieval with reranking — already interleave the two, so the boundary is fuzzier than the textbook contrast suggests.
 
-RIG interleaves retrieval and generation inside the decode loop. Agents generate reasoning, decide to search, process results, reason further, fetch content, form hypotheses, and search again with refined queries. Each retrieval decision is informed by everything the agent has already discovered.
+RIG is the name we use for our specific stack: an agentic retrieval loop where a cross-encoder reranker scores every retrieved candidate against the agent's *current* hypothesis before it's allowed into the working context. Agents generate reasoning, decide to search, process results, reason further, fetch content, form hypotheses, and search again with refined queries. Each retrieval decision is informed by everything the agent has already discovered — and the cross-encoder acts as a focal lens at every step, admitting only what scores.
 
-The difference is observable in tool call inputs. A RAG system constructs search queries from the original user question. A RIG agent constructs queries from hypotheses formed during generation.
+The difference is observable in tool call inputs. A vanilla RAG system constructs search queries from the original user question. A RIG agent constructs queries from hypotheses formed during generation, and the reranker filters what those queries return before any of it reaches the decoder.
+
+## Where This Fits
+
+RIG is a name we coined; it isn't a new entry in the RAG taxonomy. The mechanism combines techniques the literature has separately named:
+
+- **Agentic RAG** — an agent plans retrieval and executes it iteratively, with each call informed by prior results
+- **Multi-stage retrieval with cross-encoder reranking** — a small classifier rescores retrieved candidates before they enter context
+- **Iterative / self-refinement** — retrieval is gated by the agent's evolving hypothesis, not just the original query
+
+What "RIG" labels is the opinionated stack: agentic retrieval + a cross-encoder acting as a focal lens at every retrieval step + shared KV-state across agents, tuned for small local models. The novelty is in the combination and the implementation — on-device cross-encoder, two-stage application against search results *and* page sections, running inside a shared KV spine — not the underlying pattern.
 
 ## The 4-Beat Pattern
 

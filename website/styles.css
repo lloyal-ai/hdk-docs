@@ -455,6 +455,35 @@ body.dark-mode .mobile-shot {
   margin-top: 2.5rem;
 }
 
+/* OEM / embedded runtime section */
+.oem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4rem;
+  align-items: start;
+  padding: 6rem 0 8rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.oem-visual {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Tokenized inline chips — e.g. the OODA loop stages */
+.token {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.82em;
+  font-weight: 500;
+  padding: 0.15em 0.5em;
+  border-radius: 5px;
+  background-color: rgba(16, 185, 129, 0.12);
+  color: var(--primary);
+  white-space: nowrap;
+}
+
 .card {
   padding: 2rem 0;
 }
@@ -500,6 +529,14 @@ body.dark-mode .mobile-shot {
   }
   .mobile-shot {
     max-width: 220px;
+  }
+  .oem {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3rem;
+    padding: 4rem 0 6rem;
+  }
+  .oem-visual {
+    order: 2;
   }
 }
 

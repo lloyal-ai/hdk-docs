@@ -218,7 +218,7 @@
 
       <div class="card">
         <h3 class="card-title">Retrieval-Interleaved Generation</h3>
-        <p class="card-desc">RAG but better &mdash; agents dynamically search, read, and rerank chunks <em>during</em> the generation loop enabling adapative tool use and multi-hop reasoning. Connect local databases or the live web instantly via the pluggable <code>Source</code> contract.</p>
+        <p class="card-desc">Agentic RAG with a focal lens &mdash; agents dynamically search, read, and rerank chunks <em>during</em> the generation loop enabling adaptive tool use and multi-hop reasoning. Connect local databases or the live web instantly via the pluggable <code>Source</code> contract.</p>
       </div>
     </section>
 
@@ -234,6 +234,43 @@
       <div class="mobile-shots">
         <img src="img/mobile-conversation.png" alt="iPhone running a multi-agent research query in-process" class="mobile-shot" />
         <img src="img/mobile-research.png" alt="Two agents running web_search and fetch_page in parallel on iPhone" class="mobile-shot mobile-shot-offset" />
+      </div>
+    </section>
+
+    <section class="oem">
+      <div class="oem-visual">
+        <div class="code-window">
+          <div class="window-header">
+            <div class="code-tabs">
+              <span class="tab-btn active">embed.cpp</span>
+            </div>
+          </div>
+          <div class="code-content active">
+            <pre><code><span class="keyword">#include</span> <span class="string">&lt;lloyal/hdk.hpp&gt;</span>
+
+<span class="comment">// Runs on the equipment's own compute.</span>
+<span class="comment">// Compiled native, no network in the loop.</span>
+<span class="keyword">auto</span> pool = hdk::<span class="function">agent_pool</span>({
+  .orchestrate = hdk::<span class="function">parallel</span>(perceive, plan, monitor),
+  .tools = { control.dispatch_command },
+  .terminal_tool = <span class="string">"dispatch"</span>,
+});
+
+<span class="comment">// Each cycle: observe, orient, decide, act.</span>
+<span class="keyword">for</span> (;;) {
+  <span class="keyword">auto</span> frame = hdk::<span class="function">fuse</span>(camera, lidar, imu);
+  <span class="keyword">co_await</span> pool.<span class="function">run</span>(frame);
+}</code></pre>
+          </div>
+        </div>
+      </div>
+      <div class="oem-copy">
+        <h2 class="headline">On&#8209;board intelligence.<br>Literally.</h2>
+        <p class="caption">Enable the equipment you manufacture to run multi-agent <span class="token">Observe</span> <span class="token">Orient</span> <span class="token">Decide</span> <span class="token">Act</span> loops natively. No AI box, no networking overhead. Deploy models with 3D spatial reasoning that take sensor-fusion input and dispatch actuation as tool calls &mdash; autonomously, or with a human in the loop. Functional safety stays where it belongs: in your certified hardware layer. In development with launch partners, co-engineering toward 2026&ndash;2027 production cycles.</p>
+        <div class="mobile-cta">
+          <a href="mailto:hello@lloyal.ai?subject=HDK%20C%2B%2B%20Runtime%20%E2%80%94%20OEM%20Partnership" class="btn btn-primary">Talk to us</a>
+          <span class="mobile-cta-caption">Native C++26 runtime &middot; OEM development partnerships</span>
+        </div>
       </div>
     </section>
   </main>
