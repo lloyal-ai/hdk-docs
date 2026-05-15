@@ -1,66 +1,175 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HDK | The Agentic Envelope for Local-First Apps</title>
-  <meta name="description" content="Local Agents. In-process Intelligence. Zero Trust Execution. Deploy agents in your app. No servers. No API keys. No data leaving the device unless you want it to.">
-  <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-</head>
-<body>
-  <header class="navbar">
-    <div class="logo">
-      <img src="logo.svg" alt="lloyal logo" class="logo-icon">
-      Harness Development Kit
-    </div>
-    <button id="menu-toggle" class="menu-btn" aria-label="Toggle menu">
-      <svg id="hamburger-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-      <svg id="close-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-    </button>
-    <nav id="nav-links" class="nav-links">
-      <a href="https://docs.lloyal.ai/learn/introduction">Learn</a>
-      <a href="https://docs.lloyal.ai/reference/concurrency">Reference</a>
-      <a href="https://docs.lloyal.ai/examples/react-agent">Examples</a>
-      <a href="https://github.com/lloyal-ai/hdk">GitHub</a>
-      <span class="nav-star-wrapper">
-        <a class="github-button" href="https://github.com/lloyal-ai/hdk" data-color-scheme="no-preference: light; light: light; dark: dark;" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star lloyal-ai/hdk on GitHub">Star</a>
-      </span>
-      <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">
-        <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-        <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-      </button>
-    </nav>
-  </header>
-
-  <main class="container">
-    <section class="hero">
-      <div class="hero-content">
-        <h1 class="headline">Local Agents.<br>In-process Intelligence.</h1>
-        <p class="caption">Forget chatbots. Ship agentic AI directly inside your desktop and mobile apps &mdash; no API keys, no inference servers, and no user data leaving the device unless you want it to. LLoyal HDK gives you the entire agentic envelope (models, tools, retrieval, and multi-agent workflows) in a single import.</p>
-        
-        <div class="cta-group">
-          <a href="https://docs.lloyal.ai/learn/quick-start" class="btn btn-primary">Get Started</a>
-          <a href="https://github.com/lloyal-ai/hdk" class="btn btn-secondary">GitHub</a>
-        </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HDK | The Agentic Envelope for Local-First Apps</title>
+    <meta
+      name="description"
+      content="Local Agents. In-process Intelligence. Zero Trust Execution. Deploy agents in your app. No servers. No API keys. No data leaving the device unless you want it to."
+    />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="logo">
+        <img src="logo.svg" alt="lloyal logo" class="logo-icon" />
+        Harness Development Kit
       </div>
-      
-      <div class="hero-code">
-        <div class="code-window">
-          <div class="window-header">
-            <div class="code-tabs">
-              <button class="tab-btn active" onclick="switchTab('pool')">agentPool</button>
-              <button class="tab-btn" onclick="switchTab('single')">useAgent</button>
-              <button class="tab-btn" onclick="switchTab('swarm')">Swarm</button>
-              <button class="tab-btn" onclick="switchTab('source')">Source</button>
-            </div>
-          </div>
+      <button id="menu-toggle" class="menu-btn" aria-label="Toggle menu">
+        <svg
+          id="hamburger-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+        <svg
+          id="close-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          style="display: none"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <nav id="nav-links" class="nav-links">
+        <a href="https://docs.lloyal.ai/learn/introduction">Learn</a>
+        <a href="https://docs.lloyal.ai/reference/concurrency">Reference</a>
+        <a href="https://docs.lloyal.ai/examples/react-agent">Examples</a>
+        <a href="https://github.com/lloyal-ai/hdk">GitHub</a>
+        <span class="nav-star-wrapper">
+          <a
+            class="github-button"
+            href="https://github.com/lloyal-ai/hdk"
+            data-color-scheme="no-preference: light; light: light; dark: dark;"
+            data-icon="octicon-star"
+            data-size="large"
+            data-show-count="true"
+            aria-label="Star lloyal-ai/hdk on GitHub"
+            >Star</a
+          >
+        </span>
+        <button
+          id="theme-toggle"
+          class="theme-btn"
+          aria-label="Toggle dark mode"
+        >
+          <svg
+            id="moon-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg
+            id="sun-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="display: none"
+          >
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+      </nav>
+    </header>
 
-          <div id="tab-single" class="code-content">
-            <pre><code><span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+    <main class="container">
+      <section class="hero">
+        <div class="hero-content">
+          <p class="eyebrow">Full-stack agentic AI framework for llama.cpp</p>
+          <h1 class="headline">
+            Process<br />Native<br />
+            Intelligence.
+          </h1>
+          <p class="caption">
+            HDK agents are part of your application logic &mdash; same
+            process, same memory, same data structures as the rest of your
+            code. They don&rsquo;t need context shipped to them across a
+            network seam &mdash; no vector DBs, embedding pipelines,
+            permission proxies, context assemblers. Agents are already where
+            the context lives.
+          </p>
+
+          <div class="cta-group">
+            <a
+              href="https://docs.lloyal.ai/learn/quick-start"
+              class="btn btn-primary"
+              >Get Started</a
+            >
+            <a href="https://github.com/lloyal-ai/hdk" class="btn btn-secondary"
+              >GitHub</a
+            >
+          </div>
+        </div>
+
+        <div class="hero-code">
+          <div class="code-window">
+            <div class="window-header">
+              <div class="code-tabs">
+                <button class="tab-btn active" onclick="switchTab('pool')">
+                  agentPool
+                </button>
+                <button class="tab-btn" onclick="switchTab('single')">
+                  useAgent
+                </button>
+                <button class="tab-btn" onclick="switchTab('swarm')">
+                  Swarm
+                </button>
+                <button class="tab-btn" onclick="switchTab('source')">
+                  Source
+                </button>
+              </div>
+            </div>
+
+            <div id="tab-single" class="code-content">
+              <pre><code><span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
 <span class="keyword">import</span> { SupportSource, reportTool } <span class="keyword">from</span> <span class="string">'./kb'</span>; 
 
 <span class="keyword">const</span> kb = <span class="keyword">new</span> <span class="class">SupportSource</span>(db);
@@ -72,11 +181,11 @@
 });
 
 <span class="function">console.log</span>(agent.result);</code></pre>
-          </div>
+            </div>
 
-          <!-- Source Implementation -->
-          <div id="tab-source" class="code-content">
-            <pre><code><span class="keyword">import</span> { Source } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+            <!-- Source Implementation -->
+            <div id="tab-source" class="code-content">
+              <pre><code><span class="keyword">import</span> { Source } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
 <span class="keyword">import</span> { FetchPageTool, type Reranker } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
 
 <span class="comment">// Sources pair tools with late-bound runtime deps. The reranker</span>
@@ -92,11 +201,11 @@
     <span class="keyword">this</span>.fetchPage.<span class="function">setReranker</span>(ctx.reranker);
   }
 }</code></pre>
-          </div>
+            </div>
 
-          <!-- Swarm / DelegateTool -->
-          <div id="tab-swarm" class="code-content">
-            <pre><code><span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+            <!-- Swarm / DelegateTool -->
+            <div id="tab-swarm" class="code-content">
+              <pre><code><span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
 <span class="keyword">import</span> { DelegateTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
 <span class="keyword">import</span> { BankSource, TradeTool, reportTool, account } <span class="keyword">from</span> <span class="string">'./finance'</span>;
 
@@ -123,19 +232,22 @@
   ],
   terminalTool: <span class="string">'report'</span>,
 });</code></pre>
-          </div>
+            </div>
 
-          <!-- Agent Pool (Accordion) -->
-          <div id="tab-pool" class="code-content active">
-            <div class="accordion">
-              
-              <!-- Parallel -->
-              <div class="accordion-item active">
-                <button class="accordion-header" onclick="toggleAccordion(this)">
-                  <span class="icon">[-]</span> parallel: Ingest scanned receipts en-masse into Xero
-                </button>
-                <div class="accordion-body">
-                  <pre><code><span class="keyword">import</span> { agentPool, parallel } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+            <!-- Agent Pool (Accordion) -->
+            <div id="tab-pool" class="code-content active">
+              <div class="accordion">
+                <!-- Parallel -->
+                <div class="accordion-item active">
+                  <button
+                    class="accordion-header"
+                    onclick="toggleAccordion(this)"
+                  >
+                    <span class="icon">[-]</span> parallel: Ingest scanned
+                    receipts en-masse into Xero
+                  </button>
+                  <div class="accordion-body">
+                    <pre><code><span class="keyword">import</span> { agentPool, parallel } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
 <span class="keyword">import</span> { FS, Xero, reportTool } <span class="keyword">from</span> <span class="string">'./local-app'</span>;
 
 <span class="comment">// Process receipts into Xero concurrently</span>
@@ -150,16 +262,20 @@
   tools: [FS.readImage, Xero.logExpense, reportTool],
   terminalTool: <span class="string">'report'</span>,
 });</code></pre>
+                  </div>
                 </div>
-              </div>
 
-              <!-- Chain -->
-              <div class="accordion-item">
-                <button class="accordion-header" onclick="toggleAccordion(this)">
-                  <span class="icon">[+]</span> chain: Resolve multi-step QuickBooks exceptions in-process
-                </button>
-                <div class="accordion-body">
-                  <pre><code><span class="keyword">import</span> { agentPool, chain } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+                <!-- Chain -->
+                <div class="accordion-item">
+                  <button
+                    class="accordion-header"
+                    onclick="toggleAccordion(this)"
+                  >
+                    <span class="icon">[+]</span> chain: Resolve multi-step
+                    QuickBooks exceptions in-process
+                  </button>
+                  <div class="accordion-body">
+                    <pre><code><span class="keyword">import</span> { agentPool, chain } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
 <span class="keyword">import</span> { FS, QuickBooks, reportTool } <span class="keyword">from</span> <span class="string">'./local-app'</span>;
 
 <span class="comment">// Step 2 inherits step 1's KV context in O(1) time</span>
@@ -172,16 +288,20 @@
   tools: [FS.readPdf, QuickBooks.api, reportTool],
   terminalTool: <span class="string">'report'</span>,
 });</code></pre>
+                  </div>
                 </div>
-              </div>
 
-              <!-- DAG -->
-              <div class="accordion-item">
-                <button class="accordion-header" onclick="toggleAccordion(this)">
-                  <span class="icon">[+]</span> dag: Publish autonomous marketing campaigns across channels
-                </button>
-                <div class="accordion-body">
-                  <pre><code><span class="keyword">import</span> { agentPool, dag } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+                <!-- DAG -->
+                <div class="accordion-item">
+                  <button
+                    class="accordion-header"
+                    onclick="toggleAccordion(this)"
+                  >
+                    <span class="icon">[+]</span> dag: Publish autonomous
+                    marketing campaigns across channels
+                  </button>
+                  <div class="accordion-body">
+                    <pre><code><span class="keyword">import</span> { agentPool, dag } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
 <span class="keyword">import</span> { CMS, Gen, FS, reportTool } <span class="keyword">from</span> <span class="string">'./local-tools'</span>;
 
 <span class="comment">// copy + imagery fan out from notes, then converge on publish.</span>
@@ -196,57 +316,145 @@
   tools: [FS.readDir, CMS.tone, Gen.image, reportTool],
   terminalTool: <span class="string">'report'</span>,
 });</code></pre>
+                  </div>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="features">
-      <div class="card">
-        <h3 class="card-title">Zero-Dependency Orchestration</h3>
-        <p class="card-desc">Forget Docker compose and fragile promise chains. Orchestrate massive parallel swarms and multi-parent DAGs using native structured concurrency. Deterministic teardown, zero memory leaks.</p>
-      </div>
-
-      <div class="card">
-        <h3 class="card-title">Continuous Context</h3>
-        <p class="card-desc">Agents share GPU state, not strings. This frees up compute for more external knowledge consumption and concurrent agent execution &mdash; enabling cloud-grade UX on consumer hardware.</p>
-      </div>
-
-      <div class="card">
-        <h3 class="card-title">Retrieval-Interleaved Generation</h3>
-        <p class="card-desc">Agentic RAG with a focal lens &mdash; agents dynamically search, read, and rerank chunks <em>during</em> the generation loop enabling adaptive tool use and multi-hop reasoning. Connect local databases or the live web instantly via the pluggable <code>Source</code> contract.</p>
-      </div>
-    </section>
-
-    <section class="mobile-proof">
-      <div class="mobile-copy">
-        <h2 class="headline">On-device. Multi-agent. Parallel.</h2>
-        <p class="caption">Parallel agents running tools <code>web_search</code> and <code>fetch_page</code> on iPhone &mdash; no API calls, no streaming server, no cloud round-trip. The Node SDK is open source and ships anywhere Node runs &mdash; server, CLI, or desktop via Electron or Tauri. The native iOS &amp; Android runtime is currently in commercial preview.</p>
-        <div class="mobile-cta">
-          <a href="mailto:hello@lloyal.ai?subject=HDK%20Mobile%20Runtime%20%E2%80%94%20Request%20Access" class="btn btn-primary">Request Access</a>
-          <span class="mobile-cta-caption">Native iOS &amp; Android runtime &middot; early access</span>
-        </div>
-      </div>
-      <div class="mobile-shots">
-        <img src="img/mobile-conversation.png" alt="iPhone running a multi-agent research query in-process" class="mobile-shot" />
-        <img src="img/mobile-research.png" alt="Two agents running web_search and fetch_page in parallel on iPhone" class="mobile-shot mobile-shot-offset" />
-      </div>
-    </section>
-
-    <section class="oem">
-      <div class="oem-visual">
-        <div class="code-window">
-          <div class="window-header">
-            <div class="code-tabs">
-              <span class="tab-btn active">embed.cpp</span>
-            </div>
+      <section class="features">
+        <h2 class="headline features-headline">AI as a feature, not an API call.</h2>
+        <div class="features-grid">
+          <div class="card">
+            <h3 class="card-title">Structured Concurrency</h3>
+            <p class="card-desc">
+              It's the foundation of concurrency in modern languages like
+              Kotlin, Swift, Java (Project Loom), and C++26 &mdash; and an exact
+              fit for GPU native agents orchestrating inference state.
+              HDK&rsquo;s TypeScript runtime uses
+              <a href="https://frontside.com/effection">Effection</a> to
+              orchestrate agent state over KV branches so every agent in a pool
+              binds to a parent scope; cancellation propagates, teardown runs in
+              reverse.
+            </p>
           </div>
-          <div class="code-content active">
-            <pre><code><span class="keyword">#include</span> <span class="string">&lt;lloyal/hdk.hpp&gt;</span>
+
+          <div class="card">
+            <h3 class="card-title">Continuous-Context Agents</h3>
+            <p class="card-desc">
+              HDK agents share GPU state, not strings. A fork is metadata-only
+              &mdash; O(1), zero tensor copy. Child branches reuse the
+              parent&rsquo;s attention state rather than re-encoding lossy
+              summaries. The result is 4.4&times; fewer tokens processed than
+              a prompt-rebuilding approach, freeing compute for concurrent
+              agent execution and longer retrieval loops. Active pruning keeps
+              the context continuous.
+            </p>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title">Retrieval-Interleaved Generation</h3>
+            <p class="card-desc">
+              Agents don&rsquo;t just retrieve &mdash; they assemble context
+              during generation: searching, reading, and reranking across your
+              app&rsquo;s own data. The <code>Source</code> contract is the
+              assembly primitive &mdash; one shape for files, SQL, the web, or
+              user records. At every retrieval step a cross-encoder focal lens
+              admits only verbatim top-K chunks scoring against the
+              agent&rsquo;s current hypothesis &mdash; bounded by token
+              budget, never summarized.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="mobile-proof">
+        <div class="mobile-copy">
+          <h2 class="headline">On-device. Multi-agent. Parallel.</h2>
+          <p class="caption">
+            Parallel agents running tools <code>web_search</code> and
+            <code>fetch_page</code> on iPhone &mdash; no API calls, no streaming
+            server, no cloud round-trip. The Node SDK is open source and ships
+            anywhere Node runs &mdash; server, CLI, or desktop via Electron or
+            Tauri. The native iOS &amp; Android runtime is currently in
+            commercial preview.
+          </p>
+          <div class="mobile-cta">
+            <a
+              href="mailto:hello@lloyal.ai?subject=HDK%20Mobile%20Runtime%20%E2%80%94%20Request%20Access"
+              class="btn btn-primary"
+              >Request Access</a
+            >
+            <span class="mobile-cta-caption"
+              >Native iOS &amp; Android runtime &middot; early access</span
+            >
+          </div>
+        </div>
+        <div class="mobile-shots">
+          <img
+            src="img/mobile-conversation.png"
+            alt="iPhone running a multi-agent research query in-process"
+            class="mobile-shot"
+          />
+          <img
+            src="img/mobile-research.png"
+            alt="Two agents running web_search and fetch_page in parallel on iPhone"
+            class="mobile-shot mobile-shot-offset"
+          />
+        </div>
+      </section>
+
+      <section class="distribution">
+        <h2 class="headline distribution-headline">Ships in your binary.</h2>
+        <div class="distribution-grid">
+          <div class="card">
+            <h3 class="card-title">One install. Every store.</h3>
+            <p class="card-desc">
+              Cloud-API apps ship a UI through the store and keep the AI on
+              someone else&rsquo;s servers. With HDK, the whole product ships
+              in one binary &mdash; agents, retrieval, inference &mdash;
+              through every consumer channel: Mac App Store, Microsoft Store,
+              iOS App Store, Google Play. Users click install.
+              That&rsquo;s it.
+            </p>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title">Ships with your release.</h3>
+            <p class="card-desc">
+              The AI ships with your app&rsquo;s release &mdash; same version,
+              same binary, same QA. The agent you tested is the agent running
+              on every user&rsquo;s device: laptop, iPhone, behind a firewall,
+              on a plane. The model doesn&rsquo;t silently update;
+              deterministic replay reproduces production runs in dev with
+              identical reasoning, not just identical outputs.
+            </p>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title">Sell it like software.</h3>
+            <p class="card-desc">
+              Price it however you want: one-time, subscription, or free. Your
+              unit economics are uncapped &mdash; no provider takes a margin
+              between you and your users. Your brand carries the experience,
+              not someone else&rsquo;s logo.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="oem">
+        <div class="oem-visual">
+          <div class="code-window">
+            <div class="window-header">
+              <div class="code-tabs">
+                <span class="tab-btn active">embed.cpp</span>
+              </div>
+            </div>
+            <div class="code-content active">
+              <pre><code><span class="keyword">#include</span> <span class="string">&lt;lloyal/hdk.hpp&gt;</span>
 
 <span class="comment">// Runs on the equipment's own compute.</span>
 <span class="comment">// Compiled native, no network in the loop.</span>
@@ -261,112 +469,137 @@
   <span class="keyword">auto</span> frame = hdk::<span class="function">fuse</span>(camera, lidar, imu);
   <span class="keyword">co_await</span> pool.<span class="function">run</span>(frame);
 }</code></pre>
+            </div>
+          </div>
+        </div>
+        <div class="oem-copy">
+          <h2 class="headline">On&#8209;board intelligence.<br />Literally.</h2>
+          <p class="caption">
+            Enable the equipment you manufacture to run multi-agent
+            <span class="token">Observe</span> <span class="token">Orient</span>
+            <span class="token">Decide</span>
+            <span class="token">Act</span> loops natively. No AI box, no
+            networking overhead. Deploy models with 3D spatial reasoning that
+            take sensor-fusion input and dispatch actuation as tool calls
+            &mdash; autonomously, or with a human in the loop. Functional safety
+            stays where it belongs: in your certified hardware layer. In
+            development with launch partners, co-engineering toward
+            2026&ndash;2027 production cycles.
+          </p>
+          <div class="mobile-cta">
+            <a
+              href="mailto:hello@lloyal.ai?subject=HDK%20C%2B%2B%20Runtime%20%E2%80%94%20OEM%20Partnership"
+              class="btn btn-primary"
+              >Talk to us</a
+            >
+            <span class="mobile-cta-caption"
+              >Native C++26 runtime &middot; OEM development partnerships</span
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-content">
+        <div class="footer-brand">
+          <span class="logo">Harness Development Kit</span>
+          <p class="footer-copy">© 2026 lloyal AI. All rights reserved.</p>
+        </div>
+        <div class="footer-links">
+          <div class="link-column">
+            <h4>Resources</h4>
+            <a href="https://docs.lloyal.ai/learn/introduction"
+              >Documentation</a
+            >
+            <a href="https://github.com/lloyal-ai/lloyal-hdk">GitHub</a>
+          </div>
+          <div class="link-column">
+            <h4>Company</h4>
+            <a href="https://lloyal.ai/">lloyal.ai</a>
           </div>
         </div>
       </div>
-      <div class="oem-copy">
-        <h2 class="headline">On&#8209;board intelligence.<br>Literally.</h2>
-        <p class="caption">Enable the equipment you manufacture to run multi-agent <span class="token">Observe</span> <span class="token">Orient</span> <span class="token">Decide</span> <span class="token">Act</span> loops natively. No AI box, no networking overhead. Deploy models with 3D spatial reasoning that take sensor-fusion input and dispatch actuation as tool calls &mdash; autonomously, or with a human in the loop. Functional safety stays where it belongs: in your certified hardware layer. In development with launch partners, co-engineering toward 2026&ndash;2027 production cycles.</p>
-        <div class="mobile-cta">
-          <a href="mailto:hello@lloyal.ai?subject=HDK%20C%2B%2B%20Runtime%20%E2%80%94%20OEM%20Partnership" class="btn btn-primary">Talk to us</a>
-          <span class="mobile-cta-caption">Native C++26 runtime &middot; OEM development partnerships</span>
-        </div>
-      </div>
-    </section>
-  </main>
+    </footer>
 
-  <footer class="footer">
-    <div class="container footer-content">
-      <div class="footer-brand">
-        <span class="logo">Harness Development Kit</span>
-        <p class="footer-copy">© 2026 lloyal AI. All rights reserved.</p>
-      </div>
-      <div class="footer-links">
-        <div class="link-column">
-          <h4>Resources</h4>
-          <a href="https://docs.lloyal.ai/learn/introduction">Documentation</a>
-          <a href="https://github.com/lloyal-ai/lloyal-hdk">GitHub</a>
-        </div>
-        <div class="link-column">
-          <h4>Company</h4>
-          <a href="https://lloyal.ai/">lloyal.ai</a>
-        </div>
-      </div>
-    </div>
-  </footer>
+    <script>
+      // Theme toggle
+      const themeBtn = document.getElementById("theme-toggle");
+      const moonIcon = document.getElementById("moon-icon");
+      const sunIcon = document.getElementById("sun-icon");
 
-  <script>
-    // Theme toggle
-    const themeBtn = document.getElementById('theme-toggle');
-    const moonIcon = document.getElementById('moon-icon');
-    const sunIcon = document.getElementById('sun-icon');
-    
-    // Check local storage for preference
-    if (localStorage.getItem('theme') === 'dark') {
-      document.body.classList.add('dark-mode');
-      moonIcon.style.display = 'none';
-      sunIcon.style.display = 'block';
-    }
-
-    themeBtn.addEventListener('click', () => {
-      document.body.classList.toggle('dark-mode');
-      const isDark = document.body.classList.contains('dark-mode');
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
-      moonIcon.style.display = isDark ? 'none' : 'block';
-      sunIcon.style.display = isDark ? 'block' : 'none';
-    });
-
-    // Mobile Menu Toggle
-    const menuToggle = document.getElementById('menu-toggle');
-    const navLinks = document.getElementById('nav-links');
-    const hamburgerIcon = document.getElementById('hamburger-icon');
-    const closeIcon = document.getElementById('close-icon');
-
-    menuToggle.addEventListener('click', () => {
-      navLinks.classList.toggle('active');
-      const isActive = navLinks.classList.contains('active');
-      hamburgerIcon.style.display = isActive ? 'none' : 'block';
-      closeIcon.style.display = isActive ? 'block' : 'none';
-      document.body.style.overflow = isActive ? 'hidden' : ''; // Prevent scroll
-    });
-
-    // Close menu when clicking links
-    navLinks.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => {
-        navLinks.classList.remove('active');
-        hamburgerIcon.style.display = 'block';
-        closeIcon.style.display = 'none';
-        document.body.style.overflow = '';
-      });
-    });
-
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelectorAll('.code-content').forEach(content => content.classList.remove('active'));
-      
-      event.currentTarget.classList.add('active');
-      document.getElementById('tab-' + tabId).classList.add('active');
-    }
-
-    function toggleAccordion(btn) {
-      const item = btn.closest('.accordion-item');
-      const icon = btn.querySelector('.icon');
-      
-      if (item.classList.contains('active')) {
-        item.classList.remove('active');
-        icon.textContent = '[+]';
-      } else {
-        // Close others
-        item.parentElement.querySelectorAll('.accordion-item').forEach(sibling => {
-          sibling.classList.remove('active');
-          sibling.querySelector('.icon').textContent = '[+]';
-        });
-        
-        item.classList.add('active');
-        icon.textContent = '[-]';
+      // Check local storage for preference
+      if (localStorage.getItem("theme") === "dark") {
+        document.body.classList.add("dark-mode");
+        moonIcon.style.display = "none";
+        sunIcon.style.display = "block";
       }
-    }
-  </script>
-  <script async defer src="https://buttons.github.io/buttons.js"></script>
-</body>
+
+      themeBtn.addEventListener("click", () => {
+        document.body.classList.toggle("dark-mode");
+        const isDark = document.body.classList.contains("dark-mode");
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+        moonIcon.style.display = isDark ? "none" : "block";
+        sunIcon.style.display = isDark ? "block" : "none";
+      });
+
+      // Mobile Menu Toggle
+      const menuToggle = document.getElementById("menu-toggle");
+      const navLinks = document.getElementById("nav-links");
+      const hamburgerIcon = document.getElementById("hamburger-icon");
+      const closeIcon = document.getElementById("close-icon");
+
+      menuToggle.addEventListener("click", () => {
+        navLinks.classList.toggle("active");
+        const isActive = navLinks.classList.contains("active");
+        hamburgerIcon.style.display = isActive ? "none" : "block";
+        closeIcon.style.display = isActive ? "block" : "none";
+        document.body.style.overflow = isActive ? "hidden" : ""; // Prevent scroll
+      });
+
+      // Close menu when clicking links
+      navLinks.querySelectorAll("a").forEach((link) => {
+        link.addEventListener("click", () => {
+          navLinks.classList.remove("active");
+          hamburgerIcon.style.display = "block";
+          closeIcon.style.display = "none";
+          document.body.style.overflow = "";
+        });
+      });
+
+      function switchTab(tabId) {
+        document
+          .querySelectorAll(".tab-btn")
+          .forEach((btn) => btn.classList.remove("active"));
+        document
+          .querySelectorAll(".code-content")
+          .forEach((content) => content.classList.remove("active"));
+
+        event.currentTarget.classList.add("active");
+        document.getElementById("tab-" + tabId).classList.add("active");
+      }
+
+      function toggleAccordion(btn) {
+        const item = btn.closest(".accordion-item");
+        const icon = btn.querySelector(".icon");
+
+        if (item.classList.contains("active")) {
+          item.classList.remove("active");
+          icon.textContent = "[+]";
+        } else {
+          // Close others
+          item.parentElement
+            .querySelectorAll(".accordion-item")
+            .forEach((sibling) => {
+              sibling.classList.remove("active");
+              sibling.querySelector(".icon").textContent = "[+]";
+            });
+
+          item.classList.add("active");
+          icon.textContent = "[-]";
+        }
+      }
+    </script>
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+  </body>
 </html>

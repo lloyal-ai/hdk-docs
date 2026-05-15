@@ -185,6 +185,20 @@ body {
   flex: 1;
 }
 
+.eyebrow {
+  display: inline-block;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 9999px;
+  padding: 0.4rem 0.9rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.825rem;
+  font-weight: 500;
+  color: var(--primary);
+  letter-spacing: -0.005em;
+  margin-bottom: 1.25rem;
+}
+
 .headline {
   font-size: 4rem;
   font-weight: 800;
@@ -367,11 +381,38 @@ body {
 
 /* Features Grid */
 .features {
+  padding: 6rem 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.features-headline {
+  font-size: 3rem;
+  margin-bottom: 3rem;
+  max-width: 20ch;
+}
+
+.features-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
-  padding: 4rem 0;
+}
+
+/* Distribution / shipping section */
+.distribution {
+  padding: 6rem 0;
   border-top: 1px solid var(--border-color);
+}
+
+.distribution-headline {
+  font-size: 3rem;
+  margin-bottom: 3rem;
+  max-width: 20ch;
+}
+
+.distribution-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
 }
 
 /* Mobile proof section */
@@ -502,6 +543,17 @@ body.dark-mode .mobile-shot {
   line-height: 1.6;
 }
 
+.card-desc a {
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.35);
+  transition: border-color 0.15s ease;
+}
+
+.card-desc a:hover {
+  border-bottom-color: var(--primary);
+}
+
 /* Responsive */
 @media (max-width: 968px) {
   .hero {
@@ -513,6 +565,24 @@ body.dark-mode .mobile-shot {
     justify-content: flex-start;
   }
   .features {
+    padding: 4rem 0;
+  }
+  .features-headline {
+    font-size: 2.25rem;
+    margin-bottom: 2rem;
+  }
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .distribution {
+    padding: 4rem 0;
+  }
+  .distribution-headline {
+    font-size: 2.25rem;
+    margin-bottom: 2rem;
+  }
+  .distribution-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
   }
