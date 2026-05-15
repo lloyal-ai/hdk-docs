@@ -9,12 +9,12 @@ The playbooks convention solves both problems with a single prompt-level pattern
 
 ## The convention
 
-**Playbooks at root.** Pass the harness's `withSharedRoot` a `systemPrompt` that lists tools grouped by playbook, plus a rule: *"Use only the tools for a given playbook when that particular playbook is requested explicitly."* Pass `toolsJson` alongside so the chat template emits the tool schemas embedded in the same root system block. Tool schemas appear once in physical KV; every agent forking from the root inherits them via metadata-only KV prefix-share.
+**Playbooks at root.** Pass the harness's `withSpine` a `systemPrompt` that lists tools grouped by playbook, plus a rule: *"Use only the tools for a given playbook when that particular playbook is requested explicitly."* Pass `toolsJson` alongside so the chat template emits the tool schemas embedded in the same root system block. Tool schemas appear once in physical KV; every agent forking from the root inherits them via metadata-only KV prefix-share.
 
 **Playbook assignment per-agent.** Each agent's per-spec `systemPrompt` opens with `Apply the **<playbook>** playbook.` followed by its task-specific guidance. The model reads two systems in lineage — the playbooks at root, the role assignment in the agent's own suffix — and selects tools accordingly.
 
 ```
-queryRoot KV
+querySpine KV
   <|im_start|>system
   You are an assistant working as part of a multi-agent workflow. You have
   access to the tools below, grouped by playbook. You should only use the
@@ -54,8 +54,8 @@ queryRoot KV
   [tool schemas embedded by chat template]
   <|im_end|>
 
-Agent A (forks queryRoot):
-  inherits queryRoot prefix via metadata-only KV share
+Agent A (forks querySpine):
+  inherits querySpine prefix via metadata-only KV share
   <|im_start|>system
   Apply the **web_research** playbook.
   <task-specific guidance, PROCESS, etc.>
@@ -70,26 +70,26 @@ Two systems in lineage. The model sees the playbooks (which tools belong to whic
 
 ## The framework knob
 
-`withSharedRoot` accepts `systemPrompt` and `toolsJson`:
+`withSpine` accepts `systemPrompt` and `toolsJson`:
 
 ```typescript
-import { withSharedRoot, agentPool, parallel, createToolkit } from '@lloyal-labs/lloyal-agents';
+import { withSpine, agentPool, parallel, createToolkit } from '@lloyal-labs/lloyal-agents';
 
 const tools = [...sources.flatMap(s => s.tools), reportTool];
 const toolkit = createToolkit(tools);
 const playbooks = renderTemplate(PLAYBOOKS_TEMPLATE, { /* hasWeb, hasCorpus, ... */ });
 
-yield* withSharedRoot(
+yield* withSpine(
   {
     parent: session.trunk ?? undefined,
     systemPrompt: playbooks,            // ← playbooks at root
     toolsJson: toolkit.toolsJson,       // ← tool schemas in the same root block
   },
-  function* (queryRoot) {
+  function* (querySpine) {
     return yield* agentPool({
       orchestrate: dag(nodes),          // mixed-role DAG (research → compare → synth)
       tools,
-      parent: queryRoot,
+      parent: querySpine,
       terminalTool: 'report',
     });
   },
@@ -97,13 +97,13 @@ yield* withSharedRoot(
 ```
 
 What happens at setup:
-1. `withSharedRoot` formats `[{ role: 'system', content: playbooks }]` with `{ tools: toolsJson, addGenerationPrompt: false, enableThinking: false }`.
-2. Tokenizes the result and prefills onto the root branch — the playbooks text plus tool-schema tokens land in physical KV exactly once.
-3. The resulting `FormatConfig` (parser, grammar, format, triggers) is stashed on the `RootFmt` Effection context.
-4. The body runs (`agentPool`, etc.). Every agent forking from the inner root inherits the playbooks+tools prefix via `Branch.forkSync`'s metadata-only KV sharing.
-5. `setupAgent` probes `RootFmt` and skips re-emitting the tool schemas in each agent's suffix — they're already in attention via prefix-share. The agent's per-spec `systemPrompt` formats as `[system, user]` (a second system in lineage) and tokenizes onto the agent's branch.
+1. `withSpine` formats `[{ role: 'system', content: playbooks }]` with `{ tools: toolsJson, addGenerationPrompt: false, enableThinking: false }`.
+2. Tokenizes the result and prefills onto the spine — the playbooks text plus tool-schema tokens land in physical KV exactly once.
+3. The resulting `FormatConfig` (parser, grammar, format, triggers) is stashed on the `SpineFmt` Effection context.
+4. The body runs (`agentPool`, etc.). Every agent forking from the inner spine inherits the playbooks+tools prefix via `Branch.forkSync`'s metadata-only KV sharing.
+5. `setupAgent` probes `SpineFmt` and skips re-emitting the tool schemas in each agent's suffix — they're already in attention via prefix-share. The agent's per-spec `systemPrompt` formats as `[system, user]` (a second system in lineage) and tokenizes onto the agent's branch.
 
-When `RootFmt` is set, agents inherit the parser/grammar/format/triggers from the root setup — no per-spawn re-formatting. When it isn't (no `systemPrompt` on the wrapping `withSharedRoot`), agents emit their own tools in their own suffix as before.
+When `SpineFmt` is set, agents inherit the parser/grammar/format/triggers from the root setup — no per-spawn re-formatting. When it isn't (no `systemPrompt` on the wrapping `withSpine`), agents emit their own tools in their own suffix as before.
 
 ## When to use
 
@@ -119,10 +119,10 @@ When `RootFmt` is set, agents inherit the parser/grammar/format/triggers from th
 ## Where to look
 
 - `examples/compare/prompts/playbooks.eta` — concrete playbooks file with four entries (`web_research`, `corpus_research`, `compare`, `synth`) and literal few-shot transcripts.
-- `examples/compare/harness.ts` — see how `PLAYBOOKS` and `toolkit.toolsJson` are passed to `withSharedRoot`.
-- `packages/agents/src/shared-root.ts` — `SharedRootOptions.systemPrompt` / `toolsJson` and the `RootFmt` setting flow.
-- `packages/agents/src/context.ts` — `RootFmt` context definition.
-- `packages/agents/src/agent-pool.ts` — `setupAgent`'s shared-mode branch (the path that skips per-spec tool emission when `RootFmt` is present).
+- `examples/compare/harness.ts` — see how `PLAYBOOKS` and `toolkit.toolsJson` are passed to `withSpine`.
+- `packages/agents/src/shared-root.ts` — `SpineOptions.systemPrompt` / `toolsJson` and the `SpineFmt` setting flow.
+- `packages/agents/src/context.ts` — `SpineFmt` context definition.
+- `packages/agents/src/agent-pool.ts` — `setupAgent`'s shared-mode branch (the path that skips per-spec tool emission when `SpineFmt` is present).
 
 ## Worked example: compare's playbooks
 
@@ -148,15 +148,15 @@ Then lists the four playbooks, the rule, and concrete few-shot transcripts (GOOD
 
 ## Spine compatibility
 
-Putting the playbooks on the harness's outer `withSharedRoot` (rather than on `agentPool` itself) is load-bearing for any harness whose synth runs *post-pool* via a separate `useAgent`. `agentPool({ systemPrompt })` would create a *nested* `withSharedRoot` whose root is pruned at pool exit — chain extensions land on that transient inner root, and a post-pool `useAgent({ parent: queryRoot })` would fork an empty branch.
+Putting the playbooks on the harness's outer `withSpine` (rather than on `agentPool` itself) is load-bearing for any harness whose synth runs *post-pool* via a separate `useAgent`. `agentPool({ systemPrompt })` would create a *nested* `withSpine` whose root is pruned at pool exit — chain extensions land on that transient inner spine, and a post-pool `useAgent({ parent: querySpine })` would fork an empty branch.
 
-When the playbooks live on the harness's outer `withSharedRoot`, `agentPool` runs in non-shared mode internally; `extendRoot` writes onto the outer queryRoot; synth's `useAgent` forks the same root and sees the chain extensions via attention. See [Continuous Context Spine](/reference/continuous-context-spine) for the spine mechanics.
+When the playbooks live on the harness's outer `withSpine`, `agentPool` runs in non-shared mode internally; `extendSpine` writes onto the outer querySpine; synth's `useAgent` forks the same root and sees the chain extensions via attention. See [Continuous Context Spine](/reference/continuous-context-spine) for the spine mechanics.
 
 For pools whose synth runs as a *node inside the same `agentPool`* (compare's DAG), this distinction doesn't matter — synth's branch forks from the same spineRoot the chain extensions land on.
 
 ## See also
 
-- [Concurrency](/reference/concurrency) — how `setupAgent` reads `RootFmt` and the five-phase tick loop
+- [Concurrency](/reference/concurrency) — how `setupAgent` reads `SpineFmt` and the five-phase tick loop
 - [Prefix Sharing](/reference/prefix-sharing) — the metadata-only KV share that makes the playbook amortization free
 - [Continuous Context Spine](/reference/continuous-context-spine) — why playbook placement matters for spine-via-attention patterns
 - [RIG Pipeline](/reference/rig/pipeline) — reference architecture using this convention

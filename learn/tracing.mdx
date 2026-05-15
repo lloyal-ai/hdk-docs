@@ -31,7 +31,7 @@ Every trace event has a `traceId`, `parentTraceId` (for building the tree), and 
 
 | Event | What it captures |
 |-------|-----------------|
-| `scope:open/close` | Named scope boundaries with duration — pools, tools, shared roots |
+| `scope:open/close` | Named scope boundaries with duration — pools, tools, spines |
 | `prompt:format` | The exact prompt the model sees + the raw task content before formatting |
 | `agent:turn` | Raw model output + parsed content + parsed tool calls per turn |
 | `tool:dispatch` | Tool name, parsed args, **toolkit position** (`toolIndex/toolkitSize`) |
@@ -109,11 +109,11 @@ Events form a tree via `parentTraceId`. Reconstruct it to see the full execution
 ```
 scope:open(pool, outer)
   ├── tool:dispatch(research, A0)          ← toolIndex: 4/5
-  │   ├── scope:open(withSharedRoot)       ← inner pool
+  │   ├── scope:open(withSpine)       ← inner pool
   │   │   └── scope:open(pool, inner)
   │   │       ├── tool:dispatch(grep)      ← toolIndex: 2/5
   │   │       └── tool:result(grep)
-  │   └── scope:close(withSharedRoot)
+  │   └── scope:close(withSpine)
   └── tool:result(research, A0)
 ```
 

@@ -27,7 +27,7 @@ The reference pipeline uses `Qwen3-4B-Instruct-2507` quantized to Q4_K_M. Larger
 
 ## Context size (nCtx)
 
-`nCtx` is the total KV cache budget in tokens. All agents, shared roots, tool results, and intermediate branches share this budget.
+`nCtx` is the total KV cache budget in tokens. All agents, spines, tool results, and intermediate branches share this budget.
 
 ```typescript
 const nCtx = parseInt(process.env.LLAMA_CTX_SIZE || '16384', 10);
@@ -52,14 +52,14 @@ const ctx = yield* call(() =>
 The budget divides across concurrent branches. With 3 research agents sharing a root:
 
 ```
-Shared root:     ~200 tokens (system prompt + tools)
+Spine:     ~200 tokens (system prompt + tools)
 Agent suffix:    ~300 tokens each (user message + generation prompt)
 Tool results:    ~500-2000 tokens per call (varies by tool)
 Generation:      ~200-500 tokens per turn
 ```
 
 At `nCtx=16384` with 3 agents doing 4 tool calls each, rough budget:
-- Shared root: 200
+- Spine: 200
 - 3 agents x (300 suffix + 4 x 1000 tool results + 4 x 300 generation): ~15,900
 - Remaining for synthesis + eval: ~300
 
@@ -77,7 +77,7 @@ If unset, defaults to 16384.
 
 ## Sequence count (nSeqMax)
 
-`nSeqMax` is the maximum number of concurrent branches (sequences) in the KV cache. Each active agent, shared root, scratchpad fork, and diverge attempt needs its own sequence.
+`nSeqMax` is the maximum number of concurrent branches (sequences) in the KV cache. Each active agent, spine, scratchpad fork, and diverge attempt needs its own sequence.
 
 ```typescript
 const ctx = yield* call(() =>
@@ -98,13 +98,13 @@ Count the peak concurrent branches:
 
 | Component | Branches needed |
 |-----------|-----------------|
-| Research shared root | 1 |
+| Research spine | 1 |
 | Research agents | AGENT_COUNT |
-| Sub-agent shared root (research tool) | 1 per active research call |
+| Sub-agent spine (research tool) | 1 per active research call |
 | Sub-agents | Up to AGENT_COUNT per research call |
 | Scratchpad forks (BufferingFetchPage, BufferingWebSearch) | 1 per active extraction |
-| Bridge shared root + agent | 2 |
-| Synthesis shared root + agent | 2 |
+| Bridge spine + agent | 2 |
+| Synthesis spine + agent | 2 |
 | Verify/diverge attempts | VERIFY_COUNT |
 | Reporter sub-agents (hard-cut recovery) | Up to AGENT_COUNT |
 

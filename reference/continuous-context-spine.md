@@ -12,10 +12,10 @@ The **spine** is the chain of KV state that persists through a recursive delegat
 ```
 Session trunk (prior conversation, if warm)
   ↓ fork
-Shared root (system prompt + tool schemas — decoded once)
+Spine (system prompt + tool schemas — decoded once)
   ↓ fork
 Agent A (task: "survey voice agent architectures")
-  position 0-100: shared root prefix
+  position 0-100: spine prefix
   position 100-300: Agent A's suffix (system+user prompt)
   position 300-500: web_search result (prefilled via SETTLE)
   position 500-700: fetch_page result (survey article)
@@ -24,7 +24,7 @@ Agent A (task: "survey voice agent architectures")
   Agent A calls web_research(["Moshi architecture", "Sesame prosody"])
   ↓ fork (warm path — only turn separator prefilled)
   
-  Inner shared root (forkHead=750, position=755)
+  Inner spine (forkHead=750, position=755)
     ↓ fork × 2
     
     Sub-agent B (task: "Moshi architecture")
@@ -66,11 +66,11 @@ After pruning Sub B and Sub C:
 
 ### The warm path saves the prefix
 
-When `agentPool` is called with `parent: context.branch` (the DelegateTool's warm path), the inner pool's shared root forks from the calling agent's branch. It only prefills the turn separator (~5 tokens). The system prompt, tool schemas, and all prior tool results are already in the parent's KV — inherited for free.
+When `agentPool` is called with `parent: context.branch` (the DelegateTool's warm path), the inner pool's spine forks from the calling agent's branch. It only prefills the turn separator (~5 tokens). The system prompt, tool schemas, and all prior tool results are already in the parent's KV — inherited for free.
 
-Cold path (no parent): shared root at position 0, prefills full system prompt + tool schemas (~300-500 tokens).
+Cold path (no parent): spine at position 0, prefills full system prompt + tool schemas (~300-500 tokens).
 
-Warm path (parent provided): shared root forks from parent, prefills separator only (~5 tokens). Saves ~300-500 tokens per recursive level.
+Warm path (parent provided): spine forks from parent, prefills separator only (~5 tokens). Saves ~300-500 tokens per recursive level.
 
 ### pruneOnReport and mid-pool KV recovery
 
@@ -78,7 +78,7 @@ When `pruneOnReport: true`, an agent's branch is pruned immediately after it cal
 
 In recursive delegation: the inner pool's sub-agents report and prune individually. As each sub-agent finishes, its cells are freed for the remaining sub-agents. The inner pool shrinks as it progresses.
 
-After the inner pool completes, `withSharedRoot`'s finally block prunes the inner root and all remaining descendants. The calling agent's branch is fully restored — its cells were never touched.
+After the inner pool completes, `withSpine`'s finally block prunes the inner spine and all remaining descendants. The calling agent's branch is fully restored — its cells were never touched.
 
 ### SETTLE extends the branch
 
@@ -95,7 +95,7 @@ The system uses two distinct spine mechanisms that compose at different levels.
 When an agent calls `web_research`/`research`, DelegateTool creates an inner pool with `parent: context.branch`. Sub-agents fork from the calling agent's branch and inherit its full KV state.
 
 ```
-Position 0-100:    Shared root (system prompt + tool schemas)
+Position 0-100:    Spine (system prompt + tool schemas)
 Position 100-300:  Agent suffix (system+user prompt with task)
 Position 300-500:  web_search result (prefilled via SETTLE)
 Position 500-900:  fetch_page result (survey article content)
@@ -104,7 +104,7 @@ Position 900-950:  Agent reasoning + web_research call
   Agent calls web_research(["Moshi architecture", "Sesame prosody"])
   ↓ fork (warm path — only turn separator prefilled)
 
-  Inner shared root (forkHead=950, position=955)
+  Inner spine (forkHead=950, position=955)
     ↓ fork × 2
 
     Sub-agent B (task: "Moshi architecture")
@@ -117,84 +117,84 @@ Position 900-950:  Agent reasoning + web_research call
 
 The KV spine is the chain of decoded state within a single agent's branch. Sub-agents inherit it at zero cost. Delegation results are JSON-serialized and prefilled back into the calling agent's branch during SETTLE, extending the spine for subsequent tool calls.
 
-### KV spine — between task stages (`extendRoot`)
+### KV spine — between task stages (`extendSpine`)
 
-The harness sequences tasks via a `reduce` combinator inside a `withSharedRoot` scope. A query-scoped `queryRoot` branch is created once; all tasks fork from it, and between tasks, findings are prefilled directly into `queryRoot` as user+assistant turns via the `extendRoot` helper.
+The harness sequences tasks via a `reduce` combinator inside a `withSpine` scope. A query-scoped `querySpine` branch is created once; all tasks fork from it, and between tasks, findings are prefilled directly into `querySpine` as user+assistant turns via the `extendSpine` helper.
 
 ```
-queryRoot (position 0)
-  └─ Task 1 pool forks from queryRoot (position 0)
+querySpine (position 0)
+  └─ Task 1 pool forks from querySpine (position 0)
        → Agent searches, fetches, reports → findings A
-       → extendRoot: prefill [user: "Task 1", assistant: findings A] into queryRoot
-         queryRoot advances to position 500
+       → extendSpine: prefill [user: "Task 1", assistant: findings A] into querySpine
+         querySpine advances to position 500
 
-  └─ Task 2 pool forks from queryRoot (position 500)
+  └─ Task 2 pool forks from querySpine (position 500)
        → Agent inherits Task 1's findings via KV share (zero re-encoding)
        → Searches for entities from Task 1 → findings B
-       → extendRoot: prefill [user: "Task 2", assistant: findings B] into queryRoot
-         queryRoot advances to position 1100
+       → extendSpine: prefill [user: "Task 2", assistant: findings B] into querySpine
+         querySpine advances to position 1100
 
-  └─ Task 3 pool forks from queryRoot (position 1100)
+  └─ Task 3 pool forks from querySpine (position 1100)
        → Agent inherits Tasks 1+2 findings via KV share
        → Deepens specific entities → findings C
 ```
 
-Each task's pool forks from the EXTENDED `queryRoot`. Findings are decoded once into `queryRoot`; every subsequent fork shares them at zero marginal cost. No text re-encoding per agent.
+Each task's pool forks from the EXTENDED `querySpine`. Findings are decoded once into `querySpine`; every subsequent fork shares them at zero marginal cost. No text re-encoding per agent.
 
-### `extendRoot` is queue-and-drain serialized
+### `extendSpine` is queue-and-drain serialized
 
-`PoolContext.extendRoot` does NOT issue a native `store.prefill` from the orchestrator's fiber. It queues a request onto `pendingExtends` and suspends on an Effection [`action()`][action] until the tick loop's Phase 0 (SPAWN+EXTEND) drains it. The drain batches all pending extends with all pending fork suffixes into a single `store.prefill(prefillPairs)` call, then resolves each suspended action with its delta token count.
+`PoolContext.extendSpine` does NOT issue a native `store.prefill` from the orchestrator's fiber. It queues a request onto `pendingExtends` and suspends on an Effection [`action()`][action] until the tick loop's Phase 0 (SPAWN+EXTEND) drains it. The drain batches all pending extends with all pending fork suffixes into a single `store.prefill(prefillPairs)` call, then resolves each suspended action with its delta token count.
 
-This matters in flat-mode DAGs where multiple sibling tasks complete near-simultaneously. Without queue-and-drain, two `extendRoot` calls firing from separate fibers would race into `store.prefill` and violate the single-fiber discipline (only the tick loop's fiber issues native model calls). The action-based rendezvous serializes them through the next Phase 0 without blocking the orchestrator's other work.
+This matters in flat-mode DAGs where multiple sibling tasks complete near-simultaneously. Without queue-and-drain, two `extendSpine` calls firing from separate fibers would race into `store.prefill` and violate the single-fiber discipline (only the tick loop's fiber issues native model calls). The action-based rendezvous serializes them through the next Phase 0 without blocking the orchestrator's other work.
 
 [action]: https://frontside.com/effection/api/v4/action
 
-### Where to put the spine: harness `withSharedRoot` vs `agentPool({ systemPrompt })`
+### Where to put the spine: harness `withSpine` vs `agentPool({ systemPrompt })`
 
 Spine extensions write to the pool's `spineRoot`. Two configurations decide which branch that is:
 
-- **`agentPool` invoked WITHOUT `systemPrompt`** (the common case for chains that need cross-pool spine persistence). `spineRoot = warmParent` — the root the harness passed in via `parent:`. The harness's outer `withSharedRoot` owns this root for its full scope, so extensions persist past pool exit and a post-pool `useAgent({ parent: queryRoot })` forks the spine and attends to all chain extensions.
-- **`agentPool` invoked WITH `systemPrompt`** (shared-mode). `agentPool` internally creates a *nested* `withSharedRoot` whose root carries the playbooks. `spineRoot = inner root`. Extensions write to that inner root, which gets pruned at `agentPool` exit. A post-pool `useAgent({ parent: queryRoot })` would fork the OUTER queryRoot and find an empty branch — chain extensions disappeared with the inner root.
+- **`agentPool` invoked WITHOUT `systemPrompt`** (the common case for chains that need cross-pool spine persistence). `spineRoot = warmParent` — the root the harness passed in via `parent:`. The harness's outer `withSpine` owns this root for its full scope, so extensions persist past pool exit and a post-pool `useAgent({ parent: querySpine })` forks the spine and attends to all chain extensions.
+- **`agentPool` invoked WITH `systemPrompt`** (shared-mode). `agentPool` internally creates a *nested* `withSpine` whose root carries the playbooks. `spineRoot = inner spine`. Extensions write to that inner spine, which gets pruned at `agentPool` exit. A post-pool `useAgent({ parent: querySpine })` would fork the OUTER querySpine and find an empty branch — chain extensions disappeared with the inner spine.
 
 Two patterns both work; pick by where the synth runs:
 
 ```typescript
 // Pattern A: synth as a DAG node INSIDE the pool (compare's pattern)
-yield* withSharedRoot({ parent: session.trunk }, function*(queryRoot) {
+yield* withSpine({ parent: session.trunk }, function*(querySpine) {
   return yield* agentPool({
     orchestrate: dag(nodes),    // research → compare → synth as nodes
     systemPrompt: playbooks, // shared-mode is fine: synth's branch
                                 // forks the inner spineRoot
-    parent: queryRoot,
+    parent: querySpine,
     tools, terminalTool: 'report',
   });
 });
 
 // Pattern B: synth as a separate useAgent AFTER the pool
-yield* withSharedRoot(
+yield* withSpine(
   {
     parent: session.trunk,
     systemPrompt: playbooks,    // ← playbooks on harness root
     toolsJson: toolkit.toolsJson,  // ← so spine extensions land here
   },
-  function*(queryRoot) {
+  function*(querySpine) {
     yield* agentPool({
       orchestrate: chain(tasks),
-      // NO systemPrompt — non-shared mode, spineRoot = queryRoot
-      parent: queryRoot,
+      // NO systemPrompt — non-shared mode, spineRoot = querySpine
+      parent: querySpine,
       tools, terminalTool: 'report',
     });
-    // synth forks queryRoot and sees all chain extensions via attention
-    return yield* useAgent({ parent: queryRoot, /* ... */ });
+    // synth forks querySpine and sees all chain extensions via attention
+    return yield* useAgent({ parent: querySpine, /* ... */ });
   },
 );
 ```
 
-See [Playbooks](/reference/playbooks) for the playbooks convention and [Concurrency](/reference/concurrency#rootfmt--shared-mode) for the `RootFmt` context that drives shared-mode behavior.
+See [Playbooks](/reference/playbooks) for the playbooks convention and [Concurrency](/reference/concurrency#rootfmt--shared-mode) for the `SpineFmt` context that drives shared-mode behavior.
 
 ### How they compose
 
-Within a task, the KV spine operates through delegation — sub-agents inherit the calling agent's KV state. Between tasks, `extendRoot` extends `queryRoot` with tokenized user+assistant turns. The synthesis pool forks from the fully-extended `queryRoot` and attends over the complete research chain. After synthesis, `queryRoot` is pruned (scope exit frees all intermediate KV). Only the final Q&A persists on the session trunk via `session.commitTurn`.
+Within a task, the KV spine operates through delegation — sub-agents inherit the calling agent's KV state. Between tasks, `extendSpine` extends `querySpine` with tokenized user+assistant turns. The synthesis pool forks from the fully-extended `querySpine` and attends over the complete research chain. After synthesis, `querySpine` is pruned (scope exit frees all intermediate KV). Only the final Q&A persists on the session trunk via `session.commitTurn`.
 
 Within-query spine compounds evidence task-by-task via KV share. Cross-query spine stays minimal (one Q&A turn per query on the trunk).
 
@@ -213,7 +213,7 @@ The trunk is the long-term spine across queries. The textual spine is the medium
 
 ### Wasteful prefill
 
-If the inner pool's shared root re-prefills the system prompt when the warm path could fork from the parent, ~300-500 tokens are wasted per recursive level. Always pass `parent: context.branch` in the DelegateTool.
+If the inner pool's spine re-prefills the system prompt when the warm path could fork from the parent, ~300-500 tokens are wasted per recursive level. Always pass `parent: context.branch` in the DelegateTool.
 
 ### Spine bloat from large tool results
 

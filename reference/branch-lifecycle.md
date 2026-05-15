@@ -49,7 +49,7 @@ await root.prefill(tokens);
 // root.position is now tokens.length
 ```
 
-This is the pattern `withSharedRoot` uses internally: create a root at position 0, prefill the shared system prompt, then pass the root to the body for forking.
+This is the pattern `withSpine` uses internally: create a root at position 0, prefill the shared system prompt, then pass the root to the body for forking.
 
 ## `fork` / `forkSync` -- O(1) branch creation
 
@@ -250,7 +250,7 @@ root.pruneSubtreeSync();
 // root.disposed === true
 ```
 
-`withSharedRoot` uses this in its finally block to clean up the entire shared prefix tree when the scope exits.
+`withSpine` uses this in its finally block to clean up the entire shared prefix tree when the scope exits.
 
 ## The scope tree pattern
 
@@ -270,10 +270,10 @@ function* setupAgent(parent: Branch, task: AgentTaskSpec, ctx: SessionContext) {
 
 This makes orphaned-branch leaks structurally impossible. You cannot exit a scope without running its ensure callbacks. Effection enforces this at the runtime level: no operation may outlive its scope.
 
-### `withSharedRoot` cleanup
+### `withSpine` cleanup
 
 ```typescript
-function* withSharedRoot(opts, body) {
+function* withSpine(opts, body) {
   const root = Branch.create(ctx, 0, opts.params);
   await root.prefill(sharedTokens);
 
@@ -307,7 +307,7 @@ Whether generation succeeds, fails, or is cancelled, branches are pruned. For sc
 
 Everything in the agent framework builds on Branch:
 
-- **Prefix sharing**: `withSharedRoot` creates a root branch, prefills the shared prompt, agents fork from it. See [Prefix Sharing](/reference/prefix-sharing).
+- **Prefix sharing**: `withSpine` creates the spine, prefills the shared prompt, agents fork from it. See [Prefix Sharing](/reference/prefix-sharing).
 - **Agent pools**: Each agent is a forked branch. The tick loop calls `produceSync()` and `store.commit()` on branch arrays. See [Concurrency Model](/reference/concurrency).
 - **KV pressure**: `ContextPressure` reads `cellsUsed` which is incremented by branch decode operations. See [KV Pressure](/reference/kv-pressure).
 - **Scratchpad extraction**: `agent({ parent })` forks a temporary branch for grammar-constrained extraction. See [Scratchpad Extraction](/reference/scratchpad-extraction).

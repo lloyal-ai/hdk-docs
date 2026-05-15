@@ -86,7 +86,7 @@ A pool's `orchestrate` argument selects how its agents relate. The SDK ships fiv
 
 <CardGroup cols={2}>
   <Card title="parallel(specs)" icon="grip-lines-vertical">
-    Fan-out. All agents fork from the shared root concurrently. Use when sub-tasks are independent.
+    Fan-out. All agents fork from the spine concurrently. Use when sub-tasks are independent.
   </Card>
   <Card title="chain(items, toStep)" icon="link">
     Sequential. Each step extends the spine before the next forks — later agents see earlier findings via KV attention. Use when later tasks build on earlier ones.

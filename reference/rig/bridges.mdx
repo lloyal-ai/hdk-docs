@@ -45,7 +45,7 @@ The next source's agents see the original question plus a structured summary of 
 
 ## Implementation
 
-The bridge runs as a single agent inside `withSharedRoot` with report-only tools:
+The bridge runs as a single agent inside `withSpine` with report-only tools:
 
 ```typescript
 const bridge = yield* agentPool({

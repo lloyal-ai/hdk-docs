@@ -17,7 +17,7 @@ PHASE 3 — SETTLE        drain settled tool results, batch prefill, reset gramm
 PHASE 4 — DISPATCH      execute collected tool calls (currently sequential)
 ```
 
-**Phase 0 (SPAWN+EXTEND)** is the rendezvous point with the orchestrator fiber. The orchestrator runs in its own spawn (a child of the pool scope), sibling to the tick loop. When orchestrator code calls `ctx.spawn(spec)` or `ctx.extendRoot(userContent, assistantContent)`, those requests don't issue native calls directly — they queue into `pendingSpawns` / `pendingExtends` and suspend on an Effection [`action()`][action]. The tick fiber drains both queues at the start of each tick, batches the prefills (new agent suffixes + spine extension turns) into a single `store.prefill(prefillPairs)` call, and resolves the suspended actions with their delta token counts. This keeps the **single-fiber discipline** invariant: every native `store.prefill` / `store.commit` call comes from the tick loop's fiber, never from the orchestrator's. Concurrent `extendRoot` calls in flat-mode DAGs (multiple sibling tasks completing simultaneously) cannot race against each other or against per-agent setup — they all serialize through the next Phase 0 drain.
+**Phase 0 (SPAWN+EXTEND)** is the rendezvous point with the orchestrator fiber. The orchestrator runs in its own spawn (a child of the pool scope), sibling to the tick loop. When orchestrator code calls `ctx.spawn(spec)` or `ctx.extendSpine(userContent, assistantContent)`, those requests don't issue native calls directly — they queue into `pendingSpawns` / `pendingExtends` and suspend on an Effection [`action()`][action]. The tick fiber drains both queues at the start of each tick, batches the prefills (new agent suffixes + spine extension turns) into a single `store.prefill(prefillPairs)` call, and resolves the suspended actions with their delta token counts. This keeps the **single-fiber discipline** invariant: every native `store.prefill` / `store.commit` call comes from the tick loop's fiber, never from the orchestrator's. Concurrent `extendSpine` calls in flat-mode DAGs (multiple sibling tasks completing simultaneously) cannot race against each other or against per-agent setup — they all serialize through the next Phase 0 drain.
 
 **Phase 1 (PRODUCE)** samples one token per agent per tick via `produceSync()`. Each token is accumulated into `rawOutput` and pushed to `entries` for COMMIT. After accumulation, `agent.observe(ctx)` runs a partial parse (`parseChatOutput` with `isPartial: true`) to detect which tool the agent is generating — this populates `agent.currentTool` as soon as the tool name appears in the stream, before the turn completes. When `produceSync()` returns `isStop: true`, `agent.finalize(ctx)` runs the strict parse — extracting tool calls, content, and reasoning from the complete turn. Terminal tools (e.g. `report`) are intercepted immediately — findings extracted, agent marked done, never dispatched. Non-terminal tool calls are collected for the DISPATCH phase.
 
@@ -125,23 +125,23 @@ KV pressure governs agent lifecycle at four points:
 
 ### Event Channel
 
-Inner agent events flow through the same `Events` channel. The TUI or event collector sees `agent:spawn`, `agent:produce`, `agent:tool_call`, `agent:tool_result`, `agent:done` from both outer and inner agents. The `parentAgentId` field on `agent:spawn` distinguishes inner from outer — inner agents have a `parentAgentId` that matches an inner pool's root branch handle, not the outer root.
+Inner agent events flow through the same `Events` channel. The TUI or event collector sees `agent:spawn`, `agent:produce`, `agent:tool_call`, `agent:tool_result`, `agent:done` from both outer and inner agents. The `parentAgentId` field on `agent:spawn` distinguishes inner from outer — inner agents have a `parentAgentId` that matches an inner pool's root branch handle, not the outer spine.
 
 ### Grammar Isolation
 
 Each pool level runs its own `formatChatSync()` call, producing its own grammar, lazy grammar triggers, and parser spec. The inner pool's agents have their own tool schemas. `parseChatOutput()` uses the per-agent format stored at setup time. There is no cross-contamination between inner and outer tool parsing.
 
-### `RootFmt` — shared-mode
+### `SpineFmt` — shared-mode
 
-When `withSharedRoot` is given a `systemPrompt` + `toolsJson`, it formats the chat header once at setup, prefills it onto the root, and stashes the resulting `FormatConfig` (parser, grammar, format, triggers) on the `RootFmt` Effection context:
+When `withSpine` is given a `systemPrompt` + `toolsJson`, it formats the chat header once at setup, prefills it onto the root, and stashes the resulting `FormatConfig` (parser, grammar, format, triggers) on the `SpineFmt` Effection context:
 
 ```typescript
-export const RootFmt = createContext<FormatConfig | null>('lloyal.rootFmt', null);
+export const SpineFmt = createContext<FormatConfig | null>('lloyal.rootFmt', null);
 ```
 
-`setupAgent` probes `RootFmt` when initializing each per-spec agent. If it's set, the agent skips re-emitting tool schemas in its own suffix — they're already in attention via metadata-only KV prefix-share — and inherits the parser/grammar/format/triggers directly from the root setup. The agent's per-spec `systemPrompt` formats as `[system, user]` (a second system in lineage; the model handles role shifts), tokenizes onto the agent's branch as the suffix.
+`setupAgent` probes `SpineFmt` when initializing each per-spec agent. If it's set, the agent skips re-emitting tool schemas in its own suffix — they're already in attention via metadata-only KV prefix-share — and inherits the parser/grammar/format/triggers directly from the root setup. The agent's per-spec `systemPrompt` formats as `[system, user]` (a second system in lineage; the model handles role shifts), tokenizes onto the agent's branch as the suffix.
 
-When `RootFmt` is unset (`withSharedRoot` called without `systemPrompt`), each agent emits its own tools in its own suffix as in earlier versions of the framework — the pool runs in "non-shared mode" and `extendRoot` writes to `warmParent` (the harness-supplied root) rather than the inner withSharedRoot's root. This is the right default for chains that need spine extensions to persist past pool exit.
+When `SpineFmt` is unset (`withSpine` called without `systemPrompt`), each agent emits its own tools in its own suffix as in earlier versions of the framework — the pool runs in "non-shared mode" and `extendSpine` writes to `warmParent` (the harness-supplied root) rather than the inner withSpine's root. This is the right default for chains that need spine extensions to persist past pool exit.
 
 See [Playbooks](/reference/playbooks) for the prompt convention this enables.
 
@@ -158,7 +158,7 @@ function* runNode(n: DAGNode): Operation<void> {
   }
   const agent = yield* ctx.waitFor(yield* ctx.spawn(n.task));
   if (agent.result && n.userContent) {
-    yield* ctx.extendRoot(n.userContent, agent.result);
+    yield* ctx.extendSpine(n.userContent, agent.result);
   }
 }
 
@@ -200,11 +200,11 @@ When a tool spawns sub-agents, the scope tree looks like this:
 ```
 run()
  └─ initAgents()                            ← sets Ctx, Store, Events
-     └─ withSharedRoot (outer)              ← outer shared prefix
+     └─ withSpine (outer)              ← outer shared prefix
          └─ useAgentPool (resource)         ← outer pool scope
              ├─ setupAgent ensure()         ← outer branch cleanup
              ├─ scoped(call(tool.execute))  ← DISPATCH phase, error boundary
-             │   └─ withSharedRoot (inner)     ← inner shared prefix
+             │   └─ withSpine (inner)     ← inner shared prefix
              │       └─ useAgentPool (inner)   ← inner pool resource
              │           ├─ setupAgent ensure() ← inner branch cleanup
              │           └─ ...inner agents...
@@ -230,13 +230,13 @@ When the inner `useAgentPool` does `yield* Ctx.expect()`, it gets the same `Sess
 
 ### Inner pool execution
 
-The inner `withSharedRoot` forks from the calling agent's branch (warm path) or creates a fresh root (cold path). Inner agents inherit the calling agent's full attention state — every prior tool call, every tool result, every token generated. The inner `useAgentPool` runs the same five-phase tick loop as the outer pool. Inner agents share the same `BranchStore` and compete for the same KV cache slots.
+The inner `withSpine` forks from the calling agent's branch (warm path) or creates a fresh root (cold path). Inner agents inherit the calling agent's full attention state — every prior tool call, every tool result, every token generated. The inner `useAgentPool` runs the same five-phase tick loop as the outer pool. Inner agents share the same `BranchStore` and compete for the same KV cache slots.
 
 ```typescript
 *execute(args: { questions: string[] }, context?: ToolContext): Operation<unknown> {
   const { toolMap, toolsJson } = this._toolkit;
 
-  return yield* withSharedRoot(
+  return yield* withSpine(
     { systemPrompt, toolsJson, parent: context?.branch },
     //                          ^^^^^^^^^^^^^^^^^^^^^^
     // Warm path: fork from calling agent's branch (2 tokens vs ~760)
@@ -262,19 +262,19 @@ The inner `withSharedRoot` forks from the calling agent's branch (warm path) or 
 }
 ```
 
-When `parent` is provided, the shared root forks from the parent branch and prefills only the turn separator — **2 tokens** instead of ~760 for the full system prompt. The system prompt is already in the parent's KV. Sub-agents attend over the same physical key-value pairs at shared positions.
+When `parent` is provided, the spine forks from the parent branch and prefills only the turn separator — **2 tokens** instead of ~760 for the full system prompt. The system prompt is already in the parent's KV. Sub-agents attend over the same physical key-value pairs at shared positions.
 
 Hard-cut recovery is controlled by the policy via `onRecovery(agent, pressure)`. When agents are killed by KV pressure before calling `report()`, the policy decides per-agent whether to extract, and renders its extraction prompt with the live `<%= it.budget %>` so the model knows its token ceiling. The pool generates against the agent's own branch (no fork — the agent's full research context is already present), captures findings via JSON-schema grammar, and emits diagnostic trace events (`pool:recoveryProduce` + `pool:recoveryReport` / `pool:recoveryFailed`). Configure via `DefaultAgentPolicyOpts.recovery`.
 
 ### Result propagation
 
-When the inner pool completes, `agentPool` exits its scope — inner branches are pruned via their `ensure()` callbacks. The inner `withSharedRoot` exits — the inner root is pruned via `try/finally`. Control returns to the tool's `execute()` generator, which returns the result. Back in DISPATCH, the result is JSON-stringified, wrapped in a tool result delta, and pushed to `settledBuffer`. On the next tick's SETTLE phase, the outer agent's branch is prefilled with the tool result, grammar state resets, and the outer agent resumes generating.
+When the inner pool completes, `agentPool` exits its scope — inner branches are pruned via their `ensure()` callbacks. The inner `withSpine` exits — the inner spine is pruned via `try/finally`. Control returns to the tool's `execute()` generator, which returns the result. Back in DISPATCH, the result is JSON-stringified, wrapped in a tool result delta, and pushed to `settledBuffer`. On the next tick's SETTLE phase, the outer agent's branch is prefilled with the tool result, grammar state resets, and the outer agent resumes generating.
 
 ### Teardown
 
 Effection defines [three ways an operation exits][scope]: return (completes with a value), error (fails with an exception), or halt (stopped by a parent or related operation). In all three cases, child operations are torn down and cleanup runs.
 
-**Normal completion.** Inner pool finishes → `scoped()` exits → inner branches pruned → inner root pruned → tool returns → result pushed to `settledBuffer` → SETTLE prefills outer agent → outer pool eventually finishes → outer branches pruned → outer root pruned.
+**Normal completion.** Inner pool finishes → `scoped()` exits → inner branches pruned → inner spine pruned → tool returns → result pushed to `settledBuffer` → SETTLE prefills outer agent → outer pool eventually finishes → outer branches pruned → outer spine pruned.
 
 **Error in inner pool.** Inner pool errors → `scoped()` error boundary catches it → inner scope tears down → outer agent marked `done` with `findings: "Tool error: ..."` → outer pool continues with remaining agents.
 
@@ -340,7 +340,7 @@ const pool = yield* agentPool({
 
 ## Depth
 
-Nothing in the framework limits recursion to two levels. An inner tool can itself spawn sub-agents that spawn sub-agents. Each level creates its own `withSharedRoot` + `useAgentPool` scope, registers its own `ensure()` callbacks, and participates in the same `BranchStore`. On teardown, Effection halts children when the parent scope exits — ["it is impossible for this task to outlive its parent"][spawn]. The guarantees compose at every depth.
+Nothing in the framework limits recursion to two levels. An inner tool can itself spawn sub-agents that spawn sub-agents. Each level creates its own `withSpine` + `useAgentPool` scope, registers its own `ensure()` callbacks, and participates in the same `BranchStore`. On teardown, Effection halts children when the parent scope exits — ["it is impossible for this task to outlive its parent"][spawn]. The guarantees compose at every depth.
 
 ### KV as the natural bound
 

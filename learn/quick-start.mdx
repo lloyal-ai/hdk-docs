@@ -152,7 +152,7 @@ When step 2's agent starts decoding, this is what its KV holds:
 ┌──────────────────────────────────────────────────┐
 │  System prompt + tool schemas                    │  ← prefilled at root
 ├──────────────────────────────────────────────────┤
-│  user:   "Step 1: research 'AI safety…' "        │  ← extendRoot turn
+│  user:   "Step 1: research 'AI safety…' "        │  ← extendSpine turn
 │  asst:   "Found 5 stories. (1) <title>… (2) …"   │  ← step 1's REAL report
 │          (URLs, summaries, claims — all of it)   │     in attention
 ├──────────────────────────────────────────────────┤
@@ -171,7 +171,7 @@ You didn't write code to:
 - Clean up step 1's branch when step 2 starts
 - Wire up the model's grammar to disambiguate `web_search` from `fetch_page` from `send_email` from `report`
 
-The framework did all of it. **The chain orchestrator's `userContent` is what becomes the curated turn on the spine; `extendRoot` writes it; the tick loop's Phase 0 prefills it onto the spine root before step 2 forks.** See [Continuous Context](/reference/continuous-context-spine) for the full mechanics.
+The framework did all of it. **The chain orchestrator's `userContent` is what becomes the curated turn on the spine; `extendSpine` writes it; the tick loop's Phase 0 prefills it onto the spine before step 2 forks.** See [Continuous Context](/reference/continuous-context-spine) for the full mechanics.
 
 ## Make it yours
 

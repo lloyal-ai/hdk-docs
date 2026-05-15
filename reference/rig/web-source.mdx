@@ -99,7 +99,7 @@ Both `web_search` and `fetch_page` use scratchpad extraction to keep KV pressure
 
 1. The inner `FetchPageTool` fetches and extracts the full page text.
 2. Full content is pushed into a buffer for post-research reranking.
-3. A scratchpad fork branches from `ScratchpadParent` (set by `withSharedRoot`).
+3. A scratchpad fork branches from `ScratchpadParent` (set by `withSpine`).
 4. Grammar-constrained generation extracts `{ summary, links }` from the page.
 5. The fork is pruned -- zero net KV cost per extraction.
 6. The compact result (summary + links) goes back to the calling agent.
@@ -109,7 +109,7 @@ The agent gets enough context to decide what to fetch next without paying the fu
 `web_search` follows the same pattern: raw search results are distilled into `{ urls, summary }` via a scratchpad fork before the agent sees them.
 
 <Note>
-If no `ScratchpadParent` is available (e.g., running outside `withSharedRoot`), both tools fall back to returning the full uncompressed result.
+If no `ScratchpadParent` is available (e.g., running outside `withSpine`), both tools fall back to returning the full uncompressed result.
 </Note>
 
 ## Post-Research Reranking

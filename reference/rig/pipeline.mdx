@@ -3,7 +3,7 @@ title: "RIG Pipeline Reference"
 description: "Reference architecture for retrieval-interleaved harnesses — Plan, Research, Bridge, Synthesize, Eval. Patterns to compose, not a fixed recipe."
 ---
 
-A RIG pipeline composes the HDK's primitives — `agentPool`, `useAgent`, `withSharedRoot`, `Source`, `diverge` — into a research → synthesize → verify workflow. This reference describes the architectural patterns that consistently appear when building such pipelines, so you can pick the ones you need and skip the rest.
+A RIG pipeline composes the HDK's primitives — `agentPool`, `useAgent`, `withSpine`, `Source`, `diverge` — into a research → synthesize → verify workflow. This reference describes the architectural patterns that consistently appear when building such pipelines, so you can pick the ones you need and skip the rest.
 
 ## Pipeline Shape
 
@@ -17,8 +17,8 @@ Not every pipeline needs every stage. A simple harness might be `Research → Sy
 
 Each stage runs inside the [tick loop](/reference/concurrency). Stages share two coordination patterns:
 
-1. **Single `withSharedRoot` at the harness level.** The playbooks (system prompt + tool palette) is amortized at `queryRoot` once. All pools and post-pool `useAgent` calls inherit it via prefix-share. See [Playbooks](/reference/playbooks).
-2. **Spine accumulation via `extendRoot`.** Per-stage findings are prefilled onto `queryRoot` as user+assistant turns. Downstream agents fork `queryRoot` and attend to the accumulated spine via KV — no re-encoding, no message threading.
+1. **Single `withSpine` at the harness level.** The playbooks (system prompt + tool palette) is amortized at `querySpine` once. All pools and post-pool `useAgent` calls inherit it via prefix-share. See [Playbooks](/reference/playbooks).
+2. **Spine accumulation via `extendSpine`.** Per-stage findings are prefilled onto `querySpine` as user+assistant turns. Downstream agents fork `querySpine` and attend to the accumulated spine via KV — no re-encoding, no message threading.
 
 ## Stage Walkthrough
 
@@ -142,9 +142,9 @@ Each stage runs inside the [tick loop](/reference/concurrency). Stages share two
 
 For the Research stage specifically, two orchestration shapes are common:
 
-- **Sequential (chain)** — each task forks `queryRoot` at its current extended position; on report, `extendRoot` writes the curated `[user, asst]` turn onto `queryRoot`; the next task sees prior findings via KV attention. Worker prompts can adapt on `taskIndex > 0` to target gaps and named entities from earlier findings rather than re-investigating. Synth runs as a post-pool `useAgent` that forks the fully-extended `queryRoot`.
+- **Sequential (chain)** — each task forks `querySpine` at its current extended position; on report, `extendSpine` writes the curated `[user, asst]` turn onto `querySpine`; the next task sees prior findings via KV attention. Worker prompts can adapt on `taskIndex > 0` to target gaps and named entities from earlier findings rather than re-investigating. Synth runs as a post-pool `useAgent` that forks the fully-extended `querySpine`.
 
-- **Parallel (flat)** — all tasks fork `queryRoot` simultaneously; no spine extension; each agent runs independently with sibling-task awareness in its prompt. Findings are concatenated into the synth's user message as text. Synth runs as a `useAgent` but consumes findings via text injection, not via attention.
+- **Parallel (flat)** — all tasks fork `querySpine` simultaneously; no spine extension; each agent runs independently with sibling-task awareness in its prompt. Findings are concatenated into the synth's user message as text. Synth runs as a `useAgent` but consumes findings via text injection, not via attention.
 
 Pick sequential when later tasks should genuinely build on earlier ones. Pick parallel when sub-questions are independent and time-budget headroom is plentiful.
 
@@ -154,10 +154,10 @@ Pipelines typically handle both cold starts (first query) and warm continuations
 
 <Tabs>
   <Tab title="Cold (first query)">
-    Research runs inside `withSharedRoot`. A shared prefix branch is created, agents fork from it. After synthesis, `session.commitTurn(query, answer)` creates the trunk with the query-response pair for future warm turns.
+    Research runs inside `withSpine`. A shared prefix branch is created, agents fork from it. After synthesis, `session.commitTurn(query, answer)` creates the trunk with the query-response pair for future warm turns.
   </Tab>
   <Tab title="Warm (follow-up)">
-    Prior conversation tokens are physically present in the trunk's KV cache. Research runs against the existing trunk via a warm path — sources bind and execute without creating a new shared root. After synthesis, the same `session.commitTurn(query, answer)` extends the existing trunk with the new query-response pair.
+    Prior conversation tokens are physically present in the trunk's KV cache. Research runs against the existing trunk via a warm path — sources bind and execute without creating a new spine. After synthesis, the same `session.commitTurn(query, answer)` extends the existing trunk with the new query-response pair.
   </Tab>
 </Tabs>
 
@@ -175,7 +175,7 @@ Tighten or loosen these as your harness matures. The framework's defaults err on
 ## See also
 
 - [Playbooks](/reference/playbooks) — the playbooks convention for mixed-role pools
-- [Continuous Context Spine](/reference/continuous-context-spine) — how `extendRoot` and prefix sharing compose
+- [Continuous Context Spine](/reference/continuous-context-spine) — how `extendSpine` and prefix sharing compose
 - [Concurrency Model](/reference/concurrency) — the five-phase tick loop and DAG orchestration
 - [Sources](/learn/sources) — the `Source<TCtx, TChunk>` contract
 - [Bridges](/reference/rig/bridges) — multi-source pipelines

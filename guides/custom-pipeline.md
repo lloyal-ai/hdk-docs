@@ -76,7 +76,7 @@ Add a `FACTCHECK` template under `prompts/` and load it like the other templates
 
 ## Change playbooks
 
-Each per-spec `systemPrompt` starts with `Apply the **<playbook>** playbook.` The playbooks are described in `prompts/playbooks.eta`, which is what gets prefilled onto `queryRoot`:
+Each per-spec `systemPrompt` starts with `Apply the **<playbook>** playbook.` The playbooks are described in `prompts/playbooks.eta`, which is what gets prefilled onto `querySpine`:
 
 ```eta
 The agent system message will tell you which playbook to apply. Use only that playbook's tools.
@@ -103,7 +103,7 @@ To add a new playbook:
 3. Load and render it in `harness.ts`.
 4. The new playbook's nodes prepend `Apply the **<your_playbook>** playbook.` in their system prompt.
 
-The schemas for the new playbook's tools must already be in the toolkit at `withSharedRoot({ toolsJson })` — only role-level playbook selection happens via prompt; tool registration happens in `main.ts` when sources are bound.
+The schemas for the new playbook's tools must already be in the toolkit at `withSpine({ toolsJson })` — only role-level playbook selection happens via prompt; tool registration happens in `main.ts` when sources are bound.
 
 ## Configure sources
 
@@ -134,17 +134,17 @@ Compare inlines a custom `dagWithEvents` orchestrator that emits per-node lifecy
 ```typescript
 import { dag } from "@lloyal-labs/lloyal-agents";
 
-const pool = yield* withSharedRoot({ ... }, function* (queryRoot) {
+const pool = yield* withSpine({ ... }, function* (querySpine) {
   return yield* agentPool({
     orchestrate: dag(nodes),       // ← stock orchestrator, no TUI hooks
-    tools, parent: queryRoot, terminalTool: "report", maxTurns,
+    tools, parent: querySpine, terminalTool: "report", maxTurns,
   });
 });
 ```
 
 Other shapes if your pipeline isn't a DAG:
 
-- `chain([spec1, spec2, ...], (spec, i) => { ... })` — sequential stages with `extendRoot` between them
+- `chain([spec1, spec2, ...], (spec, i) => { ... })` — sequential stages with `extendSpine` between them
 - `parallel([spec1, spec2, ...])` — independent agents on shared KV
 - `fanout(landscapeSpec, [domainSpec1, ...])` — landscape pass that informs N parallel domain agents
 

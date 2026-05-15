@@ -1,13 +1,13 @@
 ---
 title: Agents
-description: Parallel agents on shared GPU — the Agent class, agent pool, policy, and shared root.
+description: Parallel agents on shared GPU — the Agent class, agent pool, policy, and spine.
 ---
 
 
 Three agents. One GPU. Shared prefix.
 
 ```
-Shared root (system prompt + tool schemas): decoded once
+Spine (system prompt + tool schemas): decoded once
   ├── Agent 0: fork → investigate question A
   ├── Agent 1: fork → investigate question B
   └── Agent 2: fork → investigate question C
@@ -83,7 +83,7 @@ const result = yield* agent({
 console.log(result.result);
 ```
 
-`agent` handles everything internally: builds the toolkit, creates a shared root, forks an agent branch, runs the tick loop, and prunes all branches when done. You declare what you want — the HDK orchestrates it.
+`agent` handles everything internally: builds the toolkit, creates a spine, forks an agent branch, runs the tick loop, and prunes all branches when done. You declare what you want — the HDK orchestrates it.
 
 ### Structured output with `schema`
 
@@ -140,7 +140,7 @@ const pool = yield* agentPool({
 // pool.agents[0].result, pool.agents[1].result, ...
 ```
 
-`agentPool` composes `withSharedRoot` + toolkit construction + the tick loop internally. The `orchestrate` callback declares the execution shape (`parallel`, `chain`, `fanout`, `dag`, or any custom `Orchestrator` generator); each `SpawnSpec` carries its own `content` + `systemPrompt`. Agents fork from a shared root, advance in the same GPU batch, and report independently.
+`agentPool` composes `withSpine` + toolkit construction + the tick loop internally. The `orchestrate` callback declares the execution shape (`parallel`, `chain`, `fanout`, `dag`, or any custom `Orchestrator` generator); each `SpawnSpec` carries its own `content` + `systemPrompt`. Agents fork from a spine, advance in the same GPU batch, and report independently.
 
 ### `agentPool` options, by significance
 
@@ -209,9 +209,9 @@ Set `true` for parallel pools where each agent's branch grows large and you want
 
 #### "I have many agents sharing the same tool palette" — `systemPrompt` (shared-mode)
 
-When set, `agentPool` runs in shared-mode: the chat header (system + tool schemas) is prefilled onto an inner queryRoot once at setup; every agent inherits via metadata-only KV prefix-share instead of re-emitting the schemas in its own suffix. See [Playbooks](/reference/playbooks) for the full convention and tradeoffs (notably: in shared-mode, `extendRoot` writes to the inner root, not the warmParent).
+When set, `agentPool` runs in shared-mode: the chat header (system + tool schemas) is prefilled onto an inner querySpine once at setup; every agent inherits via metadata-only KV prefix-share instead of re-emitting the schemas in its own suffix. See [Playbooks](/reference/playbooks) for the full convention and tradeoffs (notably: in shared-mode, `extendSpine` writes to the inner spine, not the warmParent).
 
-For chains where you want spine extensions to persist past pool exit (so post-pool synth can attend to them), put the playbooks on the **harness's** outer `withSharedRoot`, not on `agentPool` directly.
+For chains where you want spine extensions to persist past pool exit (so post-pool synth can attend to them), put the playbooks on the **harness's** outer `withSpine`, not on `agentPool` directly.
 
 #### "I'm running a thinking-mode model" — `enableThinking`
 
@@ -246,9 +246,9 @@ const pool = yield* agentPool({
 });
 ```
 
-Per-spec prompts are formatted independently by each agent's `setupAgent` call — the shared root provides the KV prefix, individual agents diverge after fork.
+Per-spec prompts are formatted independently by each agent's `setupAgent` call — the spine provides the KV prefix, individual agents diverge after fork.
 
-If you want a single role + tool palette amortized at the root once across N agents, opt into the **playbooks convention**: pass `systemPrompt` on `agentPool` (or, more typically, on a wrapping `withSharedRoot`). See [Playbooks](/reference/playbooks).
+If you want a single role + tool palette amortized at the root once across N agents, opt into the **playbooks convention**: pass `systemPrompt` on `agentPool` (or, more typically, on a wrapping `withSpine`). See [Playbooks](/reference/playbooks).
 
 ### Recursive agents (delegation)
 
@@ -429,14 +429,14 @@ Pressure management is automatic. You don't check headroom in your tools. The po
 
 ## Prefix sharing
 
-Every agent forks from a shared root branch — that's the cheap part (`Branch.forkSync` is metadata-only). What gets prefilled onto the root, and inherited via KV prefix-share, depends on whether you opt into the playbooks convention:
+Every agent forks from a spine branch — that's the cheap part (`Branch.forkSync` is metadata-only). What gets prefilled onto the root, and inherited via KV prefix-share, depends on whether you opt into the playbooks convention:
 
-- **Default (no `systemPrompt` on `withSharedRoot` / `agentPool`):** the shared root holds only a turn separator. Each agent's `setupAgent` formats its own `[system + tools + user]` suffix and tokenizes that onto its branch. Tools are re-emitted per spawn — fine for small pools, wasteful for many siblings sharing the same tool palette.
-- **Shared-mode (`systemPrompt` + `toolsJson` on `withSharedRoot`):** the root is prefilled with the chat header (system + embedded tool schemas) once. Every agent inherits those tokens via metadata-only KV share. Agent suffixes carry only the per-spec `[system, user]` (a thin role assignment + task), no tools. See [Playbooks](/reference/playbooks).
+- **Default (no `systemPrompt` on `withSpine` / `agentPool`):** the spine holds only a turn separator. Each agent's `setupAgent` formats its own `[system + tools + user]` suffix and tokenizes that onto its branch. Tools are re-emitted per spawn — fine for small pools, wasteful for many siblings sharing the same tool palette.
+- **Shared-mode (`systemPrompt` + `toolsJson` on `withSpine`):** the root is prefilled with the chat header (system + embedded tool schemas) once. Every agent inherits those tokens via metadata-only KV share. Agent suffixes carry only the per-spec `[system, user]` (a thin role assignment + task), no tools. See [Playbooks](/reference/playbooks).
 
 ```
 Default:        3 agents x ~900 tokens of prompt+tools = 2,700 unique cells
-Shared-mode:   ~900 shared root + 3 x ~30 per-agent suffix = ~990 unique cells
+Shared-mode:   ~900 spine + 3 x ~30 per-agent suffix = ~990 unique cells
 Savings:        ~64% fewer decode operations
 ```
 

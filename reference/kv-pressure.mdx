@@ -167,7 +167,7 @@ Tool results are the largest KV consumers. A `web_search` result can be 2,000+ t
 
 **Staggered exit in parallel orchestration.** In `parallel` orchestration, deferred items stay in `pendingSettled` across ticks. Headroom recovers when a sibling agent reports and its branch is pruned (`pruneOnReport: true` — default). Next tick, the deferred tool result against the fresh (larger) headroom fits. This is the staggered-exit pattern: one agent's big result is absorbed by another's completion.
 
-**Spine growth in chain orchestration.** In `chain`, each task's findings accumulate on the shared root via `ctx.extendRoot` (typically 500–1,500 tokens per task). The spine grows monotonically; later tasks have less starting headroom than earlier ones. Size `hardLimit` and `softLimit` to accommodate the final task's constraints, not the first's.
+**Spine growth in chain orchestration.** In `chain`, each task's findings accumulate on the spine via `ctx.extendSpine` (typically 500–1,500 tokens per task). The spine grows monotonically; later tasks have less starting headroom than earlier ones. Size `hardLimit` and `softLimit` to accommodate the final task's constraints, not the first's.
 
 **DAG orchestration** is a hybrid — dependent tasks inherit extended spine from predecessors; independent siblings stagger like parallel. Pressure behavior follows whichever property dominates at each node.
 
@@ -296,7 +296,7 @@ If all agents are idle without results after the tick loop ends (e.g., killed by
 
 ### Scope
 
-Recovery is per-pool. In chain/parallel/DAG pipelines, each pool runs its own recovery independently. For chain orchestration, recovered findings land on `agent.result` and the chain orchestrator's `extendRoot` call carries them to the spine — subsequent tasks inherit prior recovered findings via KV, same as voluntary reports.
+Recovery is per-pool. In chain/parallel/DAG pipelines, each pool runs its own recovery independently. For chain orchestration, recovered findings land on `agent.result` and the chain orchestrator's `extendSpine` call carries them to the spine — subsequent tasks inherit prior recovered findings via KV, same as voluntary reports.
 
 ## `cellsUsed` tracks live pressure
 

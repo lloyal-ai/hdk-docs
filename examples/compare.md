@@ -52,7 +52,7 @@ Required flags: `--x`, `--y`, `--corpus`, `--reranker`, `TAVILY_API_KEY`. Option
 - **Multi-parent DAG dependencies** — each `compare_axis_*` node depends on **two** research nodes simultaneously. `chain` and `fanout` cannot express this.
 - **Sibling parallelism with shared deps** — the three compare nodes fire the moment both research nodes complete, then run concurrently.
 - **Multi-child convergence** — `synthesize` waits on all three siblings before spawning.
-- **Spine extension is causal, not just sequential** — each node's `userContent` is prefilled onto the shared root via `ctx.extendRoot`. The compare nodes don't merely *follow* the research nodes — they *attend to* them. The edge in the diagram is the spine.
+- **Spine extension is causal, not just sequential** — each node's `userContent` is prefilled onto the spine via `ctx.extendSpine`. The compare nodes don't merely *follow* the research nodes — they *attend to* them. The edge in the diagram is the spine.
 - **Playbooks over mixed roles** — researcher, comparer, synthesizer all draw from one tool palette. Tool schemas and role descriptions live at the root once; per-spec systemPrompts say `Apply the **<playbook>** playbook`.
 
 ## Code walkthrough
@@ -89,22 +89,22 @@ const nodes: DAGNode[] = [
 
 Each `userContent` field is the curated turn that gets prefilled onto the spine when the node completes. Dependent nodes attend over those prefills as if they were prior conversation turns — the model sees `Research findings on X: <agent's report>` in its KV at the position where the edge fires.
 
-### Pool setup — playbooks at queryRoot
+### Pool setup — playbooks at querySpine
 
-The playbooks (system prompt + tool schemas) is amortized at the harness's `queryRoot` once. All six agents fork from there and inherit it via prefix-share:
+The playbooks (system prompt + tool schemas) is amortized at the harness's `querySpine` once. All six agents fork from there and inherit it via prefix-share:
 
 ```typescript
 const toolkit = createToolkit(tools);
-const pool = yield* withSharedRoot(
+const pool = yield* withSpine(
   {
     parent: session.trunk ?? undefined,
     systemPrompt: PLAYBOOKS,             // ← playbooks at root
     toolsJson: toolkit.toolsJson,            // ← tool schemas at root
   },
-  function* (queryRoot) {
+  function* (querySpine) {
     return yield* agentPool({
       orchestrate: dagWithEvents(nodes, emit),
-      tools, parent: queryRoot,
+      tools, parent: querySpine,
       terminalTool: "report",
       maxTurns,
       pruneOnReport: true,
@@ -138,7 +138,7 @@ function dagWithEvents(nodes: DAGNode[], emit: (ev: DagEvent) => void): Orchestr
       emit({ type: 'dag:node:spawn', id: n.id, agentId: agent.id });
       yield* ctx.waitFor(agent);
       if (agent.result && n.userContent) {
-        yield* ctx.extendRoot(n.userContent, agent.result);   // ← spine extension
+        yield* ctx.extendSpine(n.userContent, agent.result);   // ← spine extension
       }
     }
 
@@ -152,7 +152,7 @@ This is a 25-line illustration of the canonical Effection DAG pattern: each node
 
 ### `prompts/` — eta templates per playbook
 
-- `playbooks.eta` — the playbooks file rendered onto `queryRoot`. Lists `web_research`, `corpus_research`, `compare`, `synthesize` playbooks with their tool subsets.
+- `playbooks.eta` — the playbooks file rendered onto `querySpine`. Lists `web_research`, `corpus_research`, `compare`, `synthesize` playbooks with their tool subsets.
 - `research-web.eta`, `research-corpus.eta` — per-playbook researcher prompts; both prepend `Apply the **<playbook>** playbook`.
 - `compare.eta` — per-axis comparison prompt.
 - `synthesize.eta` — final synthesis prompt.
@@ -185,7 +185,7 @@ In non-TTY mode (`--jsonl` or piped output), it falls back to one-line stderr ev
 | Topology | single agent | linear pipeline | DAG (multi-parent + multi-child) |
 | Sources | corpus | corpus | web + corpus |
 | Pool primitive | `useAgent` | `useAgent` + manual branches | `agentPool({ orchestrate: dag(...) })` |
-| Spine | single branch | branch chain (fork forward) | `extendRoot` per node |
+| Spine | single branch | branch chain (fork forward) | `extendSpine` per node |
 | Catalog | none (single role) | none (single role) | playbooks (mixed roles) |
 
 Compare is the example to study when you need multi-parent dependencies, want to see the playbooks in action, or want a worked DAG harness to fork.
@@ -200,6 +200,6 @@ Compare is the example to study when you need multi-parent dependencies, want to
 ## Related pages
 
 - [Playbooks](/reference/playbooks) — the convention this example uses for mixed-role pools
-- [Continuous Context Spine](/reference/continuous-context-spine) — what `extendRoot` writes and how forks attend to it
+- [Continuous Context Spine](/reference/continuous-context-spine) — what `extendSpine` writes and how forks attend to it
 - [Concurrency Model — DAG](/reference/concurrency) — the framework's `dag()` orchestrator and Task-as-Future pattern
 - [RIG Pipeline](/reference/rig/pipeline) — reference architecture for retrieval-interleaved harnesses

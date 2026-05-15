@@ -104,7 +104,7 @@ Most agent frameworks pass strings between stages. A transcript of what one agen
 
 **What this changes about agent behavior.** Watching real pipelines, agents form and test hypotheses through iterative retrieval — narrowing, discovering, hypothesizing, verifying — emergent from the attention mechanics, not from prompted instruction. Later searches reference concepts **absent from the original question**, discovered during earlier reads and still physically present in the KV cache.
 
-At its core, **an agent is simply a [liblloyal](https://lloyal-ai.github.io/liblloyal/) branch with intent** — a forked KV slot, a system prompt, a tool palette, a terminal condition. Pools are sets of agents on a shared root; harnesses orchestrate pools. The whole stack is branches all the way down.
+At its core, **an agent is simply a [liblloyal](https://lloyal-ai.github.io/liblloyal/) branch with intent** — a forked KV slot, a system prompt, a tool palette, a terminal condition. Pools are sets of agents on a spine; harnesses orchestrate pools. The whole stack is branches all the way down.
 
 ### Why this breaks the "runs locally but is a toy" barrier
 

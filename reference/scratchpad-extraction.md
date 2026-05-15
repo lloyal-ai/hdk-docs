@@ -89,10 +89,10 @@ try {
 }
 ```
 
-`ScratchpadParent` is set by `withSharedRoot` when `enableScratchpad: true`:
+`ScratchpadParent` is set by `withSpine` when `enableScratchpad: true`:
 
 ```typescript
-yield* withSharedRoot(
+yield* withSpine(
   { systemPrompt, tools, enableScratchpad: true },
   function* (root) { /* tools in this scope can fork from root */ }
 );
