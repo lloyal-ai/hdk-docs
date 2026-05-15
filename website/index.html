@@ -3,12 +3,66 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HDK | The Agentic Envelope for Local-First Apps</title>
+
+    <!-- Primary meta -->
+    <title>HDK &mdash; Full-stack agentic AI framework for llama.cpp</title>
     <meta
       name="description"
-      content="Local Agents. In-process Intelligence. Zero Trust Execution. Deploy agents in your app. No servers. No API keys. No data leaving the device unless you want it to."
+      content="Full-stack agentic AI framework for llama.cpp. Agents are part of your application logic — no API keys, no servers, no parallel knowledge layer."
     />
+    <meta name="author" content="lloyal AI" />
+    <link rel="canonical" href="https://hdk.lloyal.ai/" />
+
+    <!-- Browser chrome -->
+    <meta
+      name="theme-color"
+      content="#0F1117"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="theme-color"
+      content="#FFFFFF"
+      media="(prefers-color-scheme: light)"
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://hdk.lloyal.ai/" />
+    <meta
+      property="og:title"
+      content="HDK — Full-stack agentic AI framework for llama.cpp"
+    />
+    <meta
+      property="og:description"
+      content="Agents that run inside your app's process — same memory, same code as the rest of your application. No API keys, no servers, no parallel knowledge layer."
+    />
+    <meta property="og:image" content="https://hdk.lloyal.ai/og-image.png" />
+    <meta property="og:image:width" content="544" />
+    <meta property="og:image:height" content="544" />
+    <meta property="og:image:alt" content="Harness Development Kit logo" />
+    <meta property="og:site_name" content="Harness Development Kit" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@lloyal_ai" />
+    <meta name="twitter:creator" content="@lloyal_ai" />
+    <meta
+      name="twitter:title"
+      content="HDK — Full-stack agentic AI framework for llama.cpp"
+    />
+    <meta
+      name="twitter:description"
+      content="Agents that run inside your app's process — same memory, same code. No API keys, no servers, no parallel knowledge layer."
+    />
+    <meta name="twitter:image" content="https://hdk.lloyal.ai/og-image.png" />
+    <meta name="twitter:image:alt" content="Harness Development Kit logo" />
+
+    <!-- Icons -->
     <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="apple-touch-icon" href="favicon.png" />
+
+    <!-- Stylesheets / fonts -->
     <link rel="stylesheet" href="styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,6 +70,48 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
+
+    <!-- Structured data: what HDK is (helps AI search engines) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "HDK (Harness Development Kit)",
+        "alternateName": "Harness Development Kit",
+        "description": "Full-stack agentic AI framework for llama.cpp. Build agents that run inside your application's process — same memory, same code, same data structures as the rest of your code. No API keys, no inference servers, no parallel knowledge layer.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows, iOS, Android",
+        "programmingLanguage": ["TypeScript", "JavaScript", "C++"],
+        "softwareRequirements": "Node.js (TypeScript runtime) or C++26 compiler (native runtime)",
+        "url": "https://hdk.lloyal.ai/",
+        "downloadUrl": "https://github.com/lloyal-ai/hdk",
+        "author": {
+          "@type": "Organization",
+          "name": "lloyal AI",
+          "url": "https://lloyal.ai/"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+
+    <!-- Structured data: who makes HDK -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "lloyal AI",
+        "url": "https://lloyal.ai/",
+        "logo": "https://hdk.lloyal.ai/favicon.png",
+        "sameAs": [
+          "https://github.com/lloyal-ai",
+          "https://x.com/lloyal_ai"
+        ]
+      }
+    </script>
   </head>
   <body>
     <header class="navbar">
@@ -123,7 +219,10 @@
     <main class="container">
       <section class="hero">
         <div class="hero-content">
-          <p class="eyebrow">Full-stack agentic AI framework for llama.cpp</p>
+          <p class="eyebrow">
+            Full-stack agentic AI framework for
+            <a href="https://github.com/ggml-org/llama.cpp">llama.cpp</a>
+          </p>
           <h1 class="headline">
             In-App<br />
             Intelligence.
@@ -376,7 +475,7 @@
           </div>
         </div>
         <div class="demo-info">
-          <h2 class="headline demo-headline">See it run on your machine.</h2>
+          <h2 class="headline demo-headline">Experience it on your machine.</h2>
           <p class="demo-caption">
             A harness we built with HDK. A private deep research assistant
             which runs in your terminal. Use <code>/scan PATH</code> to
@@ -583,6 +682,7 @@
           <div class="link-column">
             <h4>Company</h4>
             <a href="https://lloyal.ai/">lloyal.ai</a>
+            <a href="https://x.com/lloyal_ai">X</a>
           </div>
         </div>
       </div>
