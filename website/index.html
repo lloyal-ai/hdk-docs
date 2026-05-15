@@ -125,7 +125,7 @@
         <div class="hero-content">
           <p class="eyebrow">Full-stack agentic AI framework for llama.cpp</p>
           <h1 class="headline">
-            Process<br />Native<br />
+            In-App<br />
             Intelligence.
           </h1>
           <p class="caption">
@@ -321,6 +321,72 @@
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section class="demo">
+        <div class="code-window demo-window">
+          <div class="window-header">
+            <div class="code-tabs">
+              <span class="tab-btn active">terminal</span>
+            </div>
+          </div>
+          <div class="demo-command">
+            <div class="demo-command-text">
+              <span class="demo-prompt">$</span> npx reasoning.run
+            </div>
+            <button
+              class="demo-copy"
+              data-copy="npx reasoning.run"
+              aria-label="Copy command"
+              title="Copy"
+            >
+              <svg
+                class="demo-copy-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path
+                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                ></path>
+              </svg>
+              <svg
+                class="demo-copy-check"
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="demo-info">
+          <h2 class="headline demo-headline">See it run on your machine.</h2>
+          <p class="demo-caption">
+            A harness we built with HDK. A private deep research assistant
+            which runs in your terminal. Use <code>/scan PATH</code> to
+            ground against files on your disk OR <code>/web</code> if you
+            want to research online (you&rsquo;ll need a Tavily search API
+            key).
+          </p>
+          <a href="https://reasoning.run/" class="demo-cta"
+            >reasoning.run &nearr;</a
+          >
         </div>
       </section>
 
@@ -599,6 +665,26 @@
           icon.textContent = "[-]";
         }
       }
+
+      // Copy-to-clipboard for demo command
+      document.querySelectorAll(".demo-copy").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const text = btn.getAttribute("data-copy");
+          if (!text) return;
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.classList.add("copied");
+            const prevLabel = btn.getAttribute("aria-label");
+            btn.setAttribute("aria-label", "Copied!");
+            setTimeout(() => {
+              btn.classList.remove("copied");
+              btn.setAttribute("aria-label", prevLabel);
+            }, 1500);
+          } catch (err) {
+            console.error("Copy failed", err);
+          }
+        });
+      });
     </script>
     <script async defer src="https://buttons.github.io/buttons.js"></script>
   </body>

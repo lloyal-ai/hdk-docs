@@ -397,6 +397,107 @@ body {
   gap: 2rem;
 }
 
+/* Demo / try-it-now section */
+.demo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4rem;
+  align-items: center;
+  padding: 5rem 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.demo-window {
+  width: 100%;
+}
+
+.demo-command {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1rem 1.25rem 1.75rem;
+  color: var(--code-text);
+}
+
+.demo-command-text {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.demo-copy {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #8B949E;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.demo-copy:hover {
+  color: var(--code-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.demo-copy-check {
+  display: none;
+}
+
+.demo-copy.copied .demo-copy-icon {
+  display: none;
+}
+
+.demo-copy.copied .demo-copy-check {
+  display: block;
+  color: var(--primary);
+}
+
+.demo-prompt {
+  color: #8B949E;
+  margin-right: 0.4rem;
+  user-select: none;
+}
+
+.demo-headline {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+  max-width: 20ch;
+}
+
+.mobile-proof .headline,
+.oem .headline {
+  font-size: 3rem;
+}
+
+.demo-caption {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.demo-cta {
+  display: inline-block;
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.35);
+  padding-bottom: 2px;
+  transition: border-color 0.15s ease;
+}
+
+.demo-cta:hover {
+  border-bottom-color: var(--primary);
+}
+
 /* Distribution / shipping section */
 .distribution {
   padding: 6rem 0;
@@ -513,8 +614,12 @@ body.dark-mode .mobile-shot {
   min-width: 0;
 }
 
-/* Tokenized inline chips — e.g. the OODA loop stages */
-.token {
+/* Tokenized inline chips — e.g. the OODA loop stages, inline identifiers
+   and slash commands in prose. Single visual vocabulary across the page. */
+.token,
+.caption code,
+.card-desc code,
+.demo-caption code {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 0.82em;
   font-weight: 500;
@@ -574,6 +679,20 @@ body.dark-mode .mobile-shot {
   .features-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
+  }
+  .demo {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    padding: 3rem 0;
+  }
+  .demo-command {
+    font-size: 1rem;
+    padding: 1.25rem 1.5rem;
+  }
+  .demo-headline,
+  .mobile-proof .headline,
+  .oem .headline {
+    font-size: 2.25rem;
   }
   .distribution {
     padding: 4rem 0;
