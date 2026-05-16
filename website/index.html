@@ -113,7 +113,7 @@
       }
     </script>
   </head>
-  <body>
+  <body class="dark-mode">
     <header class="navbar">
       <div class="logo">
         <img src="logo.svg" alt="lloyal logo" class="logo-icon" />
@@ -186,6 +186,7 @@
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
+            style="display: none"
           >
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
           </svg>
@@ -200,7 +201,6 @@
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
-            style="display: none"
           >
             <circle cx="12" cy="12" r="5"></circle>
             <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -694,11 +694,11 @@
       const moonIcon = document.getElementById("moon-icon");
       const sunIcon = document.getElementById("sun-icon");
 
-      // Check local storage for preference
-      if (localStorage.getItem("theme") === "dark") {
-        document.body.classList.add("dark-mode");
-        moonIcon.style.display = "none";
-        sunIcon.style.display = "block";
+      // Dark is default; honor explicit light-mode preference if set.
+      if (localStorage.getItem("theme") === "light") {
+        document.body.classList.remove("dark-mode");
+        moonIcon.style.display = "block";
+        sunIcon.style.display = "none";
       }
 
       themeBtn.addEventListener("click", () => {
