@@ -106,10 +106,7 @@
         "name": "lloyal AI",
         "url": "https://lloyal.ai/",
         "logo": "https://hdk.lloyal.ai/favicon.png",
-        "sameAs": [
-          "https://github.com/lloyal-ai",
-          "https://x.com/lloyal_ai"
-        ]
+        "sameAs": ["https://github.com/lloyal-ai", "https://x.com/lloyal_ai"]
       }
     </script>
   </head>
@@ -219,21 +216,16 @@
     <main class="container">
       <section class="hero">
         <div class="hero-content">
-          <p class="eyebrow">
-            Full-stack agentic AI framework for
-            <a href="https://github.com/ggml-org/llama.cpp">llama.cpp</a>
-          </p>
           <h1 class="headline">
             In-App<br />
             Intelligence.
           </h1>
           <p class="caption">
-            HDK agents are part of your application logic &mdash; same
-            process, same memory, same data structures as the rest of your
-            code. They don&rsquo;t need context shipped to them across a
-            network seam &mdash; no vector DBs, embedding pipelines,
-            permission proxies, context assemblers. Agents are already where
-            the context lives.
+            HDK agents are part of your application logic &mdash; same process,
+            same memory, same data structures as the rest of your code. They
+            don&rsquo;t need context shipped to them across a network seam
+            &mdash; no vector DBs, embedding pipelines, permission proxies,
+            context assemblers. Agents are already where the context lives.
           </p>
 
           <div class="cta-group">
@@ -248,179 +240,210 @@
           </div>
         </div>
 
-        <div class="hero-code">
-          <div class="code-window">
-            <div class="window-header">
-              <div class="code-tabs">
-                <button class="tab-btn active" onclick="switchTab('pool')">
-                  agentPool
-                </button>
-                <button class="tab-btn" onclick="switchTab('single')">
-                  useAgent
-                </button>
-                <button class="tab-btn" onclick="switchTab('swarm')">
-                  Swarm
-                </button>
-                <button class="tab-btn" onclick="switchTab('source')">
-                  Source
-                </button>
-              </div>
-            </div>
+        <div class="hero-visual">
+          <svg class="hdk-hero-illustration hero-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 50 560 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" role="img">
+            <defs>
+              <radialGradient id="appHalo" cx="50%" cy="50%" r="62%">
+                <stop offset="0%"   stop-color="#10B981" stop-opacity=".15"/>
+                <stop offset="55%"  stop-color="#10B981" stop-opacity=".04"/>
+                <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
+              </radialGradient>
 
-            <div id="tab-single" class="code-content">
-              <pre><code><span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { SupportSource, reportTool } <span class="keyword">from</span> <span class="string">'./kb'</span>; 
+              <radialGradient id="substrate" cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stop-color="#1A1D24" stop-opacity="1"/>
+                <stop offset="55%"  stop-color="#14171E" stop-opacity=".72"/>
+                <stop offset="100%" stop-color="#0F1117" stop-opacity="0"/>
+              </radialGradient>
 
-<span class="keyword">const</span> kb = <span class="keyword">new</span> <span class="class">SupportSource</span>(db);
-<span class="keyword">const</span> agent = <span class="keyword">yield*</span> <span class="function">useAgent</span>({
-  systemPrompt: <span class="string">"Support specialist. Help users resolve technical issues."</span>,
-  task: <span class="string">"Find the 'Error 500' fix in Version 2.0"</span>,
-  tools: [...kb.tools, reportTool],
-  terminalTool: <span class="string">'report'</span>,
-});
+              <linearGradient id="package" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#3F4554"/>
+                <stop offset="50%"  stop-color="#2C3140"/>
+                <stop offset="100%" stop-color="#1E2230"/>
+              </linearGradient>
 
-<span class="function">console.log</span>(agent.result);</code></pre>
-            </div>
+              <linearGradient id="packageHighlight" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#FFFFFF" stop-opacity=".18"/>
+                <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+              </linearGradient>
 
-            <!-- Source Implementation -->
-            <div id="tab-source" class="code-content">
-              <pre><code><span class="keyword">import</span> { Source } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { FetchPageTool, type Reranker } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+              <linearGradient id="die" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#14352E"/>
+                <stop offset="100%" stop-color="#0A1F1A"/>
+              </linearGradient>
 
-<span class="comment">// Sources pair tools with late-bound runtime deps. The reranker</span>
-<span class="comment">// makes FetchPageTool return only the verbatim top-K chunks &mdash;</span>
-<span class="comment">// saving ~90% of KV context on long documents.</span>
-<span class="keyword">class</span> IntranetSource <span class="keyword">extends</span> <span class="class">Source</span>&lt;{ reranker: <span class="class">Reranker</span> }&gt; {
-  name = <span class="string">"intranet"</span>;
-  fetchPage = <span class="keyword">new</span> <span class="class">FetchPageTool</span>({ topK: <span class="number">5</span>, tokenBudget: <span class="number">2048</span> });
-  tools = [<span class="keyword">this</span>.fetchPage];
+              <linearGradient id="dieEdge" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%"   stop-color="#34D399" stop-opacity=".55"/>
+                <stop offset="100%" stop-color="#10B981" stop-opacity=".15"/>
+              </linearGradient>
 
-  <span class="comment">// Late-bind: wire the reranker once it's available.</span>
-  *<span class="function">bind</span>(ctx: { reranker: <span class="class">Reranker</span> }) {
-    <span class="keyword">this</span>.fetchPage.<span class="function">setReranker</span>(ctx.reranker);
-  }
-}</code></pre>
-            </div>
+              <radialGradient id="dieGlow" cx="50%" cy="50%" r="55%">
+                <stop offset="0%"   stop-color="#10B981" stop-opacity=".28"/>
+                <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
+              </radialGradient>
 
-            <!-- Swarm / DelegateTool -->
-            <div id="tab-swarm" class="code-content">
-              <pre><code><span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { DelegateTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
-<span class="keyword">import</span> { BankSource, TradeTool, reportTool, account } <span class="keyword">from</span> <span class="string">'./finance'</span>;
+              <linearGradient id="cellFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#34D399" stop-opacity=".45"/>
+                <stop offset="100%" stop-color="#10B981" stop-opacity=".18"/>
+              </linearGradient>
 
-<span class="comment">// Recursive expert swarm. Sub-agents fork from the calling agent's branch &mdash;</span>
-<span class="comment">// they inherit its full KV attention state (Continuous Context), so private</span>
-<span class="comment">// account data flows through tools, not prompts.</span>
-<span class="keyword">const</span> bank = <span class="keyword">new</span> <span class="class">BankSource</span>();
-<span class="keyword">const</span> advisor = <span class="keyword">yield*</span> <span class="function">useAgent</span>({
-  systemPrompt: <span class="string">"Senior portfolio advisor. Decompose into specialist sub-tasks."</span>,
-  task: <span class="string">"Optimize my portfolio for tax-loss harvesting before year-end."</span>,
-  tools: [
-    ...bank.tools,
-    <span class="keyword">new</span> <span class="class">DelegateTool</span>({
-      systemPrompt: <span class="string">"Tax-specialized financial strategist."</span>,
-      poolOpts: {
-        tools: [...bank.tools, reportTool],
-        terminalTool: <span class="string">'report'</span>,
-        echoThreshold: <span class="number">0.8</span>,        <span class="comment">// reject sub-tasks that paraphrase the parent</span>
-        checkAncestorEcho: <span class="keyword">true</span>,   <span class="comment">// reject loops up the call chain</span>
-      },
-    }),
-    <span class="keyword">new</span> <span class="class">TradeTool</span>(account),
-    reportTool,
-  ],
-  terminalTool: <span class="string">'report'</span>,
-});</code></pre>
-            </div>
+              <style>
+                .hdk-hero-illustration { display:block; }
+                .hdk-hero-illustration text { font-family: 'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace; font-variant-ligatures:none; }
+                .hdk-hero-illustration .pulse { animation: hdkSnake 4.5s linear infinite; animation-play-state:var(--hdk-motion, running); }
+                .hdk-hero-illustration .die-glow { animation: hdkDieGlow 6s ease-in-out infinite; animation-play-state:var(--hdk-motion, running); }
+                @keyframes hdkSnake {
+                  0%   { opacity: 0; }
+                  2%   { opacity: .95; }
+                  6%   { opacity: 0; }
+                  100% { opacity: 0; }
+                }
+                @keyframes hdkDieGlow {
+                  0%, 100% { opacity: .75; }
+                  50%      { opacity: 1; }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                  .hdk-hero-illustration .pulse,
+                  .hdk-hero-illustration .die-glow { animation:none !important; }
+                }
+              </style>
+            </defs>
 
-            <!-- Agent Pool (Accordion) -->
-            <div id="tab-pool" class="code-content active">
-              <div class="accordion">
-                <!-- Parallel -->
-                <div class="accordion-item active">
-                  <button
-                    class="accordion-header"
-                    onclick="toggleAccordion(this)"
-                  >
-                    <span class="icon">[-]</span> parallel: Ingest scanned
-                    receipts en-masse into Xero
-                  </button>
-                  <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { agentPool, parallel } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { FS, Xero, reportTool } <span class="keyword">from</span> <span class="string">'./local-app'</span>;
 
-<span class="comment">// Process receipts into Xero concurrently</span>
-<span class="keyword">const</span> receipts = <span class="keyword">yield*</span> FS.<span class="function">scanDir</span>(<span class="string">'./inbox/receipts'</span>);
-<span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
-  orchestrate: <span class="function">parallel</span>(
-    receipts.<span class="function">map</span>(file => ({
-      content: <span class="string">`Extract vendor and amount: ${file.name}`</span>,
-      systemPrompt: <span class="string">"Accounting clerk. Extract data accurately."</span>
-    }))
-  ),
-  tools: [FS.readImage, Xero.logExpense, reportTool],
-  terminalTool: <span class="string">'report'</span>,
-});</code></pre>
-                  </div>
-                </div>
+            <!-- chip package -->
+            <rect x="100" y="90" width="360" height="250" rx="14" fill="url(#package)" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
 
-                <!-- Chain -->
-                <div class="accordion-item">
-                  <button
-                    class="accordion-header"
-                    onclick="toggleAccordion(this)"
-                  >
-                    <span class="icon">[+]</span> chain: Resolve multi-step
-                    QuickBooks exceptions in-process
-                  </button>
-                  <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { agentPool, chain } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { FS, QuickBooks, reportTool } <span class="keyword">from</span> <span class="string">'./local-app'</span>;
+            <!-- top edge highlight (subtle metallic sheen) -->
+            <path d="M 114 90 L 446 90 A 14 14 0 0 1 460 104 L 460 102 A 12 12 0 0 0 448 92 L 112 92 A 12 12 0 0 0 100 102 L 100 104 A 14 14 0 0 1 114 90 Z" fill="url(#packageHighlight)" opacity=".7"/>
 
-<span class="comment">// Step 2 inherits step 1's KV context in O(1) time</span>
-<span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
-  systemPrompt: <span class="string">"Bookkeeping assistant."</span>,
-  orchestrate: <span class="function">chain</span>([<span class="string">'extract'</span>, <span class="string">'log'</span>], (step) => ({
-    task: { content: step, systemPrompt: <span class="string">""</span> },
-    userContent: <span class="string">`Findings from ${step}:`</span>
-  })),
-  tools: [FS.readPdf, QuickBooks.api, reportTool],
-  terminalTool: <span class="string">'report'</span>,
-});</code></pre>
-                  </div>
-                </div>
+            <!-- 'agentPool' etched into package -->
+            <text x="280" y="115" text-anchor="middle" font-size="11" letter-spacing="3" fill="#E5E7EB" fill-opacity=".40">agentPool</text>
 
-                <!-- DAG -->
-                <div class="accordion-item">
-                  <button
-                    class="accordion-header"
-                    onclick="toggleAccordion(this)"
-                  >
-                    <span class="icon">[+]</span> dag: Publish autonomous
-                    marketing campaigns across channels
-                  </button>
-                  <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { agentPool, dag } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { CMS, Gen, FS, reportTool } <span class="keyword">from</span> <span class="string">'./local-tools'</span>;
+            <!-- HDK monogram, top-left corner -->
+            <text x="118" y="115" font-size="8" letter-spacing="1.2" fill="#9CA3AF" fill-opacity=".35">[LL] HDK</text>
 
-<span class="comment">// copy + imagery fan out from notes, then converge on publish.</span>
-<span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
-  systemPrompt: <span class="string">"Marketing strategist."</span>,
-  orchestrate: <span class="function">dag</span>([
-    { id: <span class="string">"notes"</span>,   task: { content: <span class="string">"Read campaign brief"</span>,    systemPrompt: <span class="string">""</span> }, userContent: <span class="string">"Brief"</span>  },
-    { id: <span class="string">"copy"</span>,    task: { content: <span class="string">"Draft channel copy"</span>,     systemPrompt: <span class="string">""</span> }, dependsOn: [<span class="string">"notes"</span>], userContent: <span class="string">"Copy"</span>   },
-    { id: <span class="string">"imagery"</span>, task: { content: <span class="string">"Generate hero images"</span>,   systemPrompt: <span class="string">""</span> }, dependsOn: [<span class="string">"notes"</span>], userContent: <span class="string">"Images"</span> },
-    { id: <span class="string">"publish"</span>, task: { content: <span class="string">"Publish across channels"</span>, systemPrompt: <span class="string">""</span> }, dependsOn: [<span class="string">"copy"</span>, <span class="string">"imagery"</span>] }
-  ]),
-  tools: [FS.readDir, CMS.tone, Gen.image, reportTool],
-  terminalTool: <span class="string">'report'</span>,
-});</code></pre>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+            <!-- die glow halo -->
+            <ellipse class="die-glow" cx="280" cy="225" rx="175" ry="105" fill="url(#dieGlow)"/>
+
+            <!-- silicon die -->
+            <rect x="140" y="140" width="280" height="170" rx="6" fill="url(#die)" stroke="url(#dieEdge)" stroke-width="1"/>
+            <rect x="146" y="146" width="268" height="158" rx="4" fill="none" stroke="#A7F3D0" stroke-opacity=".10" stroke-width="1"/>
+
+            <!-- die header label -->
+            <text x="280" y="161" text-anchor="middle" font-size="8" letter-spacing="2.4" fill="#A7F3D0" fill-opacity=".55">CONTINUOUS CONTEXT</text>
+
+            <!-- Row 1: KV cells -->
+            <g>
+              <rect x="160" y="172" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="184" y="172" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="208" y="172" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="232" y="172" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="256" y="172" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="280" y="172" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="304" y="172" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="328" y="172" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="352" y="172" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="376" y="172" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+            </g>
+
+            <!-- spine trunk bar -->
+            <rect x="160" y="196" width="236" height="22" rx="3" fill="#34D399" fill-opacity=".18" stroke="#A7F3D0" stroke-opacity=".30" stroke-width="1"/>
+            <text x="278" y="211" text-anchor="middle" font-size="9" letter-spacing="1.4" fill="#A7F3D0" fill-opacity=".90" font-weight="600">spine</text>
+
+            <!-- Row 2: with one active cell -->
+            <g>
+              <rect x="160" y="224" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="184" y="224" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="208" y="224" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="232" y="224" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="256" y="224" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="280" y="224" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="304" y="224" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="328" y="224" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="352" y="224" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="376" y="224" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+            </g>
+
+            <!-- Row 3 -->
+            <g>
+              <rect x="160" y="248" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="184" y="248" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="208" y="248" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="232" y="248" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="256" y="248" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="280" y="248" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="304" y="248" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="328" y="248" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="352" y="248" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+              <rect x="376" y="248" width="20" height="18" rx="2" fill="url(#cellFill)"/>
+            </g>
+
+            <!-- Snake pulse overlay: data transfer animation, serpentine through 10 cols x 3 rows -->
+            <g fill="#A7F3D0">
+              <!-- col 0 down -->
+              <rect class="pulse" x="160" y="172" width="20" height="18" rx="2" opacity="0" style="animation-delay: 0s"/>
+              <rect class="pulse" x="160" y="224" width="20" height="18" rx="2" opacity="0" style="animation-delay: 0.15s"/>
+              <rect class="pulse" x="160" y="248" width="20" height="18" rx="2" opacity="0" style="animation-delay: 0.30s"/>
+              <!-- col 1 up -->
+              <rect class="pulse" x="184" y="248" width="20" height="18" rx="2" opacity="0" style="animation-delay: 0.45s"/>
+              <rect class="pulse" x="184" y="224" width="20" height="18" rx="2" opacity="0" style="animation-delay: 0.60s"/>
+              <rect class="pulse" x="184" y="172" width="20" height="18" rx="2" opacity="0" style="animation-delay: 0.75s"/>
+              <!-- col 2 down -->
+              <rect class="pulse" x="208" y="172" width="20" height="18" rx="2" opacity="0" style="animation-delay: 0.90s"/>
+              <rect class="pulse" x="208" y="224" width="20" height="18" rx="2" opacity="0" style="animation-delay: 1.05s"/>
+              <rect class="pulse" x="208" y="248" width="20" height="18" rx="2" opacity="0" style="animation-delay: 1.20s"/>
+              <!-- col 3 up -->
+              <rect class="pulse" x="232" y="248" width="20" height="18" rx="2" opacity="0" style="animation-delay: 1.35s"/>
+              <rect class="pulse" x="232" y="224" width="20" height="18" rx="2" opacity="0" style="animation-delay: 1.50s"/>
+              <rect class="pulse" x="232" y="172" width="20" height="18" rx="2" opacity="0" style="animation-delay: 1.65s"/>
+              <!-- col 4 down -->
+              <rect class="pulse" x="256" y="172" width="20" height="18" rx="2" opacity="0" style="animation-delay: 1.80s"/>
+              <rect class="pulse" x="256" y="224" width="20" height="18" rx="2" opacity="0" style="animation-delay: 1.95s"/>
+              <rect class="pulse" x="256" y="248" width="20" height="18" rx="2" opacity="0" style="animation-delay: 2.10s"/>
+              <!-- col 5 up -->
+              <rect class="pulse" x="280" y="248" width="20" height="18" rx="2" opacity="0" style="animation-delay: 2.25s"/>
+              <rect class="pulse" x="280" y="224" width="20" height="18" rx="2" opacity="0" style="animation-delay: 2.40s"/>
+              <rect class="pulse" x="280" y="172" width="20" height="18" rx="2" opacity="0" style="animation-delay: 2.55s"/>
+              <!-- col 6 down -->
+              <rect class="pulse" x="304" y="172" width="20" height="18" rx="2" opacity="0" style="animation-delay: 2.70s"/>
+              <rect class="pulse" x="304" y="224" width="20" height="18" rx="2" opacity="0" style="animation-delay: 2.85s"/>
+              <rect class="pulse" x="304" y="248" width="20" height="18" rx="2" opacity="0" style="animation-delay: 3.00s"/>
+              <!-- col 7 up -->
+              <rect class="pulse" x="328" y="248" width="20" height="18" rx="2" opacity="0" style="animation-delay: 3.15s"/>
+              <rect class="pulse" x="328" y="224" width="20" height="18" rx="2" opacity="0" style="animation-delay: 3.30s"/>
+              <rect class="pulse" x="328" y="172" width="20" height="18" rx="2" opacity="0" style="animation-delay: 3.45s"/>
+              <!-- col 8 down -->
+              <rect class="pulse" x="352" y="172" width="20" height="18" rx="2" opacity="0" style="animation-delay: 3.60s"/>
+              <rect class="pulse" x="352" y="224" width="20" height="18" rx="2" opacity="0" style="animation-delay: 3.75s"/>
+              <rect class="pulse" x="352" y="248" width="20" height="18" rx="2" opacity="0" style="animation-delay: 3.90s"/>
+              <!-- col 9 up -->
+              <rect class="pulse" x="376" y="248" width="20" height="18" rx="2" opacity="0" style="animation-delay: 4.05s"/>
+              <rect class="pulse" x="376" y="224" width="20" height="18" rx="2" opacity="0" style="animation-delay: 4.20s"/>
+              <rect class="pulse" x="376" y="172" width="20" height="18" rx="2" opacity="0" style="animation-delay: 4.35s"/>
+            </g>
+
+            <!-- die footer label -->
+            <text x="280" y="285" text-anchor="middle" font-size="8" letter-spacing="2.4" fill="#A7F3D0" fill-opacity=".42">STRUCTURED CONCURRENCY</text>
+
+
+            <!-- horizontal dimension callout, above the package -->
+            <g stroke="#9CA3AF" stroke-opacity=".25" stroke-width=".8" fill="none" stroke-linecap="round">
+              <line x1="100" y1="70" x2="460" y2="70"/>
+              <line x1="100" y1="64" x2="100" y2="76"/>
+              <line x1="460" y1="64" x2="460" y2="76"/>
+            </g>
+            <text x="280" y="60" text-anchor="middle" font-size="9" letter-spacing="1.2" fill="#9CA3AF" fill-opacity=".55">36 mm</text>
+
+            <!-- vertical dimension callout, right of the package -->
+            <g stroke="#9CA3AF" stroke-opacity=".25" stroke-width=".8" fill="none" stroke-linecap="round">
+              <line x1="488" y1="90" x2="488" y2="340"/>
+              <line x1="482" y1="90" x2="494" y2="90"/>
+              <line x1="482" y1="340" x2="494" y2="340"/>
+            </g>
+            <text x="488" y="218" text-anchor="middle" font-size="9" letter-spacing="1.2" fill="#9CA3AF" fill-opacity=".55" transform="rotate(90 488 218)">25 mm</text>
+          </svg>
+          <p class="hero-figcaption">Full-stack agentic AI framework for <a href="https://github.com/ggml-org/llama.cpp" class="hero-figcaption-link">llama.cpp &nearr;</a></p>
         </div>
+
       </section>
 
       <section class="demo">
@@ -477,11 +500,10 @@
         <div class="demo-info">
           <h2 class="headline demo-headline">Experience it on your machine.</h2>
           <p class="demo-caption">
-            A harness we built with HDK. A private deep research assistant
-            which runs in your terminal. Use <code>/scan PATH</code> to
-            ground against files on your disk OR <code>/web</code> if you
-            want to research online (you&rsquo;ll need a Tavily search API
-            key).
+            A harness we built with HDK. A private deep research assistant which
+            runs in your terminal. Use <code>/scan PATH</code> to ground against
+            files on your disk OR <code>/web</code> if you want to research
+            online (you&rsquo;ll need a Tavily search API key).
           </p>
           <a href="https://reasoning.run/" class="demo-cta"
             >reasoning.run &nearr;</a
@@ -490,7 +512,433 @@
       </section>
 
       <section class="features">
-        <h2 class="headline features-headline">AI as a feature, not an API call.</h2>
+        <h2 class="headline features-headline">
+          AI as a feature, not an API call.
+        </h2>
+        <p class="features-caption">
+          The framework&rsquo;s whole surface area, in five tabs. No elaborate
+          infrastructure, no complex plumbing.
+        </p>
+
+        <div class="features-code">
+          <div class="code-window">
+            <div class="window-header">
+              <div class="code-tabs">
+                <button class="tab-btn active" onclick="switchTab('agent')">
+                  agent
+                </button>
+                <button class="tab-btn" onclick="switchTab('pool')">
+                  pool
+                </button>
+                <button class="tab-btn" onclick="switchTab('spine')">
+                  spine
+                </button>
+                <button class="tab-btn" onclick="switchTab('sources')">
+                  sources
+                </button>
+                <button class="tab-btn" onclick="switchTab('prompts')">
+                  prompts
+                </button>
+              </div>
+            </div>
+
+            <!-- agent — the atomic unit -->
+            <div id="tab-agent" class="code-content active">
+              <pre><code><span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+<span class="keyword">import</span> { feedback } <span class="keyword">from</span> <span class="string">'./sources'</span>;
+
+<span class="comment">// The atomic unit. Owns a KV branch, calls tools to extend that</span>
+<span class="comment">// branch with evidence, returns a result via the terminal tool.</span>
+<span class="comment">// Its branch is pruned automatically on return — KV stays continuous.</span>
+<span class="keyword">const</span> agent = <span class="keyword">yield*</span> <span class="function">useAgent</span>({
+  systemPrompt: <span class="string">"Customer-feedback analyst. Extract themes with evidence."</span>,
+  task: <span class="string">"Summarize this week's feedback into 3 themes with citations."</span>,
+  tools: [...feedback.tools, reportTool],
+  terminalToolName: <span class="string">'report'</span>,
+});
+
+<span class="function">console.log</span>(agent.result);</code></pre>
+            </div>
+
+            <!-- agentPool — composes agents (parallel | chain | dag) -->
+            <div id="tab-pool" class="code-content">
+              <div class="accordion">
+                <!-- Parallel -->
+                <div class="accordion-item active">
+                  <button
+                    class="accordion-header"
+                    onclick="toggleAccordion(this)"
+                  >
+                    <span class="icon">[-]</span> parallel &mdash; agents fan
+                    out, share parent KV in O(1)
+                  </button>
+                  <div class="accordion-body">
+                    <pre><code><span class="keyword">import</span> { agentPool, parallel } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+<span class="keyword">import</span> { subjects, sources, workerPrompt, today } <span class="keyword">from</span> <span class="string">'./harness'</span>;
+
+<span class="comment">// N agents fan out at once. Each forks from the parent KV in O(1)</span>
+<span class="comment">// (metadata-only, zero tensor copy). They share the parent prefix;</span>
+<span class="comment">// only their suffixes live in unique cells. Completed agents prune</span>
+<span class="comment">// the moment they return — KV stays continuous through the run.</span>
+<span class="comment">//</span>
+<span class="comment">// systemPrompt is a render call, not a static string — each agent's</span>
+<span class="comment">// prompt is parameterized with its peers' subjects so it stays focused.</span>
+<span class="comment">// See the prompts tab for what workerPrompt() actually renders.</span>
+<span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
+  orchestrate: <span class="function">parallel</span>(
+    subjects.<span class="function">map</span>(s => ({
+      content: <span class="string">`Investigate: ${s}`</span>,
+      systemPrompt: <span class="function">workerPrompt</span>({
+        subject: s,
+        siblings: subjects.<span class="function">filter</span>(o => o !== s),
+        maxTurns: <span class="number">12</span>,
+        date: <span class="function">today</span>(),
+      }),
+    }))
+  ),
+  tools: [...sources.tools, reportTool],
+  terminalToolName: <span class="string">'report'</span>,
+});</code></pre>
+                  </div>
+                </div>
+
+                <!-- Chain -->
+                <div class="accordion-item">
+                  <button
+                    class="accordion-header"
+                    onclick="toggleAccordion(this)"
+                  >
+                    <span class="icon">[+]</span> chain &mdash; each agent
+                    inherits prior findings via attention, not prompts
+                  </button>
+                  <div class="accordion-body">
+                    <pre><code><span class="keyword">import</span> { agentPool, chain } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+<span class="keyword">import</span> { sources, workerPrompt } <span class="keyword">from</span> <span class="string">'./harness'</span>;
+
+<span class="comment">// Sequential agents. Each one's findings extend the spine; the</span>
+<span class="comment">// next agent forks from the extended spine and sees prior findings</span>
+<span class="comment">// in attention &mdash; not via re-prompting. KV grows; no re-encoding.</span>
+<span class="comment">//</span>
+<span class="comment">// workerPrompt gets the taskIndex, so step 0 establishes vocabulary</span>
+<span class="comment">// and steps 1+ get a "build on prior research" preamble. See prompts.</span>
+<span class="keyword">const</span> steps = [<span class="string">'discover'</span>, <span class="string">'verify'</span>, <span class="string">'distill'</span>];
+<span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
+  orchestrate: <span class="function">chain</span>(steps, (step, i) => ({
+    task: {
+      content: <span class="string">`Step: ${step}`</span>,
+      systemPrompt: <span class="function">workerPrompt</span>({ subject: step, taskIndex: i, maxTurns: <span class="number">8</span> }),
+    },
+    userContent: <span class="string">`${step} findings:`</span>,
+  })),
+  tools: [...sources.tools, reportTool],
+  terminalToolName: <span class="string">'report'</span>,
+});</code></pre>
+                  </div>
+                </div>
+
+                <!-- DAG -->
+                <div class="accordion-item">
+                  <button
+                    class="accordion-header"
+                    onclick="toggleAccordion(this)"
+                  >
+                    <span class="icon">[+]</span> dag &mdash; declared topology;
+                    parallel where independent, serial where dependent
+                  </button>
+                  <div class="accordion-body">
+                    <pre><code><span class="keyword">import</span> { agentPool, dag } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+<span class="keyword">import</span> { sources, investigatePrompt, comparePrompt, synthPrompt } <span class="keyword">from</span> <span class="string">'./harness'</span>;
+
+<span class="comment">// Declared dependency topology. Independent nodes run in parallel;</span>
+<span class="comment">// dependent nodes wait, then fork from a spine that carries their</span>
+<span class="comment">// dependencies' findings in attention. Each role gets its own prompt</span>
+<span class="comment">// renderer — investigator, analyst, editor are all functions of the</span>
+<span class="comment">// node's per-spawn data. See the prompts tab.</span>
+<span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
+  orchestrate: <span class="function">dag</span>([
+    { id: <span class="string">"research_x"</span>, task: { content: <span class="string">"Research subject X"</span>, systemPrompt: <span class="function">investigatePrompt</span>({ subject: <span class="string">'X'</span> }) } },
+    { id: <span class="string">"research_y"</span>, task: { content: <span class="string">"Research subject Y"</span>, systemPrompt: <span class="function">investigatePrompt</span>({ subject: <span class="string">'Y'</span> }) } },
+    { id: <span class="string">"compare"</span>,    task: { content: <span class="string">"Compare X vs Y"</span>,     systemPrompt: <span class="function">comparePrompt</span>({ x: <span class="string">'X'</span>, y: <span class="string">'Y'</span>, axis: <span class="string">'cost'</span> }) },
+      dependsOn: [<span class="string">"research_x"</span>, <span class="string">"research_y"</span>] },
+    { id: <span class="string">"synthesize"</span>, task: { content: <span class="string">"Write the report"</span>,    systemPrompt: <span class="function">synthPrompt</span>({ subjects: [<span class="string">'X'</span>, <span class="string">'Y'</span>] }) },
+      dependsOn: [<span class="string">"compare"</span>] },
+  ]),
+  tools: [...sources.tools, reportTool],
+  terminalToolName: <span class="string">'report'</span>,
+});</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- spine — composes agentPools (the magic) -->
+            <div id="tab-spine" class="code-content">
+              <pre><code><span class="keyword">import</span> { withSpine, agentPool, useAgent, parallel } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+<span class="keyword">import</span> { query, researchTasks, sources, installedApps, playbooks, synthPrompt } <span class="keyword">from</span> <span class="string">'./harness'</span>;
+
+<span class="comment">// The spine is a KV trunk that persists across multiple pools and agents.</span>
+<span class="comment">// Findings accumulate on the spine; every fork from the spine inherits the</span>
+<span class="comment">// full trajectory via metadata-only KV sharing. This is Continuous Context</span>
+<span class="comment">// &mdash; downstream agents see what upstream agents found in attention,</span>
+<span class="comment">// not via re-prompting or a passed-around findings array.</span>
+<span class="keyword">yield*</span> <span class="function">withSpine</span>(
+  {
+    parent: session.trunk ?? <span class="keyword">undefined</span>,
+    systemPrompt: <span class="function">playbooks</span>({                <span class="comment">// catalog reshapes per installed apps</span>
+      hasWeb: installedApps.<span class="function">has</span>(<span class="string">'web'</span>),
+      hasCorpus: installedApps.<span class="function">has</span>(<span class="string">'corpus'</span>),
+    }),
+    tools: [...sources.tools, reportTool],
+  },
+  <span class="keyword">function*</span> (spine) {
+    <span class="comment">// Research phase: N parallel agents extend the spine with findings.</span>
+    <span class="keyword">yield*</span> <span class="function">agentPool</span>({
+      parent: spine,
+      orchestrate: <span class="function">parallel</span>(researchTasks),
+      tools: [...sources.tools, reportTool],
+      terminalToolName: <span class="string">'report'</span>,
+      pruneOnReturn: <span class="keyword">true</span>,            <span class="comment">// free KV the moment each agent returns</span>
+    });
+
+    <span class="comment">// Synth phase: forks from the same spine. Sees every research</span>
+    <span class="comment">// finding in attention &mdash; no re-prompting, no findings array.</span>
+    <span class="keyword">const</span> synth = <span class="keyword">yield*</span> <span class="function">useAgent</span>({
+      parent: spine,
+      systemPrompt: <span class="function">synthPrompt</span>({ query, agentCount: researchTasks.length }),
+      task: <span class="string">"Synthesize the findings above into a final report."</span>,
+      tools: [reportTool],
+      terminalToolName: <span class="string">'report'</span>,
+    });
+
+    <span class="keyword">return</span> synth.result;
+  },
+);</code></pre>
+            </div>
+
+            <!-- sources — Retrieval-Interleaved Generation primitives -->
+            <div id="tab-sources" class="code-content">
+              <div class="accordion">
+                <!-- built-in -->
+                <div class="accordion-item active">
+                  <button
+                    class="accordion-header"
+                    onclick="toggleAccordion(this)"
+                  >
+                    <span class="icon">[-]</span> built-in &mdash; WebSource +
+                    CorpusSource share one reranker
+                  </button>
+                  <div class="accordion-body">
+                    <pre><code><span class="keyword">import</span> { call } <span class="keyword">from</span> <span class="string">'effection'</span>;
+<span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { WebSource, CorpusSource, createReranker, reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+<span class="keyword">import</span> { workerPrompt, today } <span class="keyword">from</span> <span class="string">'./harness'</span>;
+
+<span class="comment">// The Reranker is the cross-encoder focal lens. One instance feeds</span>
+<span class="comment">// every source's retrieval pipeline. At each tool call it scores</span>
+<span class="comment">// candidate chunks against the agent's current task and admits only</span>
+<span class="comment">// verbatim top-K within a token budget. Never paraphrased, never</span>
+<span class="comment">// summarized &mdash; context grows by exactly what the model needs.</span>
+<span class="keyword">const</span> reranker = <span class="keyword">yield*</span> <span class="function">call</span>(() => <span class="function">createReranker</span>({ modelPath: rerankerPath }));
+
+<span class="comment">// Sources expose retrieval tools. One contract for any data &mdash;</span>
+<span class="comment">// files, SQL, web, your records. Each source binds the shared</span>
+<span class="comment">// reranker via bind(), then its tools become available to agents.</span>
+<span class="keyword">const</span> web = <span class="keyword">new</span> <span class="class">WebSource</span>({ apiKey: tavilyKey });
+<span class="keyword">const</span> corpus = <span class="keyword">new</span> <span class="class">CorpusSource</span>(resources, chunks);
+<span class="keyword">for</span> (<span class="keyword">const</span> s <span class="keyword">of</span> [web, corpus]) <span class="keyword">yield*</span> s.<span class="function">bind</span>({ reranker });
+
+<span class="comment">// Retrieval happens mid-generation, not upfront. The agent decides</span>
+<span class="comment">// what to look up based on what it's discovered so far; results</span>
+<span class="comment">// land in its KV as conversation turns and inform the next decision.</span>
+<span class="keyword">const</span> agent = <span class="keyword">yield*</span> <span class="function">useAgent</span>({
+  systemPrompt: <span class="function">workerPrompt</span>({ subject: <span class="string">'X'</span>, siblings: [], maxTurns: <span class="number">12</span>, date: <span class="function">today</span>() }),
+  task: <span class="string">"Compare X and Y across recent benchmarks."</span>,
+  tools: [...web.tools, ...corpus.tools, reportTool],
+  terminalToolName: <span class="string">'report'</span>,
+});</code></pre>
+                  </div>
+                </div>
+
+                <!-- custom -->
+                <div class="accordion-item">
+                  <button
+                    class="accordion-header"
+                    onclick="toggleAccordion(this)"
+                  >
+                    <span class="icon">[+]</span> custom &mdash; bridge your own
+                    data; same pipeline, same focal lens
+                  </button>
+                  <div class="accordion-body">
+                    <pre><code><span class="keyword">import</span> { Source, <span class="keyword">type</span> Reranker } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+<span class="keyword">import</span> { <span class="keyword">type</span> Operation } <span class="keyword">from</span> <span class="string">'effection'</span>;
+<span class="keyword">import</span> { SearchCustomersTool, ReadCustomerTool } <span class="keyword">from</span> <span class="string">'./customer-tools'</span>;
+<span class="keyword">import</span> { db } <span class="keyword">from</span> <span class="string">'./app'</span>;
+
+<span class="comment">// Bridge your app's own data. Implementing Source slots your retrieval</span>
+<span class="comment">// into the same pipeline as built-in Web and Corpus &mdash; same reranker,</span>
+<span class="comment">// same focal-lens admission, same KV-resident results. No vector DB,</span>
+<span class="comment">// no embedding ETL, no parallel knowledge layer. Your customer table</span>
+<span class="comment">// becomes an agent-accessible source just by writing this class.</span>
+<span class="keyword">class</span> <span class="class">CustomerSource</span> <span class="keyword">extends</span> <span class="class">Source</span>&lt;{ reranker: <span class="class">Reranker</span> }&gt; {
+  <span class="keyword">readonly</span> name = <span class="string">'customers'</span>;
+  <span class="keyword">readonly</span> searchTool = <span class="keyword">new</span> <span class="class">SearchCustomersTool</span>(db);
+  <span class="keyword">readonly</span> readTool = <span class="keyword">new</span> <span class="class">ReadCustomerTool</span>(db);
+
+  <span class="keyword">get</span> <span class="function">tools</span>() { <span class="keyword">return</span> [<span class="keyword">this</span>.searchTool, <span class="keyword">this</span>.readTool]; }
+
+  *<span class="function">bind</span>(ctx: { reranker: <span class="class">Reranker</span> }): <span class="class">Operation</span>&lt;<span class="keyword">void</span>&gt; {
+    <span class="keyword">this</span>.searchTool.<span class="function">setReranker</span>(ctx.reranker);
+  }
+
+  <span class="function">getChunks</span>() { <span class="keyword">return</span> db.customers.<span class="function">iterate</span>(); }
+}
+
+<span class="comment">// Drop in alongside any other source &mdash; same wiring, same scorer.</span>
+<span class="keyword">const</span> customers = <span class="keyword">new</span> <span class="class">CustomerSource</span>();
+<span class="keyword">yield*</span> customers.<span class="function">bind</span>({ reranker });</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- prompts — system prompts are runtime functions of harness state -->
+            <div id="tab-prompts" class="code-content">
+              <div class="accordion">
+                <!-- topology-aware -->
+                <div class="accordion-item active">
+                  <button
+                    class="accordion-header"
+                    onclick="toggleAccordion(this)"
+                  >
+                    <span class="icon">[-]</span> topology-aware &mdash; agents
+                    are told who their siblings are
+                  </button>
+                  <div class="accordion-body">
+                    <pre><code><span class="keyword">import</span> { renderTemplate } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+
+<span class="comment">// The worker prompt is a function of pool topology. Each parallel</span>
+<span class="comment">// agent is told who its peers are and what they're covering — so</span>
+<span class="comment">// it stays focused on its own subject instead of drifting into</span>
+<span class="comment">// "I'll also cover the others" territory. The model sees its</span>
+<span class="comment">// peer list at the start of every turn; it can't forget the boundary.</span>
+<span class="keyword">const</span> WORKER = `
+You are investigating: &lt;%= it.subject %&gt;
+
+PROCESS: broad search &rarr; fetch top results &rarr; report with evidence.
+&lt;% if (it.siblings.length &gt; 0) { -%&gt;
+
+You are one of &lt;%= it.siblings.length + 1 %&gt; parallel agents. The others:
+&lt;%= it.siblings.map(function(s) { return '- ' + s }).join('\\n') %&gt;
+
+Stay focused on your own subject. The others handle the rest.
+&lt;% } -%&gt;
+
+You have &lt;%= it.maxTurns %&gt; tool calls. Today is &lt;%= it.date %&gt;.
+`;
+
+<span class="keyword">export const</span> workerPrompt = (data) => <span class="function">renderTemplate</span>(WORKER, data);
+
+<span class="comment">// Used in agentPool — each spawn passes its subject + the rest:</span>
+<span class="comment">//   systemPrompt: workerPrompt({ subject: 'X', siblings: ['Y','Z'], ... })</span></code></pre>
+                  </div>
+                </div>
+
+                <!-- config-aware -->
+                <div class="accordion-item">
+                  <button
+                    class="accordion-header"
+                    onclick="toggleAccordion(this)"
+                  >
+                    <span class="icon">[+]</span> config-aware &mdash; the spine
+                    restructures by installed apps
+                  </button>
+                  <div class="accordion-body">
+                    <pre><code><span class="keyword">import</span> { renderTemplate } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+
+<span class="comment">// The spine playbook block reshapes based on which apps the user</span>
+<span class="comment">// has wired in. /web with no /scan = web-only catalog. /scan only</span>
+<span class="comment">// = corpus-only. Both wired = both catalogs plus a cross-source</span>
+<span class="comment">// boundary rule that's only relevant when the model has access</span>
+<span class="comment">// to both palettes. The spine literally changes shape at runtime.</span>
+<span class="keyword">const</span> PLAYBOOKS = `
+# Playbooks
+&lt;% if (it.hasWeb) { -%&gt;
+
+## web_research
+Tools: web_search, fetch_page
+Use when: gathering evidence from the open web.
+&lt;% } -%&gt;
+&lt;% if (it.hasCorpus) { -%&gt;
+
+## corpus_research
+Tools: grep, read_file, search
+Use when: investigating a local document corpus.
+&lt;% } -%&gt;
+&lt;% if (it.hasWeb &amp;&amp; it.hasCorpus) { -%&gt;
+
+# Cross-source rule
+Apply only the playbook the agent system message names.
+Do not mix tools across playbooks.
+&lt;% } -%&gt;
+`;
+
+<span class="keyword">export const</span> playbooks = (data) => <span class="function">renderTemplate</span>(PLAYBOOKS, data);
+
+<span class="comment">// Used in withSpine — what's in the spine depends on what's installed:</span>
+<span class="comment">//   systemPrompt: playbooks({ hasWeb: apps.has('web'), hasCorpus: apps.has('corpus') })</span></code></pre>
+                  </div>
+                </div>
+
+                <!-- position-aware -->
+                <div class="accordion-item">
+                  <button
+                    class="accordion-header"
+                    onclick="toggleAccordion(this)"
+                  >
+                    <span class="icon">[+]</span> position-aware &mdash; chain
+                    step N gets a different prompt than step 0
+                  </button>
+                  <div class="accordion-body">
+                    <pre><code><span class="keyword">import</span> { renderTemplate } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+
+<span class="comment">// In a chain, the first task establishes vocabulary; later tasks</span>
+<span class="comment">// build on what prior tasks surfaced. Task 0 gets a clean prompt.</span>
+<span class="comment">// Tasks 1+ get an additional BUILD ON PRIOR RESEARCH preamble that</span>
+<span class="comment">// points the model at conversation history it inherits via the spine</span>
+<span class="comment">// — so it deepens or fills gaps instead of re-investigating.</span>
+<span class="keyword">const</span> WORKER = `
+You are investigating: &lt;%= it.subject %&gt;
+&lt;% if (it.taskIndex &gt; 0) { -%&gt;
+
+BUILD ON PRIOR RESEARCH:
+Prior tasks' findings are in your conversation history above —
+inherited via the spine, not re-prompted. Read them first.
+Identify named entities and open questions your task should
+follow up on. Do not re-investigate covered ground; deepen
+or fill gaps.
+&lt;% } -%&gt;
+
+You have &lt;%= it.maxTurns %&gt; tool calls.
+`;
+
+<span class="keyword">export const</span> workerPrompt = (data) => <span class="function">renderTemplate</span>(WORKER, data);
+
+<span class="comment">// Used in agentPool chain — the orchestrator passes the step index:</span>
+<span class="comment">//   chain(steps, (step, i) =&gt; ({</span>
+<span class="comment">//     task: { systemPrompt: workerPrompt({ subject: step, taskIndex: i, ... }) },</span>
+<span class="comment">//   }))</span></code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="features-grid">
           <div class="card">
             <h3 class="card-title">Structured Concurrency</h3>
@@ -512,10 +960,10 @@
               HDK agents share GPU state, not strings. A fork is metadata-only
               &mdash; O(1), zero tensor copy. Child branches reuse the
               parent&rsquo;s attention state rather than re-encoding lossy
-              summaries. The result is 4.4&times; fewer tokens processed than
-              a prompt-rebuilding approach, freeing compute for concurrent
-              agent execution and longer retrieval loops. Active pruning keeps
-              the context continuous.
+              summaries. The result is 4.4&times; fewer tokens processed than a
+              prompt-rebuilding approach, freeing compute for concurrent agent
+              execution and longer retrieval loops. Active pruning keeps the
+              context continuous.
             </p>
           </div>
 
@@ -528,8 +976,8 @@
               assembly primitive &mdash; one shape for files, SQL, the web, or
               user records. At every retrieval step a cross-encoder focal lens
               admits only verbatim top-K chunks scoring against the
-              agent&rsquo;s current hypothesis &mdash; bounded by token
-              budget, never summarized.
+              agent&rsquo;s current hypothesis &mdash; bounded by token budget,
+              never summarized.
             </p>
           </div>
         </div>
@@ -578,11 +1026,10 @@
             <h3 class="card-title">One install. Every store.</h3>
             <p class="card-desc">
               Cloud-API apps ship a UI through the store and keep the AI on
-              someone else&rsquo;s servers. With HDK, the whole product ships
-              in one binary &mdash; agents, retrieval, inference &mdash;
-              through every consumer channel: Mac App Store, Microsoft Store,
-              iOS App Store, Google Play. Users click install.
-              That&rsquo;s it.
+              someone else&rsquo;s servers. With HDK, the whole product ships in
+              one binary &mdash; agents, retrieval, inference &mdash; through
+              every consumer channel: Mac App Store, Microsoft Store, iOS App
+              Store, Google Play. Users click install. That&rsquo;s it.
             </p>
           </div>
 
@@ -590,11 +1037,11 @@
             <h3 class="card-title">Ships with your release.</h3>
             <p class="card-desc">
               The AI ships with your app&rsquo;s release &mdash; same version,
-              same binary, same QA. The agent you tested is the agent running
-              on every user&rsquo;s device: laptop, iPhone, behind a firewall,
-              on a plane. The model doesn&rsquo;t silently update;
-              deterministic replay reproduces production runs in dev with
-              identical reasoning, not just identical outputs.
+              same binary, same QA. The agent you tested is the agent running on
+              every user&rsquo;s device: laptop, iPhone, behind a firewall, on a
+              plane. The model doesn&rsquo;t silently update; deterministic
+              replay reproduces production runs in dev with identical reasoning,
+              not just identical outputs.
             </p>
           </div>
 
@@ -603,8 +1050,8 @@
             <p class="card-desc">
               Price it however you want: one-time, subscription, or free. Your
               unit economics are uncapped &mdash; no provider takes a margin
-              between you and your users. Your brand carries the experience,
-              not someone else&rsquo;s logo.
+              between you and your users. Your brand carries the experience, not
+              someone else&rsquo;s logo.
             </p>
           </div>
         </div>
@@ -626,7 +1073,7 @@
 <span class="keyword">auto</span> pool = hdk::<span class="function">agent_pool</span>({
   .orchestrate = hdk::<span class="function">parallel</span>(perceive, plan, monitor),
   .tools = { control.dispatch_command },
-  .terminal_tool = <span class="string">"dispatch"</span>,
+  .terminal_tool_name = <span class="string">"dispatch"</span>,
 });
 
 <span class="comment">// Each cycle: observe, orient, decide, act.</span>

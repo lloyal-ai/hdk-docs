@@ -10,7 +10,7 @@
   --btn-secondary-bg: transparent;
   --btn-secondary-border: #E5E7EB;
   --btn-secondary-hover: #F6F7F9;
-  --code-bg: #23272F;
+  --code-bg: #2D3748; /* softened from #23272F so code windows are less stark on white */
   --code-text: #F6F7F9;
 }
 
@@ -183,6 +183,7 @@ body {
 
 .hero-content {
   flex: 1;
+  max-width: 27rem;
 }
 
 .eyebrow {
@@ -263,12 +264,72 @@ body {
   background: var(--btn-secondary-hover);
 }
 
-/* Hero Code Window */
-.hero-code {
+/* Hero illustration pane — frosted-glass tile cluster on perspective floor.
+   The SVG carries its own gradients, filters, and animations under the
+   .hdk-hero-illustration class scope. This block only sizes the container
+   and lets the SVG scale fluidly. */
+.hero-visual {
   flex: 1;
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
   width: 100%;
+  min-height: 360px;
+  overflow: visible;
+}
+
+.hero-svg {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  transform: scale(1.32);
+  transform-origin: center center;
+}
+
+/* Light mode: soften the chip illustration so the dark metallic gradients
+   don't fight the white page. Compresses contrast + slight brightness bump. */
+body:not(.dark-mode) .hero-svg {
+  filter: contrast(0.78) brightness(1.18) saturate(0.92);
+}
+
+.hero-figcaption {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.6;
+  text-align: center;
+  margin: 0;
+}
+
+.hero-figcaption-link {
+  display: inline-block;
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.35);
+  padding-bottom: 2px;
+  transition: border-color 0.15s ease;
+}
+
+.hero-figcaption-link:hover {
+  border-bottom-color: var(--primary);
+}
+
+
+/* Full-width code window under "AI as a feature, not an API call."
+   Headline margin-bottom handles the vertical gap above; the
+   features-grid below gets its own margin-top. */
+.features-code {
+  display: flex;
+  width: 100%;
+}
+
+.features-code .code-window {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .code-window {
@@ -398,14 +459,23 @@ body {
 
 .features-headline {
   font-size: 3rem;
-  margin-bottom: 3rem;
+  margin-bottom: 1.25rem;
   max-width: 20ch;
+}
+
+.features-caption {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 48ch;
+  margin-bottom: 3rem;
 }
 
 .features-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
+  margin-top: 4rem;
 }
 
 /* Demo / try-it-now section */
@@ -677,9 +747,6 @@ body.dark-mode .mobile-shot {
     text-align: left;
     padding-top: 3rem;
   }
-  .hero-code {
-    justify-content: flex-start;
-  }
   .features {
     padding: 4rem 0;
   }
@@ -690,6 +757,7 @@ body.dark-mode .mobile-shot {
   .features-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
+    margin-top: 3rem;
   }
   .demo {
     grid-template-columns: minmax(0, 1fr);
