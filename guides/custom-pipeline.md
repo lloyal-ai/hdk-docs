@@ -103,7 +103,7 @@ To add a new playbook:
 3. Load and render it in `harness.ts`.
 4. The new playbook's nodes prepend `Apply the **<your_playbook>** playbook.` in their system prompt.
 
-The schemas for the new playbook's tools must already be in the toolkit at `withSpine({ toolsJson })` — only role-level playbook selection happens via prompt; tool registration happens in `main.ts` when sources are bound.
+The schemas for the new playbook's tools must already be in the `tools` array passed to `withSpine({ tools })` — only role-level playbook selection happens via prompt; tool registration happens in `main.ts` when sources are bound.
 
 ## Configure sources
 
@@ -137,7 +137,7 @@ import { dag } from "@lloyal-labs/lloyal-agents";
 const pool = yield* withSpine({ ... }, function* (querySpine) {
   return yield* agentPool({
     orchestrate: dag(nodes),       // ← stock orchestrator, no TUI hooks
-    tools, parent: querySpine, terminalTool: "report", maxTurns,
+    tools, parent: querySpine, terminalToolName: "report", maxTurns,
   });
 });
 ```

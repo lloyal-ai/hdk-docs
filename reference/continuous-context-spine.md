@@ -72,9 +72,9 @@ Cold path (no parent): spine at position 0, prefills full system prompt + tool s
 
 Warm path (parent provided): spine forks from parent, prefills separator only (~5 tokens). Saves ~300-500 tokens per recursive level.
 
-### pruneOnReport and mid-pool KV recovery
+### pruneOnReturn and mid-pool KV recovery
 
-When `pruneOnReport: true`, an agent's branch is pruned immediately after it calls `report()`. The agent's unique cells are freed while the pool is still running. Other agents gain headroom.
+When `pruneOnReturn: true`, an agent's branch is pruned immediately after it calls `report()`. The agent's unique cells are freed while the pool is still running. Other agents gain headroom.
 
 In recursive delegation: the inner pool's sub-agents report and prune individually. As each sub-agent finishes, its cells are freed for the remaining sub-agents. The inner pool shrinks as it progresses.
 
@@ -166,7 +166,7 @@ yield* withSpine({ parent: session.trunk }, function*(querySpine) {
     systemPrompt: playbooks, // shared-mode is fine: synth's branch
                                 // forks the inner spineRoot
     parent: querySpine,
-    tools, terminalTool: 'report',
+    tools, terminalToolName: 'report',
   });
 });
 
@@ -175,14 +175,14 @@ yield* withSpine(
   {
     parent: session.trunk,
     systemPrompt: playbooks,    // ← playbooks on harness root
-    toolsJson: toolkit.toolsJson,  // ← so spine extensions land here
+    tools,  // ← so spine extensions land here
   },
   function*(querySpine) {
     yield* agentPool({
       orchestrate: chain(tasks),
       // NO systemPrompt — non-shared mode, spineRoot = querySpine
       parent: querySpine,
-      tools, terminalTool: 'report',
+      tools, terminalToolName: 'report',
     });
     // synth forks querySpine and sees all chain extensions via attention
     return yield* useAgent({ parent: querySpine, /* ... */ });
@@ -190,7 +190,7 @@ yield* withSpine(
 );
 ```
 
-See [Playbooks](/reference/playbooks) for the playbooks convention and [Concurrency](/reference/concurrency#rootfmt--shared-mode) for the `SpineFmt` context that drives shared-mode behavior.
+See [Playbooks](/reference/playbooks) for the playbooks convention and [Concurrency](/reference/concurrency#spinefmt--shared-mode) for the `SpineFmt` context that drives shared-mode behavior.
 
 ### How they compose
 

@@ -66,16 +66,16 @@ Returns one of five actions:
 | Action | What the pool does |
 |--------|-------------------|
 | `tool_call` | Dispatch the tool in DISPATCH phase |
-| `report` | Extract result, mark agent idle, emit `agent:report` |
+| `report` | Extract result, mark agent idle, emit `agent:return` |
 | `nudge` | Inject an error message as a fake tool result |
 | `idle` | Kill the agent — transition to idle, emit `agent:done` |
-| `free_text_report` | Agent produced prose without a tool call — capture as result |
+| `free_text_return` | Agent produced prose without a tool call — capture as result |
 
 ### Decision flow in `DefaultAgentPolicy`
 
 ```
 parsed output has tool call?
-  ├─ No → free_text_report (if agent has done work) or idle
+  ├─ No → free_text_return (if agent has done work) or idle
   │
   ├─ Under pressure? (turns >= maxTurns OR headroom < 0 OR time softLimit)
   │   ├─ Non-terminal tool → nudge (stateless, every time)
@@ -199,13 +199,13 @@ The pool owns the extraction grammar (`{ "result": "..." }` JSON schema). The po
 
 **Recovery diagnostics are always visible.** After every non-skip recovery attempt, the pool emits one of:
 
-- `pool:recoveryReport` — JSON parse succeeded, findings captured.
+- `pool:recoveryReturn` — JSON parse succeeded, findings captured.
 - `pool:recoveryFailed` — parse failed; event carries `reason` (`parse_error`, `no_result_field`, `scope_error`) + `outputExcerpt` (first 200 chars of what was generated) so ops can diagnose without re-running.
 
 No silent recovery failures — every recovery prefill has a matching diagnostic.
 
 <Tip>
-Recovery runs inline on each pressure-kill using the `hardLimit` reserve as a parallel report budget. `pruneOnReport: true` (default) maximizes sibling headroom after each recovered or voluntary report.
+Recovery runs inline on each pressure-kill using the `hardLimit` reserve as a parallel report budget. `pruneOnReturn: true` (default) maximizes sibling headroom after each recovered or voluntary return.
 </Tip>
 
 ## Tool guards
@@ -257,7 +257,7 @@ import { DefaultAgentPolicy } from "@lloyal-labs/lloyal-agents";
 
 const policy = new DefaultAgentPolicy({
   // Tool guards
-  minToolCallsBeforeReport: 2,  // default 2
+  minToolCallsBeforeReturn: 2,  // default 2
   extraGuards: [],
 
   // Search strategy — two-axis explore/exploit (both must agree for explore)
@@ -280,7 +280,7 @@ const policy = new DefaultAgentPolicy({
 
 | Option | Default | Effect |
 |--------|---------|--------|
-| `minToolCallsBeforeReport` | 2 | Agents with fewer non-terminal tool calls get nudged when trying to report (unless under pressure) |
+| `minToolCallsBeforeReturn` | 2 | Agents with fewer non-terminal tool calls get nudged when trying to report (unless under pressure) |
 | `guards` | 3 default guards | Replaces the entire guard array when provided |
 | `extraGuards` | `[]` | Appended to default guards |
 | `shouldExplore.context` | 0.4 | Min fraction of KV capacity remaining for explore mode |
@@ -337,7 +337,7 @@ import type { ContextPressure } from "@lloyal-labs/lloyal-agents";
 
 class MyPolicy implements AgentPolicy {
   onProduced(agent, parsed, pressure, config): ProduceAction {
-    // Return: tool_call, report, nudge, idle, or free_text_report
+    // Return: tool_call, return, nudge, idle, or free_text_return
   }
 
   onSettleReject(agent, resultTokens, pressure, config): SettleAction {

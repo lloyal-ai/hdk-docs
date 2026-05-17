@@ -165,7 +165,7 @@ const delegate = new DelegateTool({
   systemPrompt: RESEARCH_PROMPT,
   poolOpts: {
     tools: [searchTool, grepTool, readFileTool, reportTool],
-    terminalTool: 'report',
+    terminalToolName: 'report',
     maxTurns: 20,
   },
 });
@@ -175,7 +175,7 @@ const pool = yield* agentPool({
     questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
   ),
   tools: [searchTool, grepTool, readFileTool, reportTool, delegate],
-  terminalTool: 'report',
+  terminalToolName: 'report',
   maxTurns: 20,
 });
 ```
@@ -197,7 +197,7 @@ const pool = yield* agentPool({
     new GrepTool(resources),
     reportTool,
   ],
-  terminalTool: 'report',
+  terminalToolName: 'report',
   maxTurns: 20,
 });
 ```
@@ -236,7 +236,7 @@ Register it as `terminalTool` in the pool options:
 const pool = yield* agentPool({
   orchestrate: parallel([{ content: query, systemPrompt: RESEARCH_PROMPT }]),
   tools: [searchTool, reportTool],
-  terminalTool: 'report',  // Matches ReportTool.name
+  terminalToolName: 'report',  // Matches ReportTool.name
 });
 ```
 
@@ -324,7 +324,7 @@ If your tool spawns sub-agents, pass `context.branch` as `parent` for [warm path
       args.questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
     ),
     tools: [searchTool, reportTool],
-    terminalTool: 'report',
+    terminalToolName: 'report',
     parent: context?.branch,
   });
 }

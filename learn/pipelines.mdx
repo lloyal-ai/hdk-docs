@@ -28,7 +28,7 @@ function* research(questions: string[]): Operation<string[]> {
       questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
     ),
     tools: [searchTool, fetchTool, reportTool],
-    terminalTool: "report",
+    terminalToolName: "report",
   });
   return pool.agents.map(a => a.result).filter(Boolean);
 }
@@ -39,7 +39,7 @@ function* synthesize(findings: string[], query: string): Operation<string> {
       { content: buildSynthPrompt(findings, query), systemPrompt: SYNTH_PROMPT },
     ]),
     tools: [...groundingTools, reportTool],
-    terminalTool: "report",
+    terminalToolName: "report",
   });
   return pool.agents[0]?.result || "";
 }
@@ -158,7 +158,7 @@ function* codeReview(diff: string): Operation<string> {
       })),
     ),
     tools: [grepTool, readFileTool, reportTool],
-    terminalTool: "report",
+    terminalToolName: "report",
   });
 
   // Stage 3: Synthesize per-file reviews into summary
@@ -184,7 +184,7 @@ function* supportTicket(ticket: string): Operation<{ response: string; confident
   const pool = yield* agentPool({
     orchestrate: parallel([{ content: ticket, systemPrompt: KB_PROMPT }]),
     tools: [kbSearchTool, kbReadTool, reportTool],
-    terminalTool: "report",
+    terminalToolName: "report",
   });
 
   // Stage 3: Confidence check — low perplexity = model is confident
@@ -263,7 +263,7 @@ const findings = yield* reduce(
         acc.questions.map(q => ({ content: q, systemPrompt: sourcePromptFor(source) })),
       ),
       tools: [...source.tools, reportTool],
-      terminalTool: "report",
+      terminalToolName: "report",
     });
 
     const sections = [...acc.sections, ...collectFindings(pool)];

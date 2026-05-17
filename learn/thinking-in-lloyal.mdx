@@ -44,7 +44,7 @@ function* research(query: string): Operation<string> {
       plan.questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
     ),
     tools: [searchTool, reportTool],
-    terminalTool: "report",
+    terminalToolName: "report",
   });
   return pool.agents.map(a => a.result);
 }

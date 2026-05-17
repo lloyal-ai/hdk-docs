@@ -77,7 +77,7 @@ const result = yield* agent({
   systemPrompt: "You are a research assistant.",
   task: "Find information about voice agent architectures.",
   tools: [searchTool, fetchTool, reportTool],
-  terminalTool: "report",
+  terminalToolName: "report",
 });
 
 console.log(result.result);
@@ -131,10 +131,10 @@ const pool = yield* agentPool({
     questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
   ),
   tools: [searchTool, fetchTool, reportTool],
-  terminalTool: "report",
+  terminalToolName: "report",
   maxTurns: 20,
   policy: researchPolicy,
-  pruneOnReport: true,
+  pruneOnReturn: true,
 });
 
 // pool.agents[0].result, pool.agents[1].result, ...
@@ -203,7 +203,7 @@ yield* agentPool({ orchestrate, tools, policy });
 
 Default 100 — almost always too generous. Research pools cap at 10. This is a per-agent turn cap, not pool-wide. A "turn" is one tool-call → result-settle round.
 
-#### "I have many concurrent agents — KV is filling up" — `pruneOnReport`
+#### "I have many concurrent agents — KV is filling up" — `pruneOnReturn`
 
 Set `true` for parallel pools where each agent's branch grows large and you want sibling agents to recover headroom mid-flight. The agent's branch is pruned immediately after the terminal tool fires. Spine extensions (which live on a separate root) are unaffected.
 
@@ -219,7 +219,7 @@ Default `false`. Set `true` for Qwen3 thinking-mode and similar; the chat templa
 
 #### RIG-specific knobs
 
-- **`scorer`** — entailment scorer (from a `Source.createScorer(query)`). Used by tools (search reranking, DelegateTool's echo gate) for semantic coherence checks. Propagates through `ToolContext` to all recursion depths.
+- **`scorer`** — entailment scorer (from a `Source.createScorer(query)`). The pool itself never reads it — it's threaded onto `ToolContext.scorer` for every dispatch and propagates immutably to all recursion depths. Only tools that admit retrieved text into the agent's KV context (web/corpus search, `DelegateTool`'s echo gate, source-backed bridges) consult it, gating what content earns a place in attention based on entailment with the original query. Tools that don't admit external content ignore it; if your harness has no rig-aware tools, the scorer is a no-op. See [Search Strategy](/reference/search-strategy).
 - **`echoThreshold`** (default 0.8) — cosine threshold for the delegation echo gate. Sub-questions whose similarity to the parent task exceeds this get rejected before sub-agents spawn — prevents degenerate recursion where each level re-asks the same question in different words.
 - **`checkAncestorEcho`** (default false) — whether echo detection walks the full ancestor chain or only the immediate parent.
 
@@ -242,7 +242,7 @@ const pool = yield* agentPool({
     })),
   ),
   tools: [searchTool, reportTool],
-  terminalTool: "report",
+  terminalToolName: "report",
 });
 ```
 
@@ -269,7 +269,7 @@ const delegate = new DelegateTool({
   systemPrompt: RESEARCH_PROMPT,
   poolOpts: {
     tools: [searchTool, fetchTool, reportTool],
-    terminalTool: "report",
+    terminalToolName: "report",
     scorer,
   },
 });
@@ -279,7 +279,7 @@ const pool = yield* agentPool({
     questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
   ),
   tools: [searchTool, fetchTool, reportTool, delegate],
-  terminalTool: "report",
+  terminalToolName: "report",
   scorer,   // propagated to all depths via ToolContext
 });
 ```
@@ -302,7 +302,7 @@ const researchPolicy = new DefaultAgentPolicy({
 
 Recovery prefills a nudge prompt into the agent's existing branch and forces an eager `{ result: string }` grammar. The agent's full conversation context is still in KV — the grammar forces structured extraction from it.
 
-### `pruneOnReport`
+### `pruneOnReturn`
 
 When `true`, agents are pruned immediately after reporting. This frees KV mid-pool, giving remaining agents more headroom. Without it, all branches stay alive until the pool completes.
 
@@ -330,7 +330,7 @@ const verifyBranch = agent.branch.forkSync();
 const sub = yield* useAgentPool({
   root,
   orchestrate: parallel(specs),
-  toolsJson: toolkit.toolsJson,
+  tools,
   tools: toolkit.toolMap,
   // ...
 });
@@ -372,7 +372,7 @@ Customize thresholds and guards via the constructor:
 import { DefaultAgentPolicy } from "@lloyal-labs/lloyal-agents";
 
 const policy = new DefaultAgentPolicy({
-  minToolCallsBeforeReport: 3,
+  minToolCallsBeforeReturn: 3,
   extraGuards: [myCustomGuard],
   exploreThreshold: 40,
   budget: { context: { softLimit: 2048 }, time: { softLimit: 600_000 } },
@@ -432,7 +432,7 @@ Pressure management is automatic. You don't check headroom in your tools. The po
 Every agent forks from a spine branch — that's the cheap part (`Branch.forkSync` is metadata-only). What gets prefilled onto the root, and inherited via KV prefix-share, depends on whether you opt into the playbooks convention:
 
 - **Default (no `systemPrompt` on `withSpine` / `agentPool`):** the spine holds only a turn separator. Each agent's `setupAgent` formats its own `[system + tools + user]` suffix and tokenizes that onto its branch. Tools are re-emitted per spawn — fine for small pools, wasteful for many siblings sharing the same tool palette.
-- **Shared-mode (`systemPrompt` + `toolsJson` on `withSpine`):** the root is prefilled with the chat header (system + embedded tool schemas) once. Every agent inherits those tokens via metadata-only KV share. Agent suffixes carry only the per-spec `[system, user]` (a thin role assignment + task), no tools. See [Playbooks](/reference/playbooks).
+- **Shared-mode (`systemPrompt` + `tools` on `withSpine`):** the root is prefilled with the chat header (system + embedded tool schemas) once. Every agent inherits those tokens via metadata-only KV share. Agent suffixes carry only the per-spec `[system, user]` (a thin role assignment + task), no tools. See [Playbooks](/reference/playbooks).
 
 ```
 Default:        3 agents x ~900 tokens of prompt+tools = 2,700 unique cells
@@ -474,7 +474,7 @@ The pool emits events through the `Events` channel for every lifecycle transitio
 - `agent:tool_call` — tool invoked
 - `agent:tool_result` — tool result received (with `contextAvailablePercent`)
 - `agent:tool_progress` — progressive tool feedback (e.g. reranker scoring)
-- `agent:report` — agent submitted result via terminal tool
+- `agent:return` — agent submitted result via terminal tool
 - `agent:done` — agent completed
 - `agent:tick` — batch decode committed (with KV pressure snapshot)
 
@@ -483,7 +483,7 @@ Subscribe in a spawned consumer to build TUI, logging, or monitoring:
 ```typescript
 yield* spawn(function*() {
   for (const ev of yield* each(events)) {
-    if (ev.type === "agent:report") {
+    if (ev.type === "agent:return") {
       console.log(`Agent ${ev.agentId}: ${ev.result}`);
     }
     yield* each.next();

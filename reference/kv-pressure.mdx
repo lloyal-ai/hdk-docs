@@ -129,7 +129,7 @@ Turn limit reached — report your findings now within 1100 words.
 Time limit reached — report your findings now within 1100 words.
 ```
 
-The token ceiling is `pressure.remaining - pressure.hardLimit`, converted to a conservative word count (`floor(tokens * 0.7 / 10) * 10`, minimum 10) before being embedded in the message. **Words, not tokens**, because tokenizers vary across models but words are universal in training data — and under-advertising keeps the model within native decode headroom even if its word-to-token ratio differs from the 0.7 assumption. If the agent overshoots, `pressure.critical` fires on the next tick and recovery takes over (consuming the `hardLimit` reserve). If the agent obeys, the voluntary report lands cleanly.
+The token ceiling is `pressure.remaining - pressure.hardLimit`, converted to a conservative word count (`floor(tokens * 0.7 / 10) * 10`, minimum 10) before being embedded in the message. **Words, not tokens**, because tokenizers vary across models but words are universal in training data — and under-advertising keeps the model within native decode headroom even if its word-to-token ratio differs from the 0.7 assumption. If the agent overshoots, `pressure.critical` fires on the next tick and recovery takes over (consuming the `hardLimit` reserve). If the agent obeys, the voluntary return lands cleanly.
 
 Terminal tools always pass through without nudging — an agent that wants to report should never be blocked.
 
@@ -165,7 +165,7 @@ The `headroom` variable is tracked locally because `cellsUsed` doesn't update un
 
 Tool results are the largest KV consumers. A `web_search` result can be 2,000+ tokens. A `fetch_page` result can be 6,000+. SETTLE deferral is the primary backpressure mechanism during active research.
 
-**Staggered exit in parallel orchestration.** In `parallel` orchestration, deferred items stay in `pendingSettled` across ticks. Headroom recovers when a sibling agent reports and its branch is pruned (`pruneOnReport: true` — default). Next tick, the deferred tool result against the fresh (larger) headroom fits. This is the staggered-exit pattern: one agent's big result is absorbed by another's completion.
+**Staggered exit in parallel orchestration.** In `parallel` orchestration, deferred items stay in `pendingSettled` across ticks. Headroom recovers when a sibling agent reports and its branch is pruned (`pruneOnReturn: true` — default). Next tick, the deferred tool result against the fresh (larger) headroom fits. This is the staggered-exit pattern: one agent's big result is absorbed by another's completion.
 
 **Spine growth in chain orchestration.** In `chain`, each task's findings accumulate on the spine via `ctx.extendSpine` (typically 500–1,500 tokens per task). The spine grows monotonically; later tasks have less starting headroom than earlier ones. Size `hardLimit` and `softLimit` to accommodate the final task's constraints, not the first's.
 
@@ -240,7 +240,7 @@ When `shouldExit` (or stall-break, or post-loop cleanup) kills an agent:
 5. **Set grammar**: `branch.setGrammar(reportGrammar)`. Eager mode — active from the first generated token.
 6. **Generate**: Single-agent produce/commit loop until stop token.
 7. **Parse + diagnostics**: Parse the JSON output. Emit `pool:recoveryProduce` with token count + output length, then one of:
-   - `pool:recoveryReport` — parse succeeded, findings captured via `reportResult(parsed.result, 'scratchpad')`.
+   - `pool:recoveryReturn` — parse succeeded, findings captured via `setResult(parsed.result, 'scratchpad')`.
    - `pool:recoveryFailed` — parse failed. Event carries `reason` (`parse_error`, `no_result_field`, `scope_error`) and `outputExcerpt` (first 200 chars) so ops can diagnose without re-running.
 8. **Prune**: Free the agent's branch. The freed KV cells give remaining agents headroom.
 
@@ -296,7 +296,7 @@ If all agents are idle without results after the tick loop ends (e.g., killed by
 
 ### Scope
 
-Recovery is per-pool. In chain/parallel/DAG pipelines, each pool runs its own recovery independently. For chain orchestration, recovered findings land on `agent.result` and the chain orchestrator's `extendSpine` call carries them to the spine — subsequent tasks inherit prior recovered findings via KV, same as voluntary reports.
+Recovery is per-pool. In chain/parallel/DAG pipelines, each pool runs its own recovery independently. For chain orchestration, recovered findings land on `agent.result` and the chain orchestrator's `extendSpine` call carries them to the spine — subsequent tasks inherit prior recovered findings via KV, same as voluntary returns.
 
 ## `cellsUsed` tracks live pressure
 
@@ -308,7 +308,7 @@ Recovery is per-pool. In chain/parallel/DAG pipelines, each pool runs its own re
 On `llama_decode` failure, `cellsUsed` is NOT rolled back (it remains at the post-increment value), but the branch's sampler, grammar, and metrics state IS rolled back via the native snapshot/restore mechanism.
 </Note>
 
-`remaining` and `percentAvailable` reflect actual KV usage and **recover** as branches are freed. When an agent reports and its branch is pruned (`pruneOnReport: true`), the freed cells are visible to the next `ContextPressure` snapshot. Remaining agents see increased headroom.
+`remaining` and `percentAvailable` reflect actual KV usage and **recover** as branches are freed. When an agent reports and its branch is pruned (`pruneOnReturn: true`), the freed cells are visible to the next `ContextPressure` snapshot. Remaining agents see increased headroom.
 
 This has a direct impact on explore/exploit mode: `percentAvailable` can rise above the `exploreThreshold` after branches are pruned, switching surviving agents back to explore mode. The flip is intentional — it produces higher quality trajectories by allowing discovery when headroom recovers.
 
@@ -341,7 +341,7 @@ yield* useAgentPool({
 For recursive pipelines, the outer pool's `softLimit` must reserve enough for the inner pool's KV consumption. An inner pool with 3 agents consuming ~500 tokens each of shared prefix + tool results needs ~1500 tokens of headroom. Set the outer pool's `softLimit` accordingly.
 </Tip>
 
-Monitor with `trace: true` — the `[SETTLE]` and `[PRODUCE]` pressure logs print `remaining`, `headroom`, `cellsUsed`, and `nCtx` at each tick. Recovery logs `pool:recoveryProduce` / `pool:recoveryReport` / `pool:recoveryFailed`:
+Monitor with `trace: true` — the `[SETTLE]` and `[PRODUCE]` pressure logs print `remaining`, `headroom`, `cellsUsed`, and `nCtx` at each tick. Recovery logs `pool:recoveryProduce` / `pool:recoveryReturn` / `pool:recoveryFailed`:
 
 ```
 [PRODUCE] SOFT_LIMIT remaining=2200 headroom=-104 cellsUsed=14184 nCtx=16384
@@ -349,7 +349,7 @@ Monitor with `trace: true` — the `[SETTLE]` and `[PRODUCE]` pressure logs prin
 [SETTLE] NUDGE read_file: 33tok (replacing 1059)
 [RECOVERY] prefilling agent=3, 143 tokens, remaining=1024
 pool:recoveryProduce agent=3 tokenCount=218 outputLength=1204
-pool:recoveryReport  agent=3 resultLength=1180
+pool:recoveryReturn  agent=3 resultLength=1180
 ```
 
 ## Pressure decision flow
@@ -392,7 +392,7 @@ pool:recoveryReport  agent=3 resultLength=1180
     If deferred items have no active siblings to free KV, policy's `onSettleReject` is consulted. Nudge → replace result with compact payload. Idle → drop with `pressure_settle_reject`. No hook → `settle_stall_break`.
   </Step>
   <Step title="Recovery + diagnostics">
-    Every drop path runs `recoverInline` (unless `onRecovery` returns skip). Diagnostic events: `pool:recoveryProduce`, then exactly one of `pool:recoveryReport` or `pool:recoveryFailed`.
+    Every drop path runs `recoverInline` (unless `onRecovery` returns skip). Diagnostic events: `pool:recoveryProduce`, then exactly one of `pool:recoveryReturn` or `pool:recoveryFailed`.
   </Step>
 </Steps>
 
@@ -475,4 +475,4 @@ The `pool:agentDrop` trace event records the specific enforcement point:
 | `maxTurns` | PRODUCE (policy `_handleOverBudget`) | Turn count ≥ maxTurns, no terminal tool |
 | `tool_error` | DISPATCH | Tool's `execute()` threw |
 
-Every drop reason (except `pressure_init`, which is pre-spawn) is followed by a recovery attempt whose outcome is visible in `pool:recoveryReport` or `pool:recoveryFailed` — no silent data loss.
+Every drop reason (except `pressure_init`, which is pre-spawn) is followed by a recovery attempt whose outcome is visible in `pool:recoveryReturn` or `pool:recoveryFailed` — no silent data loss.

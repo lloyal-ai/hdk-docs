@@ -105,7 +105,7 @@ const delegate = new DelegateTool({
   name: "research",
   extractTasks: (a) => a.questions as string[],
   systemPrompt: CORPUS_RESEARCH_PROMPT,
-  poolOpts: { tools: [...source.tools, reportTool], terminalTool: "report" },
+  poolOpts: { tools: [...source.tools, reportTool], terminalToolName: "report" },
 });
 
 const pool = yield* agentPool({
@@ -114,7 +114,7 @@ const pool = yield* agentPool({
     systemPrompt: CORPUS_RESEARCH_PROMPT,
   }]),
   tools: [...source.tools, reportTool, delegate],
-  terminalTool: "report",
+  terminalToolName: "report",
   policy: new DefaultAgentPolicy({ recovery: { prompt: REPORT } }),
 });
 ```

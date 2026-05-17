@@ -60,7 +60,7 @@ Each stage runs inside the [tick loop](/reference/concurrency). Stages share two
         name: 'web_research',
         extractTasks: (a) => a.questions as string[],
         systemPrompt: RESEARCH_PROMPT,
-        poolOpts: { tools: baseTools, terminalTool: 'report', scorer },
+        poolOpts: { tools: baseTools, terminalToolName: 'report', scorer },
       });
 
       const pool = yield* agentPool({
@@ -68,9 +68,9 @@ Each stage runs inside the [tick loop](/reference/concurrency). Stages share two
           activeQuestions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
         ),
         tools: [...baseTools, delegate],
-        terminalTool: 'report',
+        terminalToolName: 'report',
         policy: researchPolicy,
-        pruneOnReport: true,
+        pruneOnReturn: true,
         scorer,
         echoThreshold: 0.8,
       });

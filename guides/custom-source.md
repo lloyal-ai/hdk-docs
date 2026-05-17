@@ -153,7 +153,7 @@ const delegate = new DelegateTool({
   description: 'Delegate sub-questions to parallel agents.',
   extractTasks: (args) => args.questions as string[],
   systemPrompt: SYSTEM,
-  poolOpts: { tools: [...source.tools, reportTool], terminalTool: 'report' },
+  poolOpts: { tools: [...source.tools, reportTool], terminalToolName: 'report' },
 });
 
 const pool = yield* agentPool({
@@ -161,10 +161,10 @@ const pool = yield* agentPool({
     questions.map(q => ({ content: q, systemPrompt: SYSTEM })),
   ),
   tools: [...source.tools, reportTool, delegate],
-  terminalTool: 'report',
+  terminalToolName: 'report',
   maxTurns: 10,
   policy: new DefaultAgentPolicy({ recovery: { prompt: REPORT } }),
-  pruneOnReport: true,
+  pruneOnReturn: true,
 });
 ```
 

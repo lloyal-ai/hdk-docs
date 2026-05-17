@@ -94,20 +94,20 @@ Each `userContent` field is the curated turn that gets prefilled onto the spine 
 The playbooks (system prompt + tool schemas) is amortized at the harness's `querySpine` once. All six agents fork from there and inherit it via prefix-share:
 
 ```typescript
-const toolkit = createToolkit(tools);
+
 const pool = yield* withSpine(
   {
     parent: session.trunk ?? undefined,
     systemPrompt: PLAYBOOKS,             // ← playbooks at root
-    toolsJson: toolkit.toolsJson,            // ← tool schemas at root
+    tools,            // ← tool schemas at root
   },
   function* (querySpine) {
     return yield* agentPool({
       orchestrate: dagWithEvents(nodes, emit),
       tools, parent: querySpine,
-      terminalTool: "report",
+      terminalToolName: "report",
       maxTurns,
-      pruneOnReport: true,
+      pruneOnReturn: true,
       scorer: primaryScorer,
       trace,
     });

@@ -115,7 +115,7 @@ yield* agent({
   systemPrompt: "You are a research assistant.",
   task: "Research this topic.",
   tools: [searchTool, reportTool],
-  terminalTool: "report", // ← pool intercepts this tool
+  terminalToolName: "report", // ← pool intercepts this tool
 });
 ```
 
@@ -139,7 +139,7 @@ const delegate = new DelegateTool({
   systemPrompt: RESEARCH_PROMPT,
   poolOpts: {
     tools: [searchTool, fetchTool, reportTool],
-    terminalTool: "report",
+    terminalToolName: "report",
   },
 });
 
@@ -148,7 +148,7 @@ const pool = yield* agentPool({
     questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
   ),
   tools: [searchTool, fetchTool, reportTool, delegate],
-  terminalTool: "report",
+  terminalToolName: "report",
 });
 ```
 
@@ -168,7 +168,7 @@ const result = yield* agent({
     new GrepTool(resources),
     new ReportTool(),
   ],
-  terminalTool: "report",
+  terminalToolName: "report",
 });
 ```
 

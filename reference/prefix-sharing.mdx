@@ -155,9 +155,9 @@ When `withSpine` receives a `parent` branch option, it forks from the parent ins
 
 ```typescript
 yield* withSpine(
-  { systemPrompt, tools: toolsJson, parent: context.branch },
-  function*(root) {
-    // Inner agents fork from root, which forked from the calling agent.
+  { systemPrompt, tools, parent: context.branch },
+  function*(spine) {
+    // Inner agents fork from spine, which forked from the calling agent.
     // They inherit the calling agent's full KV state:
     // system prompt + tool schemas + all prior tool calls + all tool results.
   },

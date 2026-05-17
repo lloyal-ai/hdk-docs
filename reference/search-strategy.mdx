@@ -55,7 +55,7 @@ const pool = yield* agentPool({
     questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
   ),
   tools: [...source.tools, reportTool],
-  terminalTool: 'report',
+  terminalToolName: 'report',
   scorer,   // propagated to all depths via ToolContext
 });
 ```
@@ -63,6 +63,14 @@ const pool = yield* agentPool({
 `createScorer` captures the original query and the reranker in a closure. Set `this._reranker` during `source.bind()` — if no reranker is available, `createScorer` returns `NULL_SCORER` (all scores 1.0, all proceed).
 
 The scorer propagates through the entire recursion tree. Every `DelegateTool` reads `context.scorer` and passes it to the inner `agentPool()` call. The same immutable scorer reaches every depth — inner agents score against the same original query as outer agents.
+
+### `agentPool` is plumbing, not policy
+
+The pool's tick loop never reads the scorer. It stuffs `opts.scorer` onto `ToolContext.scorer` (agent-pool.ts:828) before each `tool.execute()` and otherwise ignores it — dispatch order, spawn decisions, recovery, and prune logic are all scorer-agnostic. With `scorer: undefined`, `NULL_SCORER`, or a reranker-backed scorer, the pool itself behaves identically.
+
+The scoring is **tool-resident**, and specifically a property of tools that admit retrieved text into an agent's KV context (web search, corpus search, `DelegateTool`'s echo gate, source-backed bridges). Those tools read `context.scorer` to decide what content earns a place in the agent's attention based on entailment against the original query — the gate that turns naive retrieval into RIG.
+
+Tools that don't admit external content into context (pure computation, terminal `report`, anything that returns a fixed-size literal) ignore the scorer. If your harness uses only such tools, `agentPool({ scorer })` is a no-op — pass it anyway if any nested `DelegateTool` may later spawn rig-aware tools, since it propagates immutably through depth.
 
 ## Steering boundaries
 
