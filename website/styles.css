@@ -41,12 +41,17 @@ body.dark-mode .logo-icon {
   padding: 0;
 }
 
+html, body {
+  overflow-x: clip;
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: var(--bg-color);
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 .container {
@@ -97,6 +102,7 @@ body {
 .nav-links a:hover {
   color: var(--text-primary);
 }
+
 
 .theme-btn {
   background: none;
@@ -359,7 +365,7 @@ body:not(.dark-mode) .hero-svg {
   border: none;
   color: #8B949E;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   padding: 0.85rem 1rem;
   cursor: pointer;
   border-bottom: 2px solid transparent;
@@ -387,7 +393,6 @@ body:not(.dark-mode) .hero-svg {
 /* Accordion within Code Window */
 .accordion {
   border-top: 1px solid rgba(255,255,255,0.05);
-  min-width: max-content; /* Ensures accordion headers stretch with the code block */
 }
 
 .accordion-item {
@@ -397,12 +402,14 @@ body:not(.dark-mode) .hero-svg {
 .accordion-header {
   width: 100%;
   text-align: left;
-  background: transparent;
+  background: rgba(0,0,0,0.35);
   border: none;
   padding: 1rem 1.5rem;
-  color: var(--code-text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
+  color: #fff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -415,7 +422,8 @@ body:not(.dark-mode) .hero-svg {
 
 .accordion-header .icon {
   margin-right: 0.75rem;
-  color: #8B949E;
+  color: var(--primary);
+  font-family: 'JetBrains Mono', monospace;
   font-weight: bold;
 }
 
@@ -428,7 +436,7 @@ body:not(.dark-mode) .hero-svg {
 }
 
 .accordion-item.active .accordion-header {
-  background: rgba(0,0,0,0.2);
+  background: rgba(0,0,0,0.35);
 }
 
 .accordion-body pre {
@@ -438,7 +446,7 @@ body:not(.dark-mode) .hero-svg {
 .code-window pre {
   padding: 1.5rem;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   line-height: 1.6;
   color: var(--code-text);
 }
@@ -746,6 +754,13 @@ body.dark-mode .mobile-shot {
     flex-direction: column;
     text-align: left;
     padding-top: 3rem;
+  }
+  .hero-visual {
+    overflow: hidden;
+    max-width: 100%;
+  }
+  .hero-svg {
+    transform: scale(1.2);
   }
   .features {
     padding: 4rem 0;
