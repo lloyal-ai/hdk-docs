@@ -1181,10 +1181,13 @@ You have &lt;%= it.maxTurns %&gt; tool calls.
       });
 
       function switchTab(tabId) {
-        document
+        // Scope the deactivation to the features-code group so we don't strip
+        // .active off unrelated code-windows elsewhere on the page (e.g. OEM).
+        const group = event.currentTarget.closest(".code-window") || document;
+        group
           .querySelectorAll(".tab-btn")
           .forEach((btn) => btn.classList.remove("active"));
-        document
+        group
           .querySelectorAll(".code-content")
           .forEach((content) => content.classList.remove("active"));
 
