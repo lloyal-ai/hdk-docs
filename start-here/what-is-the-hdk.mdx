@@ -1,0 +1,314 @@
+---
+title: Harness Development Kit
+description: Drop-in agentic AI for consumer hardware — Apps that run, harnesses that ship.
+---
+
+Most agent stacks are infrastructure: an inference server, an agent runtime, a vector store, glue code — wired together over HTTP and shipped as a Docker compose. lloyal HDK collapses that into a single Node process you can ship: embedded in a desktop app, bundled in a CLI, deployed to a serverless function, anywhere a Node runtime runs.
+
+The unit you build splits in two: a **harness** is the orchestrated system of agents you ship to users — your UI, your pipeline, your persistence. An **App** is a packaged capability — a `Source` plus `Tool`s plus a prompted skill — that a harness loads at runtime. Same author can wear both hats on day one; the protocol scales when third parties start shipping Apps for harnesses they didn't write.
+
+<CardGroup cols={3}>
+  <Card title="Zero-dependency drop-in" icon="bolt" href="#zero-dependency-drop-in">
+    Single process. Native binding. Ships anywhere a Node runtime runs — desktop
+    apps, CLIs, edge runtimes.
+  </Card>
+  <Card title="Continuous Context" icon="memory" href="#continuous-context">
+    Agents share KV state, not strings. Breaks the "runs locally but is a toy"
+    barrier.
+  </Card>
+  <Card title="Retrieval Interleaved Generation" icon="magnifying-glass" href="#retrieval-interleaved-generation">
+    Retrieval inside the generation loop. Cross-encoder reranking, entailment
+    scoring, attention-aware refinement.
+  </Card>
+</CardGroup>
+
+## Zero-dependency drop-in
+
+Drop in intelligence. The whole stack — inference, agent loop, tool dispatch, retrieval, multi-turn state — runs inside the Node process you started. No inference server to launch and keep alive. No Docker container. No HTTP boundary between your agent code and the model. `npm i`, point at a GGUF on disk, and the kit is wired up.
+
+The honest comparison is full stack against full stack:
+
+| Capability         | lloyal HDK                              | Typical agentic stack                            |
+| ------------------ | --------------------------------------- | ------------------------------------------------ |
+| Inference          | embedded native binding                 | ollama / LM Studio + HTTP                        |
+| Agent loop         | built-in                                | langchain / langgraph                            |
+| Tool dispatch      | `Tool<TArgs>` interface (+ `protected`) | langchain Tools + glue                           |
+| Retrieval          | `Source` + native cross-encoder reranker | langchain RAG + vector DB + embedder            |
+| Multi-agent shapes | `parallel` / `chain` / `fanout` / `dag` | langgraph / autogen / crewai                     |
+| Multi-turn state   | `Session.trunk` (KV-backed)             | conversation-memory class + persistence          |
+| Capability packaging | **Apps** (`defineApp`: Source + Tools + skill) | per-server MCP / bespoke integrations    |
+| Process model      | **one Node process**                    | **inference server + agent process + DB**        |
+| Distribution unit  | **npm package, ships with your app**    | **Docker compose / k8s for the back-end pieces** |
+
+The asymmetry is the point. Each row of the right column is a service to install, configure, version, secure, and orchestrate. Each row of the left column is an import.
+
+<Note>
+  **Dependency footprint, receipt.** `@lloyal-labs/sdk` ships with zero
+  production dependencies. `@lloyal-labs/lloyal-agents` adds
+  [`effection`](https://frontside.com/effection/) (structured concurrency) and
+  [`eta`](https://eta.js.org/) (templates). `@lloyal-labs/rig` adds
+  `@mozilla/readability` and `linkedom` for web scraping. The
+  `@lloyal-labs/lloyal.node` native binding is the only piece that touches the
+  GPU.
+</Note>
+
+### Built to embed
+
+Single-process isn't a developer-convenience claim — it's a **shipping** claim, and it has two layers.
+
+The HDK itself is a Node program. It goes wherever a Node runtime goes:
+
+- **Inside Electron** — desktop apps with Node embedded. The harness ships as part of the app bundle; end users install one binary.
+- **Inside a CLI** — `npm install -g your-cli`. Users get the agent layer with the rest of the install. No external services to stand up.
+- **Inside an existing Node service** — drop a worker into a backend you already run. No separate inference deployment, no extra HTTP hop in the request path.
+- **On edge / serverless runtimes** — anywhere a Node runtime executes. The whole agent loop runs inline.
+
+Underneath, the inference runtime, KV machinery, sampler, and GPU integration are powered by **[liblloyal](https://lloyal-ai.github.io/liblloyal/)** — the C++ core. The Node binding (`@lloyal-labs/lloyal.node`) is one front-end on top of liblloyal; the core itself runs anywhere a C++ toolchain plus a compute backend exist:
+
+- **Desktop OSes** — macOS (Apple Silicon + Intel, Metal), Linux (x86_64 + ARM via CUDA / Vulkan / ROCm / CPU), Windows (CUDA / Vulkan / CPU). Already shipped via the Node binding.
+- **Mobile** — iOS (Swift / Obj-C ↔ C++ interop, Metal acceleration), Android (NDK, Vulkan / OpenCL acceleration). Consumer phones have the RAM and GPU for 1–4B-class models.
+- **Browser via WebAssembly** — Emscripten compiles liblloyal to WASM; WebGPU exposes accelerator access. Constrained by per-tab memory and the WebGPU rollout.
+- **Game engines** — Unreal (native C++), Unity (native plugin), Godot (GDExtension), proprietary engines. Engine ↔ liblloyal becomes a function call.
+- **Other language ecosystems via FFI** — Python (`pybind11`), Rust (FFI), Go (`cgo`), Swift (native interop), Kotlin/JNI, .NET (P/Invoke).
+- **Native server processes** — pure C++ services, daemons, edge containers without a JavaScript runtime in the picture.
+
+Today, only the Node binding ships as part of the HDK. Other bindings have the same shape as `lloyal.node` adapted for the host language; some are in the pipeline, others are community territory. The architecture isn't bounded by Node — today's HDK distribution surface is.
+
+The typical multi-process stack can't go any of those places without dragging its inference server, vector DB, and orchestration along. At that point you're shipping a distributed system, not a feature.
+
+## Continuous Context
+
+<Frame>
+  <img
+    src="/assets/continuous-context-dark.svg"
+    alt="Traditional agents rebuild context each step. Continuous Context Agents persist KV state — tool results prefilled into attention, branches forked at O(1) cost."
+  />
+</Frame>
+
+Most agent frameworks pass strings between stages. A transcript of what one agent generated becomes a prompt for the next; every step re-encodes the full context from text. The model's prior attention state — the specific weighted relationships it found between tokens — is discarded and rebuilt each call.
+
+**lloyal agents share live attention state.** When stage 2 starts decoding, stage 1's findings are already in its KV at their original positions; its first generated token attends over them directly. No re-tokenization. No re-encoding. No "summarize, paste, re-prompt" information bottleneck.
+
+<Note>
+  When the model computes Q·Kᵀ for its next token, it attends over all K
+  vectors at positions 0..N — including those written during prior tool result
+  prefills. A fork is metadata-only: O(1) cost, zero tensor copy. Child
+  branches share the same physical key-value pairs at inherited positions —
+  not a re-encoding, the same vectors.
+</Note>
+
+**What this changes about agent behavior.** Watching real pipelines, agents form and test hypotheses through iterative retrieval — narrowing, discovering, hypothesizing, verifying — emergent from the attention mechanics, not from prompted instruction. Later searches reference concepts **absent from the original question**, discovered during earlier reads and still physically present in the KV cache.
+
+At its core, **an agent is simply a [liblloyal](https://lloyal-ai.github.io/liblloyal/) branch with intent** — a forked KV slot, a system prompt, a tool set, a terminal condition. Pools are sets of agents on a shared spine; harnesses orchestrate pools. The whole stack is branches all the way down.
+
+### Why this breaks the "runs locally but is a toy" barrier
+
+Re-encoding ~900 tokens of system prompt and tool schemas per agent step is prohibitive on consumer hardware. Most local-LLM agent demos fall off a performance cliff at the second hop: three agents at 16K context each, each re-decoding the prefix, hits the wall in seconds.
+
+With Continuous Context, that prefix is decoded once and inherited by every fork. Measured across a real pipeline: **4.4× fewer tokens processed** than a prompt-rebuilding approach. Same harness code runs on a 32K cloud GPU or a 16K laptop — depth adapts to the hardware.
+
+<CardGroup cols={3}>
+  <Card title="Apps as the catalog" icon="puzzle-piece" href="/build-an-app/what-is-an-app">
+    **The harness's enabled Apps are decoded into the spine once.** Each App's
+    protocol (name + `useWhen` + tools) lands in the shared prefix; every
+    forked agent inherits the whole catalog at O(1).
+  </Card>
+  <Card title="Recursive delegation" icon="code-branch" href="/build-a-harness/agents-and-pools">
+    **Depth adds context, not cost.** Sub-agents fork from the calling agent's
+    branch and inherit its system prompt, tool schemas, prior searches, and
+    prior reasoning at zero marginal cost.
+  </Card>
+  <Card title="Multi-turn sessions" icon="clock-rotate-left" href="/build-a-harness/sessions">
+    **Tomorrow's pool reads yesterday's conversation through attention.**
+    `Session.trunk` is a long-lived KV branch; `commitTurn` extends it, and
+    the next pool forks from the trunk — no prompt-history injection.
+  </Card>
+</CardGroup>
+
+<Tip>
+  Full mechanics with traces from real runs in [Continuous Context Spine](/under-the-hood/continuous-context-spine).
+</Tip>
+
+## Retrieval Interleaved Generation
+
+Classical RAG is a *pre-processing* step: embed the query, run a similarity search, concatenate top chunks into the prompt, generate. One shot, static context, no feedback loop between what the model reads and what it asks for next.
+
+**RIG inverts this.** Retrieval happens *inside* the generation loop. The agent emits a tool call → a `Source` returns chunks → a cross-encoder reranker scores them against the original query → results are prefilled into the agent's KV at the call position → the next decoded token attends over them and decides what to ask for next. Hypothesis-driven, not bag-of-keywords.
+
+<Tabs>
+  <Tab title="Classical RAG">
+    <Steps>
+      <Step title="Embed query">
+        Query passed through an embedding model → dense vector.
+      </Step>
+      <Step title="ANN search">
+        Vector similarity search over the index → top-K chunks by cosine distance.
+      </Step>
+      <Step title="Concatenate">
+        Build prompt: `system + retrieved_chunks + query`.
+      </Step>
+      <Step title="Generate">
+        One inference call. Done.
+      </Step>
+    </Steps>
+    Static context. The model never re-shapes retrieval based on what it learned.
+  </Tab>
+  <Tab title="Retrieval Interleaved Generation">
+    <Steps>
+      <Step title="Agent generates">
+        PRODUCE phase samples a tool call (`web_search`, `fetch_page`, `search`, custom).
+      </Step>
+      <Step title="Source returns chunks">
+        The App's `Source` queries the backend (web, corpus, vector store, database).
+      </Step>
+      <Step title="Reranker scores">
+        Cross-encoder scores chunks against the original query as a **logit-diff** (`logit(yes) − logit(no)`). Positive ⇒ relevant; the default floor is `0`.
+      </Step>
+      <Step title="Prefill at call position">
+        SETTLE phase prefills the result into the agent's KV at the position where the call was made.
+      </Step>
+      <Step title="Attend and refine">
+        Next PRODUCE attends over the prefilled result. The agent's next query is shaped by what it just read.
+      </Step>
+    </Steps>
+    Dynamic. Each call is shaped by everything that came before in attention — including chunks the model has already cross-encoded against the original intent.
+  </Tab>
+</Tabs>
+
+The kit ships:
+
+<AccordionGroup>
+  <Accordion title="Apps as the unit of capability" icon="puzzle-piece">
+    A `Source` + a `Tool`-map + a `skill.eta` + an `app.json` manifest, wired
+    through `defineApp`. The two reference apps that ship with the HDK are
+    **`web_research`** (Tavily / keyless web search + page fetch) and
+    **`corpus_research`** (filesystem-backed local docs with reranker-scored
+    chunk search). Both are full HDK 3.0 Apps — read them as worked examples.
+    Custom Apps for vector stores, databases, JIRA, email, anything — same
+    protocol, same registry, same agent surface.
+  </Accordion>
+  <Accordion title="Cross-encoder reranker — four scoring roles" icon="layer-group">
+    The reranker (Qwen3-Reranker-0.6B by default, auto-downloaded by the reference harness) drives an `EntailmentScorer` with four distinct methods:
+
+    - **`scoreEntailmentBatch`** — texts vs. the original query. Boundary entailment for retrieved content.
+    - **`scoreRelevanceBatch`** — dual-score `min(toolQueryScore, originalQueryScore)`. Used in exploit mode when KV pressure tightens focus.
+    - **`scoreSimilarityBatch`** — texts vs. an arbitrary reference. Powers echo detection at delegation boundaries (the agent's own task as reference).
+    - **`shouldProceed`** — floor gate. Scores are **logit-diffs** (`logit(yes) − logit(no)`); the default floor is `0` (model leans toward "yes").
+
+    One model, four roles. The reranker is RIG infrastructure, not a fetch optimization.
+  </Accordion>
+  <Accordion title="Dynamic prompt composition" icon="code">
+    Eta templates parameterize on harness state. Each App's `skill.eta` adapts on `it.agentCount > 1` (sibling-task awareness for parallel mode) and `it.taskIndex > 0` (build-on-prior-research for chain mode). Synthesis prompts adapt on convergence state and source presence. Prompts are functions of the harness's current situation, not fixed strings.
+  </Accordion>
+  <Accordion title="Pressure-aware tool gating" icon="gauge">
+    `DefaultAgentPolicy` denies non-terminal tool calls when KV is over budget. The terminal tool (typically a harness-defined `report`) always passes — the agent can finish even under pressure. The explore/exploit gate flips the reranker's chunk-filtering mode when context tightens. Retrieval is bounded by the available compute, not by guesswork.
+  </Accordion>
+  <Accordion title="Protected tools + authGuard" icon="shield-halved">
+    Tools carry a `protected` flag. Read tools (search, grep, fetch_page) are
+    open; **protected** tools (writes, sensitive actions) are gated at
+    DISPATCH by `authGuard` against a per-session grant store. App
+    metadata that lands in the shared prompt is grammar-sanitized at
+    `defineApp` time so an app-supplied string can't break out of the
+    catalog block.
+  </Accordion>
+  <Accordion title="Continuous Context across delegation" icon="diagram-project">
+    Sub-agents fork from a calling agent's branch and inherit its full KV state — system prompt, tool schemas, prior search results, prior page reads — at zero marginal cost. The deeper an investigation goes, the richer the attention state at depth.
+  </Accordion>
+</AccordionGroup>
+
+## What you can build
+
+<CardGroup cols={3}>
+  <Card title="Embed in a desktop app" icon="window-maximize">
+    Drop a harness into an Electron / Tauri / Neutralino app. Agentic features
+    ship inside the app bundle — no daemon for end users to install, no API keys
+    to manage on their side.
+  </Card>
+  <Card title="Inside a CLI" icon="terminal">
+    Ship intelligent commands as part of an `npm install -g` package. Users get
+    the agent layer with the rest of the binary; no external services required
+    to run.
+  </Card>
+  <Card title="Background worker in a service" icon="server">
+    Drop a research or code agent into an existing Node backend. No separate
+    inference deployment, no extra HTTP hop, no Dockerfile to maintain.
+  </Card>
+  <Card title="Research pipelines" icon="magnifying-glass" href="/build-a-harness/reference-architecture">
+    Plan → research (web, corpus, custom Apps) → bridge → synthesize → verify.
+  </Card>
+  <Card title="Continuous assistants" icon="robot" href="/build-a-harness/sessions">
+    Personal helpers, coding pairs, tutors — pick up where they left off
+    across sessions, with prior conversation live in attention rather than
+    re-injected as prompt history.
+  </Card>
+  <Card title="Cron actors" icon="clock" href="/start-here/quick-start">
+    Daily digests, scheduled monitors, periodic syntheses. Stateless per-run or
+    trunk-persistent across runs.
+  </Card>
+</CardGroup>
+
+## The stack
+
+```
+Your application
+    ↓
+Apps (defineApp + manifest)         ← what third parties build (corpus, web, custom)
+    ↓
+@lloyal-labs/rig                     Registry, retrieval primitives, harness building blocks
+    ↓
+@lloyal-labs/lloyal-agents           Continuous Context agent orchestration, authGuard
+    ↓
+@lloyal-labs/sdk                     Branches, sessions, KV cache, reranker
+    ↓
+@lloyal-labs/lloyal.node             Node-native binding (JS ↔ C++)
+    ↓
+liblloyal                            C++ core — KV machinery, sampler, GPU integration
+                                     ─ goes wherever C++ runs ─
+```
+
+Four npm packages over a portable C++ core, with **Apps** as the new top-of-stack capability layer. One install. The whole stack ships with your app.
+
+- **[Apps](/build-an-app/what-is-an-app)** — Source + Tools + skill + manifest, wired with `defineApp`. The unit a third party authors and a harness loads.
+- **[Tools](/build-an-app/tools)** — anything an agent can call: databases, APIs, filesystems, web search, services. You define the interface; the model dispatches uniformly. `protected: true` puts a tool behind `authGuard`.
+- **[Agent Pools](/build-a-harness/agents-and-pools)** — parallel agents on shared KV. Orchestrators (`parallel` / `chain` / `fanout` / `dag`) reshape the harness without changing the call.
+- **[Sources](/build-an-app/sources-and-retrieval)** — any data backend: web, corpus, vector store, database. Wrapped in Apps; full RIG stack inherited.
+
+## Hardware footprint
+
+liblloyal isn't infinitely portable — it needs four things from the host:
+
+| Requirement      | Floor for a working harness                                                                                                                              |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RAM              | ~3 GB resident for a 4B-class model at Q4_K_M, plus ~600 MB for a small reranker, plus KV cache. 8 GB total system RAM is comfortable.                   |
+| Compute backend  | GPU recommended (Metal / CUDA / Vulkan / ROCm). CPU works for tiny models or as fallback. Pure MCU-class embedded (no accelerator, no spare RAM) is out. |
+| Storage          | ~3 GB for weights of a 4B-class model at Q4; varies with model size.                                                                                     |
+| Binary footprint | ~150–300 MB of compiled liblloyal + binding code, depending on which compute backends are statically linked.                                             |
+
+A Raspberry Pi 5–class single-board computer, a phone, a laptop, or a server is in scope. Microcontrollers (Cortex-M, ESP32) are not — too little memory and no inference accelerator.
+
+**Quant floor that production RIG harnesses target today.** A reference research pipeline — three concurrent agents, web + corpus retrieval, 32K context — runs comfortably on a 16 GB consumer laptop with:
+
+- **Weights**: any 4B-class instruction-tuned GGUF that llama.cpp loads — **Qwen 3.5** is our recommended default; Llama, Gemma, Mistral, and your own fine-tunes also work — at **`Q4_K_M`** (~2.5–3 GB on disk, ~3 GB resident). The model is a configuration choice, not a constraint.
+- **KV cache**: `typeK: "q4_0"`, `typeV: "q4_0"` — Q4-quantized, **not** FP16. FP16 KV would 4× the cache footprint; Q4 KV is the difference between fitting a 32K window on consumer hardware and not.
+- **Reranker**: a small cross-encoder reranker GGUF — typically 0.5–0.6B parameters at Q8_0 (~600 MB resident).
+- **Bootstrap**: `nCtx: 32768` on a single `llama_context`.
+
+Q4_K_M weights + Q4_0 KV at the 4B class is the pragmatic floor. Quality holds — modern instruction-tuned 4B GGUFs are well-behaved at Q4 — throughput is interactive, and the whole stack (model + reranker + KV + your code) fits in well under 8 GB total resident.
+
+Architecture isn't transformer-bound either: SSM and recurrent models (Mamba, Jamba, RWKV) are first-class via llama.cpp, and inside the HDK's continuous-context model we've observed them outperform attention-only transformers — fixed-size recurrent state composes through fork-and-extend better than a KV cache that grows linearly with sequence length.
+
+## Start building
+
+<CardGroup cols={3}>
+  <Card title="Concept spine" icon="diagram-project" href="/start-here/concept-spine">
+    The seven nouns of the HDK. Read this first — five minutes, and the rest
+    of the docs reads cleanly.
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/start-here/quick-start">
+    Build a daily digest harness in five minutes — research, draft, deliver,
+    all on a local model.
+  </Card>
+  <Card title="Thinking in Effection" icon="brain" href="/start-here/thinking-in-effection">
+    New to generators and structured concurrency? Start with the mental model.
+  </Card>
+</CardGroup>

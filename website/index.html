@@ -689,7 +689,7 @@
 <span class="keyword">yield*</span> <span class="function">withSpine</span>(
   {
     parent: session.trunk ?? <span class="keyword">undefined</span>,
-    systemPrompt: <span class="function">playbooks</span>({                <span class="comment">// catalog reshapes per installed apps</span>
+    systemPrompt: <span class="function">playbooks</span>({                <span class="comment">// catalog reshapes per enabled apps</span>
       hasWeb: installedApps.<span class="function">has</span>(<span class="string">'web'</span>),
       hasCorpus: installedApps.<span class="function">has</span>(<span class="string">'corpus'</span>),
     }),
@@ -855,7 +855,7 @@ You have &lt;%= it.maxTurns %&gt; tool calls. Today is &lt;%= it.date %&gt;.
                     onclick="toggleAccordion(this)"
                   >
                     <span class="icon">[+]</span> config-aware &mdash; the spine
-                    restructures by installed apps
+                    restructures by enabled apps
                   </button>
                   <div class="accordion-body">
                     <pre><code><span class="keyword">import</span> { renderTemplate } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;

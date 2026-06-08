@@ -1,0 +1,83 @@
+---
+title: "harness.dev CLI"
+description: "The Harness Development Kit CLI — scaffold harnesses, register as a publisher, publish apps, install apps from the signed channel."
+---
+
+`harness.dev` is the developer CLI for the HDK. It scaffolds new harnesses and apps, manages your publisher account on `apps.lloyal.ai`, ships your app to the signed-channel for review, and installs reviewed apps into any HDK harness.
+
+## Install
+
+```bash
+npm install -g harness.dev
+```
+
+Or use `npx` directly without installing:
+
+```bash
+npx harness.dev <command>
+```
+
+`harness.dev` is Apache 2.0 — unrestricted. The framework runtime (`@lloyal-labs/lloyal-agents`, `@lloyal-labs/sdk`, `@lloyal-labs/rig`) is FSL-1.1-Apache-2.0 (see [Licensing](/licensing)).
+
+## Command surface
+
+| Command | Purpose | Details |
+|---|---|---|
+| `harness.dev <name>` | Scaffold a new harness | [Scaffolding](/cli/scaffolding) |
+| `harness.dev app <name>` | Scaffold a new app | [Scaffolding](/cli/scaffolding) |
+| `harness.dev publishers register --handle <handle>` | Claim a publisher handle | [Publisher accounts](/cli/publishers) |
+| `harness.dev publishers me` | Show your publisher record | [Publisher accounts](/cli/publishers) |
+| `harness.dev publish` | Submit an app for review + signing | [Publishing](/cli/publishing) |
+| `harness.dev publish status <id>` | Poll review state of a submission | [Publishing](/cli/publishing) |
+| `harness.dev install <publisher>/<short>[@semver]` | Install a signed app into the current project | [Installing](/cli/installing) |
+
+## Authentication
+
+All commands that hit `api.lloyal.ai` (publishers, publish, install of unpublished pre-release versions) authenticate via Cloudflare Access. The CLI supports two modes:
+
+- **Interactive** (developers) — embedded OAuth + PKCE flow that opens a browser, completes one-time PIN at your email, and caches a refresh token at `~/.cache/lloyal/auth.json` (mode 0600). Subsequent commands re-use the cached token until it expires.
+- **Service Token** (CI) — set `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET` env vars. The CLI skips the browser flow.
+
+See [Authentication](/cli/auth) for the full flow + troubleshooting.
+
+## Typical workflows
+
+**As an app developer:**
+
+```bash
+# One-time setup
+harness.dev publishers register --handle acme
+
+# Scaffold a new app
+harness.dev app jira
+cd jira
+# ... write your app ...
+
+# Publish it
+harness.dev publish
+harness.dev publish status <submission-id>   # poll until approved
+```
+
+**As a harness developer (consumer of apps):**
+
+```bash
+# Scaffold a new harness
+harness.dev my-harness
+cd my-harness
+
+# Install signed apps from the channel
+harness.dev install lloyal/web
+harness.dev install acme/jira
+
+# Then in your harness code:
+# import { createWebApp } from '@lloyal-labs/web-app';
+# import { createJiraApp } from '@acme/jira-app';
+```
+
+## How signing + verification works
+
+Every app on `apps.lloyal.ai` is Ed25519-signed by the Lloyal platform key (`lloyal-platform-2026-q2`). The trust root is **vendored in `@lloyal-labs/rig`** — `harness.dev install` verifies signatures against the bundled public key. You don't trust the catalog server; you trust the key bytes shipped in the SDK you `npm install`'d.
+
+The signed catalog at `apps.lloyal.ai/v1/catalog.json` lists every approved app's name, version, signed manifest URL, and tarball URL. Installs fetch the catalog (signature-verified), resolve the version, fetch the manifest (signature-verified), then fetch and signature-verify the tarball bytes before running `npm install` against the canonical URL.
+
+The lockfile records the canonical channel URL + sha512 integrity, so subsequent `npm ci` reproduces the install with **no `harness.dev` required in CI**.

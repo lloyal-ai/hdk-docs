@@ -1,0 +1,121 @@
+---
+title: "Permitted uses, illustrated"
+description: "Concrete commercial scenarios that fall under FSL Permitted Use."
+---
+
+**You can build and sell commercial products using HDK.**
+
+This page enumerates concrete scenarios with explicit permitted / restricted
+labels. For the operative definitions and the reasoning behind the
+license choice, see [the FAQ](./faq).
+
+## Permitted ✅
+
+### Shipping commercial products built on HDK
+
+- A paid intelligent inbox app sold on the Mac App Store
+- An "Excel-with-AI" desktop app sold to enterprises with per-seat pricing
+- A medical diagnostic device with HDK embedded for local inference, sold
+  commercially to hospitals
+- A car infotainment system shipped by an OEM with HDK powering the
+  in-car AI assistant
+- A consumer mobile app with on-device intelligent features (HDK via
+  `react-native-lloyal` once shipped)
+- A B2B SaaS that uses HDK on the customer's servers to power its agent
+  workflows
+
+### Vertical AI products built on HDK
+
+- "Clay for legal" — a sales-intelligence app for law firms, built on HDK
+- "Cowork for healthcare" — a workspace-AI app for clinicians, built on HDK
+- A workflow-automation product that lets users describe pipelines and
+  watches HDK agents execute them
+- An intelligent IDE extension that uses HDK for local code understanding
+
+The framing test: are you building *with* HDK, or are you offering HDK
+itself? Building with — permitted. Offering HDK — restricted.
+
+### Professional services
+
+- A consulting firm builds a custom intelligent harness for a Fortune 500
+  client, charges $500K for the engagement, and deploys it on the client's
+  infrastructure
+- An agency wraps HDK into a per-vertical solution and sells implementation
+  services
+- A solo dev offers HDK integration as a freelance service
+
+### Internal enterprise use
+
+- A bank runs HDK internally to power their intelligent search and document
+  understanding for compliance use
+- A government agency deploys HDK on-premise for sovereign AI use cases
+- A research org uses HDK across hundreds of internal applications
+
+### Research and education
+
+- A university lab uses HDK in published academic research on agent
+  architectures
+- A computer science course teaches HDK as part of an "AI systems" curriculum
+- A non-commercial open-source project builds on HDK and re-shares its
+  contributions
+
+### Modification and redistribution
+
+- Forking HDK on GitHub to learn, prototype, or contribute back
+- Modifying HDK internals for an internal performance experiment
+- Redistributing HDK (with the same FSL terms) as part of an open-source
+  bundle or internal package mirror
+- Building an HDK App and publishing it to `apps.lloyal.ai` (the canonical channel — every listed App is reviewed by Lloyal Labs for tool-safety and manifest conformance, and consumers get a single AI-safety boundary across every HDK harness)
+
+## Restricted ❌
+
+### Becoming the replacement HDK platform
+
+- AWS / Google / Microsoft launching "Bedrock Managed HDK" or "Vertex HDK"
+  or "Azure HDK" as a hosted runtime service
+- A competitor publishing "OpenHDK" as a forked harness runtime under a
+  different name, offered as a substitute
+- A clean-room reimplementation of HDK in Python, Rust, or Go intended as a
+  drop-in replacement runtime
+- A vendor offering "Managed HDK Hosting" or "HDK-as-a-Service" as a
+  competing SaaS
+
+### Operating an alternative App distribution channel
+
+The restriction here is consumer-protective: fragmenting App distribution
+across uncurated channels would split the AI-safety review surface, leave
+consumers reasoning about multiple trust boundaries, and let the same
+"App" mean different things on different harnesses. Examples of what's
+restricted:
+
+- Launching `apps.competitor.com` (or any similar service) as an alternative
+  HDK App distribution channel
+- Building a "compatible App marketplace" that lets HDK developers publish
+  outside of `apps.lloyal.ai`
+
+### Offering HDK-equivalent services
+
+- A hosted orchestration service that exposes HDK-compatible APIs as a
+  substitute for the HDK runtime
+- A managed-inference product that wraps HDK and resells it as your own
+  inference platform
+
+## Borderline / ask if unsure
+
+- Building a product that *includes* an App distribution channel for users
+  to install plugins, where those plugins are not strictly HDK Apps — likely
+  permitted, but the line depends on how strongly the plugin model
+  resembles HDK's App protocol
+- Offering HDK consulting at scale with a managed-deployment offering —
+  permitted if the deployment is on the customer's infrastructure;
+  borderline if you're providing the infrastructure as well
+- A platform that allows third parties to deploy "agent runtimes" generally,
+  where HDK is one option among many — depends on the platform's positioning
+
+For borderline cases, email <legal@lloyal.ai>. The goal is to give you a
+quick yes and clarify intent; we want the products you're building to ship.
+
+## See also
+
+- [The FAQ](./faq) — the operative definitions and the reasoning behind the license choice
+- [The FSL template](./fsl-template) — the canonical license text

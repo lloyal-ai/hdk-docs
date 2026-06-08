@@ -1,0 +1,82 @@
+---
+title: "Scaffolding"
+description: "`harness.dev <name>` and `harness.dev app <name>` — generate ready-to-edit harness and app skeletons."
+---
+
+`harness.dev` ships two scaffolders that produce ready-to-edit project skeletons. Neither needs authentication — these are local generators that write files to disk.
+
+## Create a harness
+
+```bash
+npx harness.dev <name>
+```
+
+Generates a new harness in a directory named `<name>` in your current working directory. `<name>` must match `[a-z][a-z0-9_-]{1,63}`.
+
+```bash
+npx harness.dev my-research-harness
+cd my-research-harness
+npm install
+npm run dev
+```
+
+The generated harness includes:
+
+| File | Purpose |
+|---|---|
+| `package.json` | Standard npm metadata + script defs (`dev`, `build`, `smoke`). Lists `@lloyal-labs/lloyal-agents`, `@lloyal-labs/sdk`, `@lloyal-labs/rig`, `effection` as dependencies. |
+| `harness.json` | Per-harness config (model paths, output dir, app filter, etc.). |
+| `src/main.ts` | Boot — loads config, builds the agent pool, sets up the React/Ink TUI. |
+| `src/harness.ts` | The core orchestrator — `runPlanner`, `runResearch`, fanout, synth, verify, eval. |
+| `src/prompts/*.eta` | Per-phase prompt templates. |
+| `tsconfig.json` | Standard TS config. |
+
+The harness is yours — no further `harness.dev` involvement is needed unless you want to ship it.
+
+## Create an app
+
+```bash
+npx harness.dev app <name>
+```
+
+Generates a new HDK app in a directory named `<name>`. `<name>` must match `[a-z][a-z0-9_-]{1,63}`.
+
+```bash
+npx harness.dev app jira
+cd jira
+npm install
+```
+
+The generated app includes:
+
+| File | Purpose |
+|---|---|
+| `package.json` | npm metadata. `@lloyal-labs/lloyal-agents`, `@lloyal-labs/rig`, `effection` are listed as `peerDependencies` so consumers of the published tarball dedupe against their harness's installed copy. |
+| `app.json` | App protocol metadata — `name`, `appProtocolVersion`, `protocol` (model-facing name + `useWhen` + tool name list), optional `configSchema` and `hints`. The published catalog version comes from `package.json`'s `version`, not this file. |
+| `skill.eta` | Per-spawn skill template. |
+| `src/index.ts` | The `createXxxApp` factory exported as the npm package's main entry. Reads `app.json` via `readFileSync` + `defineApp(...)`. |
+| `src/source.ts` | The `Source` implementation. |
+| `src/tools/*.ts` | Tool implementations (Tool subclasses). |
+| `LICENSE` | FSL-1.1-Apache-2.0 template (per [Licensing](/licensing)). |
+| `tsconfig.json` | Standard TS config. |
+
+After scaffolding, see [Build an App](/build-an-app/your-first-app) for the contract you need to satisfy. When you're ready to ship, see [Publishing](/cli/publishing).
+
+## Identifier grammar
+
+App and harness identifiers must match `[a-z][a-z0-9_-]{1,63}`:
+
+- Lowercase ASCII start (no digits, no special chars)
+- Lowercase alphanumeric, underscore, or hyphen rest
+- Length 2-64 (inclusive of starting char)
+
+Examples:
+
+| Valid | Invalid (why) |
+|---|---|
+| `web` | `Web` (uppercase) |
+| `jira` | `1jira` (starts with digit) |
+| `my-app` | `my.app` (period) |
+| `agent_pool_v2` | `agent pool` (space) |
+
+This grammar appears in the app's published catalog name (`<publisher-handle>/<app-name>`) and in spine catalog rendering — characters outside it would break the boundary marker or allow injection at the catalog text layer.

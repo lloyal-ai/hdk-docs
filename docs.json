@@ -40,52 +40,85 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Get Started",
+        "tab": "Start here",
         "groups": [
           {
-            "group": "Get Started",
+            "group": "Start here",
             "pages": [
-              "learn/introduction",
-              "learn/quick-start",
-              "learn/thinking-in-lloyal",
-              "learn/tools",
-              "learn/agents",
-              "learn/sources",
-              "learn/pipelines",
-              "learn/sessions",
-              "learn/tracing"
+              "start-here/what-is-the-hdk",
+              "start-here/concept-spine",
+              "start-here/quick-start",
+              "start-here/thinking-in-effection"
             ]
           }
         ]
       },
       {
-        "tab": "Reference",
+        "tab": "Build a harness",
         "groups": [
           {
-            "group": "Core",
+            "group": "Build a harness",
             "pages": [
-              "reference/concurrency",
-              "reference/kv-pressure",
-              "reference/agent-policy",
-              "reference/search-strategy",
-              "reference/prefix-sharing",
-              "reference/playbooks",
-              "reference/continuous-context-spine",
-              "reference/grammar-and-ordering",
-              "reference/scratchpad-extraction",
-              "reference/prompt-composition",
-              "reference/branch-lifecycle",
-              "reference/changelog"
+              "build-a-harness/agents-and-pools",
+              "build-a-harness/orchestrators",
+              "build-a-harness/sessions",
+              "build-a-harness/tracing",
+              "build-a-harness/reference-architecture",
+              "build-a-harness/bridges"
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "Build an App",
+        "groups": [
           {
-            "group": "RIG",
+            "group": "Build an App",
             "pages": [
-              "reference/rig/overview",
-              "reference/rig/corpus-source",
-              "reference/rig/web-source",
-              "reference/rig/bridges",
-              "reference/rig/pipeline"
+              "build-an-app/what-is-an-app",
+              "build-an-app/your-first-app",
+              "build-an-app/sources-and-retrieval",
+              "build-an-app/tools",
+              "build-an-app/app-security",
+              "build-an-app/lifecycle-and-registry",
+              "build-an-app/distribution"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI",
+        "groups": [
+          {
+            "group": "CLI",
+            "pages": [
+              "cli/index",
+              "cli/auth",
+              "cli/scaffolding",
+              "cli/publishers",
+              "cli/publishing",
+              "cli/installing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Under the hood",
+        "groups": [
+          {
+            "group": "Under the hood",
+            "pages": [
+              "under-the-hood/continuous-context-spine",
+              "under-the-hood/concurrency",
+              "under-the-hood/kv-pressure",
+              "under-the-hood/prefix-sharing",
+              "under-the-hood/branch-lifecycle",
+              "under-the-hood/grammar-and-ordering",
+              "under-the-hood/prompt-composition",
+              "under-the-hood/agent-policy",
+              "under-the-hood/scratchpad-extraction",
+              "under-the-hood/search-strategy",
+              "under-the-hood/mixed-role-pools"
             ]
           }
         ]
@@ -96,10 +129,10 @@
           {
             "group": "Guides",
             "pages": [
-              "guides/custom-tool",
-              "guides/custom-source",
+              "guides/deployment",
+              "guides/debugging",
               "guides/custom-pipeline",
-              "guides/deployment"
+              "guides/custom-tool"
             ]
           }
         ]
@@ -110,15 +143,71 @@
           {
             "group": "Examples",
             "pages": [
-              "examples/react-agent",
-              "examples/reflection",
               "examples/compare"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Changelog",
+        "groups": [
+          {
+            "group": "Changelog",
+            "pages": [
+              "under-the-hood/changelog"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Licensing",
+        "groups": [
+          {
+            "group": "Licensing",
+            "pages": [
+              "licensing/index",
+              "licensing/faq",
+              "licensing/permitted-uses-examples",
+              "licensing/why-fsl",
+              "licensing/fsl-template",
+              "licensing/publisher-tos"
             ]
           }
         ]
       }
     ]
   },
+  "redirects": [
+    { "source": "/learn/introduction", "destination": "/start-here/what-is-the-hdk", "permanent": true },
+    { "source": "/learn/sources", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },
+    { "source": "/learn/tools", "destination": "/build-an-app/tools", "permanent": true },
+    { "source": "/reference/agent-policy", "destination": "/under-the-hood/agent-policy", "permanent": true },
+    { "source": "/reference/branch-lifecycle", "destination": "/under-the-hood/branch-lifecycle", "permanent": true },
+    { "source": "/reference/changelog", "destination": "/under-the-hood/changelog", "permanent": true },
+    { "source": "/reference/concurrency", "destination": "/under-the-hood/concurrency", "permanent": true },
+    { "source": "/reference/continuous-context-spine", "destination": "/under-the-hood/continuous-context-spine", "permanent": true },
+    { "source": "/reference/grammar-and-ordering", "destination": "/under-the-hood/grammar-and-ordering", "permanent": true },
+    { "source": "/reference/kv-pressure", "destination": "/under-the-hood/kv-pressure", "permanent": true },
+    { "source": "/reference/playbooks", "destination": "/under-the-hood/mixed-role-pools", "permanent": true },
+    { "source": "/reference/prefix-sharing", "destination": "/under-the-hood/prefix-sharing", "permanent": true },
+    { "source": "/reference/prompt-composition", "destination": "/under-the-hood/prompt-composition", "permanent": true },
+    { "source": "/reference/scratchpad-extraction", "destination": "/under-the-hood/scratchpad-extraction", "permanent": true },
+    { "source": "/reference/search-strategy", "destination": "/under-the-hood/search-strategy", "permanent": true },
+    { "source": "/reference/rig/overview", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },
+    { "source": "/reference/rig/corpus-source", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },
+    { "source": "/reference/rig/web-source", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },
+    { "source": "/guides/custom-source", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },
+    { "source": "/examples/react-agent", "destination": "/start-here/quick-start", "permanent": true },
+    { "source": "/examples/reflection", "destination": "/under-the-hood/branch-lifecycle", "permanent": true },
+    { "source": "/learn/quick-start", "destination": "/start-here/quick-start", "permanent": true },
+    { "source": "/learn/thinking-in-lloyal", "destination": "/start-here/thinking-in-effection", "permanent": true },
+    { "source": "/learn/agents", "destination": "/build-a-harness/agents-and-pools", "permanent": true },
+    { "source": "/learn/pipelines", "destination": "/build-a-harness/orchestrators", "permanent": true },
+    { "source": "/learn/sessions", "destination": "/build-a-harness/sessions", "permanent": true },
+    { "source": "/learn/tracing", "destination": "/build-a-harness/tracing", "permanent": true },
+    { "source": "/reference/rig/pipeline", "destination": "/build-a-harness/reference-architecture", "permanent": true },
+    { "source": "/reference/rig/bridges", "destination": "/build-a-harness/bridges", "permanent": true }
+  ],
   "footer": {
     "socials": {
       "github": "https://github.com/lloyal-ai/hdk"

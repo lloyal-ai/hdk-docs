@@ -1,0 +1,384 @@
+---
+title: "Agent Policy"
+description: "The policy interface — lifecycle hooks (produce / settle / recover), budget gating, tool guards, scratchpad recovery."
+---
+
+Every agent lifecycle decision passes through a policy. When an agent hits a stop token, when a tool result won't fit in KV, when a tool call is about to dispatch — the pool consults the policy and executes the returned action. The pool handles mechanics (transitions, prefills, prunes). The policy handles judgment.
+
+> **See also.** This page documents the policy *interface*. For the underlying budget model and pressure thresholds, see [KV pressure](/under-the-hood/kv-pressure). For production tuning of `softLimit` / `hardLimit` / `recovery` per-deployment, see [Deployment](/guides/deployment).
+
+## Under the App protocol
+
+The policy interface is App-agnostic — it doesn't know which App spawned the agent, only that the agent is in the pool. Three App-protocol interactions to keep in mind:
+
+- **`authGuard` runs BEFORE the policy's tool guards.** When the model emits a tool call for a `protected` tool, the dispatch path checks the session's `GrantStoreCtx` first. A denied call emits `tool:authReject` and the policy never sees a dispatchable action for it. The policy's `onProduced` only fires for tools the grant gate already cleared (or open tools, where the gate is a no-op).
+- **`shouldExplore` flips retrieval mode for App `Source` calls.** When `false` (exploit), `SearchTool` re-scores via `EntailmentScorer.scoreRelevanceBatch` — `min(toolQueryScore, originalQueryScore)`. When `true` (explore, the default with headroom), scoring uses the tool query alone. The App's `Source` reads `ToolContext.scorer` + `ToolContext.explore` to obey. See [Search strategy](/under-the-hood/search-strategy).
+- **`ReconPolicy` is the production subclass for preflight recon.** It overrides `shouldExit` with a hard turn cap (preempts the soft-nudge loop) and is paired with a `PREFLIGHT_RECOVER` prompt on force-kill. The reasoning.run harness uses it via `runPreflight`; custom harnesses with their own recon stage can mirror the pattern.
+
+The hooks below are the substrate. The App protocol adds the auth-gate and the recon-policy variant on top.
+
+## The interface
+
+```typescript
+interface AgentPolicy {
+  onProduced(agent, parsed, pressure, config): ProduceAction;
+  onSettleReject(agent, resultTokens, pressure, config): SettleAction;
+  shouldExplore?(agent, pressure): boolean;
+  shouldExit?(agent, pressure): boolean;
+  onRecovery?(agent, pressure): RecoveryAction;
+  readonly pressureThresholds?: PressureThresholds;
+  resetTick?(): void;
+}
+```
+
+Five hooks plus a getter, called at different points in the [tick loop](/under-the-hood/concurrency#tick-loop):
+
+| Hook | Phase | When | What it decides |
+|------|-------|------|-----------------|
+| `shouldExit` | PRODUCE (pre-generate) | Before each agent produces tokens | Kill immediately — no chance to respond |
+| `onProduced` | PRODUCE (post-generate) | Agent hit stop token | Tool call, report, nudge, or kill |
+| `onSettleReject` | SETTLE stall-break | Deferred tool result with no active siblings | Nudge or drop |
+| `shouldExplore` | DISPATCH | Before each tool executes | Explore mode or exploit mode |
+| `onRecovery` | Kill + post-loop | For each killed agent without result | Extract findings (with budget) or skip |
+| `pressureThresholds` | Pool setup | Once at pool initialization | KV softLimit and hardLimit |
+
+The policy receives the agent's full state — status, tool history, result, token count — plus a live [ContextPressure](/under-the-hood/kv-pressure) snapshot and pool configuration. It returns an action. The pool executes it.
+
+## `shouldExit` — pre-generate kill gate
+
+Called before `produceSync()` — before the agent generates any tokens. Returns `true` to kill the agent immediately. There's no nudge possible here — there's no tool call to attach an error message to. The branch stays alive for recovery via `onRecovery`.
+
+```typescript
+// PRODUCE: before each agent generates
+if (policy.shouldExit?.(agent, pressure) ?? pressure.critical) {
+  // transition to idle, eligible for recovery
+}
+```
+
+Optional — defaults to `pressure.critical` when absent. `DefaultAgentPolicy` also checks the time budget:
+
+- `pressure.critical` (remaining < hardLimit) → exit
+- `budget.time.hardLimit` exceeded → exit
+- **Terminal-tool protection (narrowed to the graceful zone)**: if `terminalToolName` is configured, `agent.currentTool` matches, AND `!pressure.critical`, `shouldExit` returns `false`. An agent actively generating its report is protected from arbitrary kills (time limits, custom policy decisions). Once `pressure.critical` fires, protection yields — the kill proceeds so `recoverInline` can extract findings before native decode OOMs. This narrowing prevents runaway free-text-into-terminal-tool patterns from exhausting the context.
+
+`agent.currentTool` is populated by `Agent.observe(ctx)`, which runs a partial parse (`parseChatOutput` with `isPartial: true`) on each generated token until the tool name is detected. The partial parser is format-agnostic — it uses the same PEG parser that handles the full output at `isStop`, just in lenient mode.
+
+<Note>
+The pool validates `hardLimit >= nBatch` at startup. If `policy.pressureThresholds.hardLimit` is smaller than the context's `nBatch` (the native batch allocation size, default 512), `useAgentPool` throws with `Invariant Violation: hardLimit (N) must be >= nBatch (M)`. The reserve below `hardLimit` is recovery's parallel report budget — smaller than `nBatch` means the first recovery decode can't allocate its batch.
+</Note>
+
+## `onProduced` — the main decision point
+
+Called after `parseChatOutput` extracts content and tool calls from the agent's generation. The policy sees what the agent wants to do and decides what actually happens.
+
+Returns one of five actions:
+
+| Action | What the pool does |
+|--------|-------------------|
+| `tool_call` | Dispatch the tool in DISPATCH phase |
+| `return` | Extract result, mark agent idle, emit `agent:return` |
+| `nudge` | Inject an error message as a fake tool result |
+| `idle` | Kill the agent — transition to idle, emit `agent:done` |
+| `free_text_return` | Agent produced prose without a tool call — capture as result |
+
+### Decision flow in `DefaultAgentPolicy`
+
+```
+parsed output has tool call?
+  ├─ No → free_text_return (if agent has done work) or idle
+  │
+  ├─ Under pressure? (turns >= maxTurns OR headroom < 0 OR time softLimit)
+  │   ├─ Non-terminal tool → nudge (stateless, every time)
+  │   └─ Critical pressure or no terminal tool → idle (kill)
+  │
+  ├─ Terminal tool? (e.g. report)
+  │   ├─ Not under pressure + < minToolCalls → nudge ("use tools first")
+  │   └─ Under pressure OR sufficient work → return
+  │
+  ├─ Guard rejected? → nudge (with guard's message)
+  │
+  └─ All checks pass → tool_call
+```
+
+The terminal tool is never dispatched — the policy intercepts it, extracts the `result` field from the tool arguments, and returns `return`. When the agent is under pressure, early returns are accepted regardless of tool call count — an agent told to "report now" should be allowed to terminate.
+
+## `onSettleReject` — stall-break fallback
+
+Called by the **SETTLE stall-breaker** when deferred tool results have no active siblings to free KV (everyone is `awaiting_tool` or idle). The policy decides per deferred item: nudge the agent with a compact error payload (replacing the oversized result), or drop the agent and let recovery extract.
+
+```typescript
+type SettleAction =
+  | { type: 'nudge'; message: string }
+  | { type: 'idle'; reason: IdleReason };
+```
+
+`DefaultAgentPolicy.onSettleReject` returns `{type: 'nudge'}` when `terminalToolName` is configured and the agent has made at least one tool call. The nudge message includes the token budget (same format as PRODUCE-phase nudges):
+
+```
+Tool result too large for remaining KV. Report your findings now within 1100 words.
+```
+
+The budget is `pressure.remaining - pressure.hardLimit` — tokens available before the kill threshold fires. If the nudge payload itself doesn't fit in the current headroom, the pool drops the agent with `pool:agentDrop reason=pressure_settle_reject` and recovery takes over. If the hook is absent (no `onSettleReject` implemented), the stall-breaker falls back to the legacy path: `pool:agentDrop reason=settle_stall_break`.
+
+In normal (non-stalled) operation, SETTLE just defers oversized items without consulting the policy — siblings freeing KV (parallel orchestration) or the spine growing (chain) restores headroom on subsequent ticks. `onSettleReject` fires only at the last-resort moment when no alternatives remain.
+
+## `shouldExplore` — explore vs exploit mode
+
+Called at DISPATCH before each tool executes. Returns `true` for explore mode (agent-local scoring at content boundaries) or `false` for exploit mode (dual scoring via [scoreRelevanceBatch](/under-the-hood/search-strategy#content-boundaries-explore-vs-exploit)).
+
+Optional — defaults to `true` (explore) when absent. `DefaultAgentPolicy` checks two independent axes:
+
+- **Context axis**: `pressure.percentAvailable / 100 > shouldExplore.context` (default 0.4). Below this fraction of KV capacity remaining → exploit.
+- **Time axis**: `elapsed / timeSoftLimit >= shouldExplore.time` (default 0.5). Above this fraction of the time soft limit consumed → exploit. Only applies when `budget.time.softLimit` is set.
+
+Both axes must agree on explore; either falling below its threshold flips the policy into exploit mode.
+
+<Note>
+`percentAvailable` is live — it recovers when branches are pruned. An agent in exploit mode can flip back to explore if other agents report and free KV. This is intentional. Explore/exploit is a non-monotonic quality knob, separate from the lifecycle (nudge/kill/recover). See [KV Pressure — cellsUsed tracks live pressure](/under-the-hood/kv-pressure#cellsused-tracks-live-pressure).
+</Note>
+
+## The nudge mechanism
+
+Nudging is stateless — no escalation, no tracking of past nudges. When the agent is over budget and calls a non-terminal tool, the policy returns `nudge` with a message. The pool:
+
+1. Serializes the message as a tool result: `{ "error": "..." }`
+2. Prefills the error into the agent's branch
+3. Resets the grammar so the agent generates a fresh response
+
+The agent sees the error in its context and may call the terminal tool on its next turn. If it tries another non-terminal tool while still over budget, the policy nudges again. If headroom recovers (branches pruned, KV freed), the agent is no longer over budget and can continue working.
+
+There is no "second offense" kill. The hard kill is `shouldExit`'s job — triggered by `pressure.critical` or time `hardLimit`, not by repeated nudges.
+
+Nudge messages carry the model's remaining token budget — `pressure.remaining - pressure.hardLimit` — interpolated into the string. The model reads this and can self-cap its response length:
+
+| Source | Message |
+|--------|---------|
+| KV pressure (PRODUCE) | "KV memory pressure — report your findings now within `{budget}` words." |
+| Turn limit (PRODUCE) | "Turn limit reached — report your findings now within `{budget}` words." |
+| Time budget (PRODUCE) | "Time limit reached — report your findings now within `{budget}` words." |
+| SETTLE stall-break | "Tool result too large for remaining KV. Report your findings now within `{budget}` words." |
+| Insufficient work | "You must use tools before submitting results." |
+| Tool guard | The guard's custom `message` field |
+
+The `{budget}` substituted into the message is derived as `floor((pressure.remaining - pressure.hardLimit) * 0.7 / 10) * 10` (minimum 10) — **words, not tokens**. Tokenizers vary across models but words are universal in training data, and the 0.7 ratio + floor-to-10 conservatively under-advertise the ceiling so the model stays within native decode headroom. Overshoot → `pressure.critical` fires → kill → recovery takes over with its own word budget inside the `hardLimit` reserve.
+## `resetTick` — per-tick state reset
+
+Called by the pool at the start of each tick iteration. Resets per-tick flags used by the trailing stop:
+
+- `_killedThisTick`: At most one agent killed per critical tick
+- `_nudgedThisTick`: At most one agent nudged per over-budget tick
+
+Optional — only needed if the policy tracks per-tick state. `DefaultAgentPolicy` implements this.
+
+## `onRecovery` — scratchpad extraction
+
+Called inline when the trailing stop kills an agent during PRODUCE (or at pool close for agents that ended idle without result). The policy decides whether to extract findings, and renders its extraction prompt with the live pressure snapshot so the model knows its budget.
+
+```typescript
+type RecoveryAction =
+  | { type: 'extract'; prompt: { system: string; user: string } }
+  | { type: 'skip' };
+
+onRecovery?(agent: Agent, pressure: ContextPressure): RecoveryAction;
+```
+
+`DefaultAgentPolicy` checks the confabulation guard before returning `extract`:
+- `agent.tokenCount >= minTokens` (default 100) — agent generated enough context
+- `agent.toolCallCount >= minToolCalls` (default 2) — agent did real work
+
+Agents that barely ran would produce fabricated findings — the guard prevents this.
+
+**Budget-aware prompt rendering.** The policy computes `budget = max(50, pressure.remaining - prefillOverhead - batchBuffer)` and renders the prompt's eta template with that value. Prompt authors use `<%= it.budget %>` where they want the budget surfaced:
+
+```eta
+You are a research reporter. The agent has been terminated due to budget constraints.
+
+Call the report tool with the most important findings. Prioritize:
+1. Direct quotes and specific evidence
+2. Key conclusions with source URLs
+3. Supporting context (only if budget allows)
+
+IMPORTANT: You have approximately <%= it.budget %> words for your report. Be concise.
+---
+Report your findings.
+```
+
+Prompts with no eta tags render unchanged (backward compatible). Policies that author prompts via `DefaultAgentPolicyOpts.recovery.prompt` can use the full eta feature set (conditionals, loops) for richer templating.
+
+The pool owns the extraction grammar (`{ "result": "..." }` JSON schema). The policy owns the prompt and the decision.
+
+**Recovery diagnostics are always visible.** After every non-skip recovery attempt, the pool emits one of:
+
+- `pool:recoveryReturn` — JSON parse succeeded, findings captured.
+- `pool:recoveryFailed` — parse failed; event carries `reason` (`parse_error`, `no_result_field`, `scope_error`) + `outputExcerpt` (first 200 chars of what was generated) so ops can diagnose without re-running.
+
+No silent recovery failures — every recovery prefill has a matching diagnostic.
+
+<Tip>
+Recovery runs inline on each pressure-kill using the `hardLimit` reserve as a parallel report budget. `pruneOnReturn: true` (default) maximizes sibling headroom after each recovered or voluntary return.
+</Tip>
+
+## Tool guards
+
+Guards are declarative rejection rules checked inside `onProduced` before returning `tool_call`. Each guard specifies which tools it applies to and a synchronous reject function:
+
+```typescript
+interface ToolGuard {
+  tools: string[];
+  reject: (args, lineageHistory, agent) => boolean;
+  message: string;
+}
+```
+
+`DefaultAgentPolicy` ships three guards:
+
+### Fetch deduplication
+
+Rejects `fetch_page` if the same URL was already fetched in the agent's lineage (self + ancestors). Uses `walkAncestors` to collect tool history across the full delegation chain.
+
+### Search deduplication
+
+Rejects `web_search` if the same query (case-insensitive) was already searched in the lineage.
+
+### Research-before-delegation
+
+Rejects `web_research` / `research` unless the agent has done at least one search AND one fetch/read **in its own local history** — not lineage.
+
+<Note>
+This guard deliberately uses agent-local history, not lineage. With lineage history, a child agent would inherit its parent's search and fetch records, letting it call the delegation tool on turn 0 without doing any work of its own. The local-history check forces each agent to investigate before delegating.
+</Note>
+
+### Custom guards
+
+Replace the defaults entirely or append additional guards:
+
+```typescript
+const policy = new DefaultAgentPolicy({
+  guards: [myGuard],           // replaces all defaults
+  // OR
+  extraGuards: [myGuard],      // appends to defaults
+});
+```
+
+## `DefaultAgentPolicy` configuration
+
+```typescript
+import { DefaultAgentPolicy } from "@lloyal-labs/lloyal-agents";
+
+const policy = new DefaultAgentPolicy({
+  // Tool guards
+  minToolCallsBeforeReturn: 2,  // default 2
+  extraGuards: [],
+
+  // Search strategy — two-axis explore/exploit (both must agree for explore)
+  shouldExplore: { context: 0.4, time: 0.5 },
+
+  // Budget (lifecycle knob — nudge at softLimit, kill at hardLimit)
+  budget: {
+    context: { softLimit: 1024, hardLimit: 512 },  // KV tokens remaining
+    time: { softLimit: 480_000, hardLimit: 600_000 },  // ms since policy creation
+  },
+
+  // Recovery (scratchpad extraction for killed agents)
+  recovery: {
+    prompt: { system: "Summarize all findings.", user: "Report your findings." },
+    minTokens: 100,      // confabulation guard
+    minToolCalls: 2,
+  },
+});
+```
+
+| Option | Default | Effect |
+|--------|---------|--------|
+| `minToolCallsBeforeReturn` | 2 | Agents with fewer non-terminal tool calls get nudged when trying to report (unless under pressure) |
+| `guards` | 3 default guards | Replaces the entire guard array when provided |
+| `extraGuards` | `[]` | Appended to default guards |
+| `shouldExplore.context` | 0.4 | Min fraction of KV capacity remaining for explore mode |
+| `shouldExplore.time` | 0.5 | Max fraction of time soft limit consumed before exploit mode |
+| `terminalToolName` | — | Tool name protected from `shouldExit` during generation |
+| `budget.context.softLimit` | 1024 | KV tokens remaining that triggers nudge |
+| `budget.context.hardLimit` | 512 | KV tokens remaining that triggers kill; reserves recovery budget. Must be >= `nBatch` (enforced at pool startup). |
+| `budget.time.softLimit` | — | Milliseconds since policy creation that triggers nudge |
+| `budget.time.hardLimit` | — | Milliseconds since policy creation that triggers kill |
+| `recovery.prompt` | — | System + user prompt for scratchpad extraction |
+| `recovery.minTokens` | 100 | Skip extraction for agents with fewer tokens |
+| `recovery.minToolCalls` | 2 | Skip extraction for agents with fewer tool calls |
+
+### `pressureThresholds`
+
+The pool reads `policy.pressureThresholds` once at setup to configure `ContextPressure` snapshots. Returns `{ softLimit, hardLimit }` from `budget.context` or the class defaults (1024, 512). The pool also validates `hardLimit >= nBatch` at this point and throws `Invariant Violation` if not satisfied.
+
+### `setExploitMode`
+
+Harness-driven override for immediate exploit mode:
+
+```typescript
+policy.setExploitMode(true);   // all agents exploit regardless of pressure
+policy.setExploitMode(false);  // revert to pressure-driven
+```
+
+<Note>
+`setExploitMode` is on `DefaultAgentPolicy` (the class), not `AgentPolicy` (the interface). Not all policy implementations support forced exploit. Harness code that needs it must type the variable as `DefaultAgentPolicy`.
+</Note>
+
+### Time budget scope
+
+The `_startTime` is set when the policy is constructed. Since the same policy instance is shared across all nesting levels (outer pool and inner pools spawned by DelegateTool), the time budget is global — "the research has a 10 minute budget" applies to all agents at every depth.
+
+Create separate policy instances for stages with different time constraints:
+
+```typescript
+const researchPolicy = new DefaultAgentPolicy({
+  budget: { context: { softLimit: 1024 }, time: { softLimit: 480_000, hardLimit: 600_000 } },
+  recovery: { prompt: REPORT },
+});
+
+// Synthesis doesn't need time limits — use default policy
+yield* agentPool({ tasks, systemPrompt, tools, policy: researchPolicy, ... });
+```
+
+## Writing a custom policy
+
+Implement the `AgentPolicy` interface to control any lifecycle decision:
+
+```typescript
+import type { AgentPolicy, ProduceAction, SettleAction, RecoveryAction } from "@lloyal-labs/lloyal-agents";
+import type { ContextPressure } from "@lloyal-labs/lloyal-agents";
+
+class MyPolicy implements AgentPolicy {
+  onProduced(agent, parsed, pressure, config): ProduceAction {
+    // Return: tool_call, return, nudge, idle, or free_text_return
+  }
+
+  onSettleReject(agent, resultTokens, pressure, config): SettleAction {
+    // Return: nudge (with message) or idle
+  }
+
+  shouldExplore(agent, pressure): boolean {
+    return pressure.percentAvailable > 50;
+  }
+
+  shouldExit(agent, pressure): boolean {
+    return pressure.critical;
+  }
+
+  onRecovery(agent): RecoveryAction {
+    if (agent.tokenCount < 100) return { type: 'skip' };
+    return { type: 'extract', prompt: { system: '...', user: '...' } };
+  }
+
+  get pressureThresholds() {
+    return { softLimit: 2048, hardLimit: 256 };
+  }
+}
+```
+
+Pass to any pool via the `policy` option:
+
+```typescript
+yield* agentPool({ tasks, tools, systemPrompt, policy: new MyPolicy() });
+```
+
+Signatures are narrow by design: `(agent, pressure)`. The policy is a class — time, cost, or other signals live on `this`. The pool passes what it owns (agent + pressure snapshot); the policy combines with its own state.
+
+The policy instance is shared across all agents in a pool. For nested pools (recursive tools), the inner pool receives the same policy instance.

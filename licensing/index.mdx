@@ -1,0 +1,64 @@
+---
+title: "Licensing"
+description: "FSL-1.1-Apache-2.0 across the lloyal runtime stack — what it means, why we chose it, what you can build."
+---
+
+**You can build and sell commercial products using HDK.**
+
+> HDK is free to build products with; it is not free to become the
+> replacement HDK platform.
+
+HDK 3.0 runtime packages are source-available under **FSL-1.1-Apache-2.0**
+(a [Fair Source](https://fair.io) license) and convert to Apache 2.0 two
+years after each release. The restriction during those two years is narrow:
+you cannot offer a competing HDK runtime, managed HDK service, or alternative
+HDK App distribution channel. The canonical App distribution channel is
+`apps.lloyal.ai` — every App listed there is reviewed by Lloyal Labs for
+tool-safety and manifest conformance before publication, so consumers can
+rely on a single AI-safety boundary across every HDK harness.
+
+The `harness.dev` CLI and `hdk-create-app` scaffolder are Apache 2.0 —
+unrestricted.
+
+## Start here
+
+<CardGroup cols={2}>
+  <Card title="FAQ" icon="circle-question" href="/licensing/faq">
+    What FSL means in practice, with concrete examples of what's permitted
+    and what's restricted. **Start here if you're evaluating HDK for a
+    commercial product.**
+  </Card>
+  <Card title="The FSL template" icon="file-lines" href="/licensing/fsl-template">
+    The canonical FSL-1.1-Apache-2.0 text used across the lloyal runtime
+    stack, with the parameter substitutions explained.
+  </Card>
+  <Card title="Why FSL?" icon="compass" href="/licensing/why-fsl">
+    What FSL protects, why protocol integrity matters for App developers,
+    and why we chose FSL over alternatives.
+  </Card>
+  <Card title="Permitted uses, illustrated" icon="check" href="/licensing/permitted-uses-examples">
+    Concrete commercial scenarios that fall under Permitted Use.
+  </Card>
+</CardGroup>
+
+## License-by-package summary
+
+| Component | License |
+|---|---|
+| `liblloyal`, `lloyal-node` | FSL-1.1-Apache-2.0 |
+| `@lloyal-labs/lloyal-agents`, `@lloyal-labs/lloyal-sdk`, `@lloyal-labs/rig` | FSL-1.1-Apache-2.0 |
+| `@lloyal-labs/corpus`, `@lloyal-labs/web` | FSL-1.1-Apache-2.0 |
+| `@lloyal-labs/harness-cli` (the `harness.dev` CLI) | **Apache 2.0** |
+| `hdk-create-app` (when shipped) | **Apache 2.0** |
+| `llama.cpp` (vendored dependency) | MIT (unchanged) |
+
+Each component's repo carries an in-tree copy of the licensing FAQ next to
+the LICENSE file (`LICENSE-FAQ.md`) so the explanation is at the point of
+contact. This page is the canonical version; the in-repo copies are
+synchronized to it.
+
+## Questions?
+
+If you have a use case and aren't sure whether it falls under Permitted
+Purpose or Competing Use, email <legal@lloyal.ai> or open a discussion in
+the repo. We'd rather give you a quick yes than have you worry about it.

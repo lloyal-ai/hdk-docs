@@ -1,0 +1,149 @@
+---
+title: "Why FSL"
+description: "FSL protects the integrity of the HDK App protocol — the coordination point that makes Apps portable across harnesses."
+---
+
+**FSL exists to protect the integrity of the HDK App protocol** — the
+coordination point that lets an App written for one harness run on any
+harness. Without that protection, the protocol is forkable, the ecosystem
+fragments, and the App you wrote stops working consistently across the
+runtimes your users actually have installed.
+
+This page explains what that means concretely and why standard FSL fits.
+
+## The protocol is the coordination point
+
+Every HDK App declares against a specific App protocol — the bytes-locked
+intro, catalog format, tool-selection rule, and boundary marker in
+`packages/rig/src/protocol.ts`. The runtime renders that protocol into the
+spine. The model's behavior depends on those exact bytes.
+
+When you publish an App for HDK, you're publishing against that protocol.
+Your App's reliability depends on every HDK runtime — every harness, every
+deployment, every version your users install — agreeing on the same
+protocol. The protocol is what makes "I built an HDK App" a portable,
+trustworthy statement.
+
+## Protocol fragmentation is the threat
+
+If the runtime ships under a permissive license without protection, a
+well-resourced party can fork it, modify the protocol surface, and
+distribute their variant under a different name. The mechanics are
+straightforward:
+
+1. Fork the open-source HDK runtime.
+2. Modify the catalog format, tool-selection rule, or lifecycle semantics
+   — small changes are enough.
+3. Bundle it with captive distribution (a cloud vendor's managed offering,
+   a vertically integrated stack, an "enterprise" build).
+4. App developers now face a choice: target the upstream HDK App protocol,
+   target the fork's protocol, build twice, or pick the bigger
+   distribution.
+
+This is not theoretical. It's exactly the pattern that played out with
+Node.js / io.js (2014-2015, reconciled after a year of ecosystem
+confusion), with OpenJDK vs vendor JDKs (subtle TLS / GC differences for
+years), with Docker → Moby + runtime-spec splits, and more recently with
+MCP variants shipping from multiple vendors. Each time, the underlying
+issue was the same: a coordination protocol under a permissive license
+with no defense against fragmentation.
+
+**The cost is paid by App developers**, not by the entity that forked. App
+developers have to test against multiple variants, support divergent
+behaviors, or accept that their App only works on the bigger of the two
+contracts. The fragmentation tax is distributed across the people who
+trusted the protocol.
+
+FSL's restriction is shaped precisely to block this: redistributors can't
+ship a competing runtime that fragments the protocol. They can build
+anything *on top of* HDK; they can't ship a parallel variant *of* HDK.
+
+## Why FSL specifically
+
+Several licenses could block protocol fragmentation. We chose
+FSL-1.1-Apache-2.0 for four reasons:
+
+**1. It converts to Apache 2.0 in two years.** The restriction has a
+written expiration. Each released version of HDK becomes Apache 2.0
+licensed exactly two years after its release date. The protection is for
+the formative period when ecosystem coherence is most fragile; after that
+window, the conversion is contractual, not a promise. If you care about
+eventually-open commitments — and you should — FSL is one of the few
+source-available licenses where that commitment is in the license text,
+not in a blog post.
+
+**2. The restriction is narrow.** FSL doesn't restrict commercial use,
+redistribution, modification, embedding, or selling. Only Competing Use —
+which we define as becoming a substitute or compatible-variant runtime.
+Every other commercial scenario is permitted. See
+[the FAQ](./faq) for the concrete list.
+
+**3. It's standard, not bespoke.** FSL-1.1-Apache-2.0 is the canonical
+text published by Sentry. Other Fair Source projects (Sentry, PowerSync,
+Codecov) use it. License scanners increasingly recognize it. Procurement
+orgs increasingly have a category for it. We could have written a custom
+license tuned exactly to "protect the protocol" — and we considered it —
+but a bespoke license forces every adopter into individual legal review.
+The off-the-shelf license is the better trade.
+
+**4. It's a recognized Fair Source license.** [Fair Source](https://fair.io)
+is the classification for source-available licenses that explicitly
+permit commercial use, free redistribution, and eventual open-source
+conversion. The category is designed for exactly the situation HDK is in
+— a coordination point that needs integrity protection during the
+formative period without sacrificing developer-friendly access.
+
+## What this means for you, the App developer
+
+If you're building an HDK App, what FSL changes for you is approximately
+nothing:
+
+- **You can publish, sell, embed, and commercialize your App** as before
+- **You can fork HDK, modify it, learn from it** as before
+- **You can ship it inside any product, on any platform** as before
+- **Your App's protocol will not be fragmented** by a forked runtime
+  shipping a slightly-different variant during the period when
+  fragmentation would cost you the most
+- **The runtime your App targets will be Apache 2.0** within two years of
+  each release — the long-term open-source guarantee is contractual
+
+## Why not Apache 2.0 alone
+
+Apache 2.0 is one of the strongest permissive licenses and has been right
+for HDK 2.x. With HDK 3.0 introducing installable Apps as the
+architectural core, the calculus shifts: under Apache 2.0 the protocol is
+forkable, and a fragmentation attack has no legal barrier. The price App
+developers pay if the ecosystem splits is real, and once the split
+happens it's hard to undo (the Node.js / io.js reconciliation took a year
+of significant ecosystem effort). FSL is the targeted intervention to
+prevent that specific outcome during the specific window when it would
+hurt App developers most.
+
+After two years, Apache 2.0 is exactly what every released version
+becomes.
+
+## Why not a custom license
+
+We considered writing a license tailored to "protect the protocol" with
+maximum permissiveness on every other axis. The standard FSL is broader
+than the strictly-needed restriction. The trade-off:
+
+- A custom license fits the threat more surgically but is bespoke,
+  requires individual legal review at every adopter, and has no
+  recognition with license scanners or procurement systems.
+- Standard FSL is slightly broader in scope but is recognized,
+  documented, and defended by the Fair Source community.
+
+The integration cost of bespoke licensing exceeded the marginal benefit
+of a more surgical fit. We chose the standard.
+
+## See also
+
+- [The FAQ](./faq) — concrete examples of what's permitted and what's
+  restricted, with the question every developer has answered first
+- [Permitted uses, illustrated](./permitted-uses-examples) — explicit ✅
+  and ❌ commercial scenarios
+- [The FSL template](./fsl-template) — the canonical license text we use
+- [Fair Source](https://fair.io) — the classification FSL belongs to
+- [FSL official site](https://fsl.software) — Sentry's canonical FSL
+  resources

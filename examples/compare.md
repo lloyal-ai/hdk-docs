@@ -1,9 +1,13 @@
 ---
 title: "Compare"
-description: "Working DAG harness — 6 nodes, multi-parent dependencies. The smallest example that genuinely needs `dag()` over `chain` or `fanout`."
+description: "A 6-node DAG harness — multi-parent dependencies. The smallest example that genuinely needs `dag()` over `chain` or `fanout`."
 ---
 
-> **See also.** [Pipelines](/learn/pipelines) explains the orchestrator spectrum (parallel / chain / fanout / dag / reduce). [Build a Custom Pipeline](/guides/custom-pipeline) walks through forking *this* harness and reshaping the DAG.
+> **See also.** [Pipelines](/build-a-harness/orchestrators) explains the orchestrator spectrum (parallel / chain / fanout / dag / reduce). [Fork a harness](/guides/custom-pipeline) walks through forking *this* harness and reshaping the DAG.
+
+<Note>
+Compare is a **pre-App-protocol mechanism primer** — it wires sources and a shared catalog inline rather than via `defineApp` + the registry. The DAG mechanics on this page port directly into a 3.0 App-protocol harness; the source-and-tool plumbing is what changes. For the production reference that uses the App protocol, see [reasoning.run](https://github.com/lloyal-ai/reasoning.run) and the [Build an App](/build-an-app/what-is-an-app) track.
+</Note>
 
 A 6-node DAG that researches two subjects on different sources, compares them across three axes simultaneously, and synthesizes the result. The smallest topology that genuinely needs `dag()` instead of `chain` or `fanout` — three sibling nodes each depend on **both** research roots, and the synthesizer depends on all three siblings.
 
@@ -17,8 +21,6 @@ A 6-node DAG that researches two subjects on different sources, compares them ac
        roots                       fan-in / fan-out                  sink
    (parallel, no deps)          (3 siblings sharing deps)
 ```
-
-This example is the framework primer for `dag(...)` — and the canonical demonstration of the [playbooks](/reference/playbooks) convention applied to mixed-role agents.
 
 **Source**: `examples/compare/`
 
@@ -45,7 +47,7 @@ npx tsx examples/compare/main.ts \
 
 Or via the workspace script: `npm run examples:compare -- --x "…" --y "…" …`
 
-Required flags: `--x`, `--y`, `--corpus`, `--reranker`, `TAVILY_API_KEY`. Optional: `--axes` (default `accuracy,performance,complexity` — must be exactly three), `--max-turns`, `--n-ctx`, `--trace`, `--jsonl`.
+Required flags: `--x`, `--y`, `--corpus`, `--reranker`, `TAVILY_API_KEY`. Optional: `--axes` (default `accuracy,performance,complexity` — must be exactly three), `--max-turns`, `--n-ctx`, `--output-dir`, `--jsonl`.
 
 ## What it teaches
 
@@ -53,7 +55,7 @@ Required flags: `--x`, `--y`, `--corpus`, `--reranker`, `TAVILY_API_KEY`. Option
 - **Sibling parallelism with shared deps** — the three compare nodes fire the moment both research nodes complete, then run concurrently.
 - **Multi-child convergence** — `synthesize` waits on all three siblings before spawning.
 - **Spine extension is causal, not just sequential** — each node's `userContent` is prefilled onto the spine via `ctx.extendSpine`. The compare nodes don't merely *follow* the research nodes — they *attend to* them. The edge in the diagram is the spine.
-- **Playbooks over mixed roles** — researcher, comparer, synthesizer all draw from one tool palette. Tool schemas and role descriptions live at the root once; per-spec systemPrompts say `Apply the **<playbook>** playbook`.
+- **Shared catalog, mixed roles** — researcher, comparer, synthesizer all draw from one tool catalog amortized at the root. Per-spec system prompts say which subset to use. (Under the App protocol, this collapses into per-App `skill.eta` — see [What is an App](/build-an-app/what-is-an-app#skill).)
 
 ## Code walkthrough
 
@@ -89,23 +91,23 @@ const nodes: DAGNode[] = [
 
 Each `userContent` field is the curated turn that gets prefilled onto the spine when the node completes. Dependent nodes attend over those prefills as if they were prior conversation turns — the model sees `Research findings on X: <agent's report>` in its KV at the position where the edge fires.
 
-### Pool setup — playbooks at querySpine
+### Pool setup — shared catalog at querySpine
 
-The playbooks (system prompt + tool schemas) is amortized at the harness's `querySpine` once. All six agents fork from there and inherit it via prefix-share:
+The shared catalog (system prompt + tool schemas) is amortized at the harness's `querySpine` once. All six agents fork from there and inherit it via prefix-share:
 
 ```typescript
-
 const pool = yield* withSpine(
   {
     parent: session.trunk ?? undefined,
-    systemPrompt: PLAYBOOKS,             // ← playbooks at root
-    tools,            // ← tool schemas at root
+    systemPrompt: SHARED_CATALOG,         // ← catalog at root
+    tools,                                // ← tool schemas at root
   },
   function* (querySpine) {
     return yield* agentPool({
       orchestrate: dagWithEvents(nodes, emit),
-      tools, parent: querySpine,
-      terminalToolName: "report",
+      tools,
+      parent: querySpine,
+      terminal: reportTool,
       maxTurns,
       pruneOnReturn: true,
       scorer: primaryScorer,
@@ -115,7 +117,7 @@ const pool = yield* withSpine(
 );
 ```
 
-Per-spec system prompts inside the eta templates start with `Apply the **<playbook>** playbook.` — the model selects which set of tools to use without re-emitting schemas per agent. See [Playbooks](/reference/playbooks) for the full convention.
+Per-spec system prompts inside the eta templates select which tool subset that role should use — the model still sees the full catalog at the spine but is steered by its role prompt. Under the App protocol, this convention moves up a level: the shared catalog becomes the registered Apps' catalogs, and per-spec prompts collapse to "use App X". See [What is an App](/build-an-app/what-is-an-app).
 
 ### `dagWithEvents` — orchestrator with TUI hooks
 
@@ -148,12 +150,14 @@ function dagWithEvents(nodes: DAGNode[], emit: (ev: DagEvent) => void): Orchestr
 }
 ```
 
-This is a 25-line illustration of the canonical Effection DAG pattern: each node runs as a child Task; "A depends on B" becomes `yield* tasks.get(B)!` inside A's body. No mutable Sets. No race window. Failure in any node halts the rest via structured concurrency. For the framework's stock `dag()` orchestrator (without the event hooks), see [Concurrency — DAG](/reference/concurrency#dag).
+A 25-line illustration of the canonical Effection DAG pattern: each node runs as a child Task; "A depends on B" becomes `yield* tasks.get(B)!` inside A's body. No mutable Sets. No race window. Failure in any node halts the rest via structured concurrency. For the framework's stock `dag()` orchestrator (without the event hooks), see [Concurrency — DAG](/under-the-hood/concurrency#dag).
 
-### `prompts/` — eta templates per playbook
+### `prompts/`
 
-- `playbooks.eta` — the playbooks file rendered onto `querySpine`. Lists `web_research`, `corpus_research`, `compare`, `synthesize` playbooks with their tool subsets.
-- `research-web.eta`, `research-corpus.eta` — per-playbook researcher prompts; both prepend `Apply the **<playbook>** playbook`.
+The pre-App-protocol source ships these eta templates verbatim:
+
+- `playbooks.eta` — the shared-catalog body rendered onto `querySpine`. (This is the pre-3.0 name for what would now be a registered App's catalog block.)
+- `research-web.eta`, `research-corpus.eta` — per-role researcher prompts.
 - `compare.eta` — per-axis comparison prompt.
 - `synthesize.eta` — final synthesis prompt.
 
@@ -178,18 +182,6 @@ This is a 25-line illustration of the canonical Effection DAG pattern: each node
 
 In non-TTY mode (`--jsonl` or piped output), it falls back to one-line stderr events and a plain stdout final answer for scripting.
 
-## What's unique vs the other examples
-
-| Aspect | react-agent | reflection | compare |
-|---|---|---|---|
-| Topology | single agent | linear pipeline | DAG (multi-parent + multi-child) |
-| Sources | corpus | corpus | web + corpus |
-| Pool primitive | `useAgent` | `useAgent` + manual branches | `agentPool({ orchestrate: dag(...) })` |
-| Spine | single branch | branch chain (fork forward) | `extendSpine` per node |
-| Catalog | none (single role) | none (single role) | playbooks (mixed roles) |
-
-Compare is the example to study when you need multi-parent dependencies, want to see the playbooks in action, or want a worked DAG harness to fork.
-
 ## Customization
 
 - **Different axes** — `--axes "axis1,axis2,axis3"` (must be exactly three).
@@ -199,7 +191,7 @@ Compare is the example to study when you need multi-parent dependencies, want to
 
 ## Related pages
 
-- [Playbooks](/reference/playbooks) — the convention this example uses for mixed-role pools
-- [Continuous Context Spine](/reference/continuous-context-spine) — what `extendSpine` writes and how forks attend to it
-- [Concurrency Model — DAG](/reference/concurrency) — the framework's `dag()` orchestrator and Task-as-Future pattern
-- [RIG Pipeline](/reference/rig/pipeline) — reference architecture for retrieval-interleaved harnesses
+- [Fork a harness](/guides/custom-pipeline) — how to fork this harness and reshape the topology
+- [Continuous-context spine](/under-the-hood/continuous-context-spine) — what `extendSpine` writes and how forks attend to it
+- [Concurrency](/under-the-hood/concurrency) — `dag()` orchestrator and the Task-as-Future pattern
+- [What is an App](/build-an-app/what-is-an-app) — how the catalog + skill convention works under the 3.0 App protocol

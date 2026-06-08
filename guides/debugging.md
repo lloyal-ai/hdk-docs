@@ -3,17 +3,17 @@ title: "Debugging"
 description: "Common failure modes, trace event analysis, and systematic debugging workflow."
 ---
 
-This guide covers common failure modes in lloyal-agents pipelines and how to diagnose them using trace events. Enable tracing with `--trace` to write structured JSONL trace files, or inspect runtime events via the `events` channel.
+This guide covers common failure modes in lloyal-agents pipelines and how to diagnose them using trace events. Enable tracing with `--output-dir` to write structured JSONL trace files, or inspect runtime events via the `events` channel.
 
 ## Enable tracing
 
 From the CLI:
 
 ```bash
-npx tsx examples/react-agent/main.ts model.gguf --corpus ./docs --trace
+npx reasoning.run --output-dir ./runs
 ```
 
-This creates a `trace-{timestamp}.jsonl` file with every branch creation, prompt format, tool dispatch, agent turn, and pressure event.
+This writes a `trace-{timestamp}.jsonl` per session into `./runs/` with every branch creation, prompt format, tool dispatch, agent turn, and pressure event. Programmatic harnesses point a `JsonlTraceWriter` at any open file descriptor.
 
 Programmatically:
 
@@ -110,9 +110,10 @@ If `toolIndex` equals `toolkitSize - 1` (the tool is last in the array), check w
 | Reason | Meaning | When |
 |--------|---------|------|
 | `pressure_init` | Agent didn't fit during pool setup | Before any generation |
-| `pressure_critical` | Remaining KV below `hardLimit` | During PRODUCE phase |
 | `pressure_softcut` | Agent wanted a non-terminal tool but headroom was negative | At stop token during PRODUCE |
-| `pressure_settle_reject` | Stall-breaker: all agents deferred, one sacrificed to free KV | During SETTLE (stall-breaker only) |
+| `pressure_settle_reject` | Policy-driven drop: nudge unavailable, drop + recover | During SETTLE |
+| `settle_stall_break` | All agents deferred and no hook to nudge — one sacrificed to free KV | During SETTLE |
+| `policy_exit` | Policy `shouldExit` returned a stop (e.g. turn cap in a subclass) | At stop token during PRODUCE |
 | `maxTurns` | Agent exhausted its turn budget | At stop token during PRODUCE |
 
 2. Check `pool:open` for the initial pressure state:
@@ -255,7 +256,7 @@ A synthesis agent with grounding tools (search, read_file, grep, query) can make
 
 A systematic approach for investigating unexpected behavior:
 
-1. **Run with --trace** to produce a JSONL trace file
+1. **Run with `--output-dir`** to produce a JSONL trace file
 
 2. **Check pool:open events** for initial pressure state and agent count
 

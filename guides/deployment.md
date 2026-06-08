@@ -5,7 +5,7 @@ description: "Production tuning checklist — model choice, nCtx, KV quantizatio
 
 This guide covers model selection, context sizing, KV quantization, and runtime configuration for deploying a lloyal-agents pipeline.
 
-> **See also.** This guide is the *tuning checklist*. For the policy interface (the hooks you're tuning), see [Agent Policy](/reference/agent-policy). For why the pressure thresholds matter (the budget model), see [KV Pressure](/reference/kv-pressure).
+> **See also.** This guide is the *tuning checklist*. For the policy interface (the hooks you're tuning), see [Agent Policy](/under-the-hood/agent-policy). For why the pressure thresholds matter (the budget model), see [KV Pressure](/under-the-hood/kv-pressure).
 
 ## Model selection
 
@@ -70,7 +70,7 @@ This is tight. If agents hit large tool results (web pages, long search results)
 Examples read `LLAMA_CTX_SIZE` from the environment when no explicit `--n-ctx` flag is passed:
 
 ```bash
-LLAMA_CTX_SIZE=32768 npx tsx examples/react-agent/main.ts model.gguf --corpus ./docs
+LLAMA_CTX_SIZE=32768 npx reasoning.run --output-dir ./runs
 ```
 
 If unset, defaults to 16384.

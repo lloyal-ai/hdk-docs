@@ -1,0 +1,202 @@
+---
+title: Tools
+description: The Tool base class — name, parameters, execute, the protected bit, the probe hook, and how dispatch works.
+---
+
+A `Tool` is anything an agent can call. It's the unit of action — a JSON-schema-described function with an Effection-generator body. Every App declares its tools in the manifest's `protocol.tools[]` and supplies matching `Tool` instances via `defineApp`.
+
+## The base class
+
+```ts
+export abstract class Tool<TArgs = Record<string, unknown>> {
+  /** Tool name — the function identifier in tool calls. */
+  abstract readonly name: string;
+
+  /** Human-readable description shown to the model. */
+  abstract readonly description: string;
+
+  /** JSON Schema describing the tool's expected arguments. */
+  abstract readonly parameters: JsonSchema;
+
+  /** Whether invoking this tool requires a session-held grant. */
+  readonly protected?: boolean;
+
+  /** Execute with parsed arguments. Returns an Effection Operation. */
+  abstract execute(args: TArgs, context?: ToolContext): Operation<unknown>;
+
+  /** Optional reasoning probe prefilled after this tool's result. */
+  probe(_result: unknown): string | null { return null; }
+
+  /** Auto-generated OpenAI-compatible function schema. */
+  get schema(): ToolSchema {
+    return { type: "function", function: { name: this.name, description: this.description, parameters: this.parameters } };
+  }
+}
+```
+
+Five abstract concerns + three optional knobs.
+
+## Walkthrough: a search tool
+
+The corpus App's `SearchTool` (~50 lines) shows every concern:
+
+```ts
+import { Tool, Trace } from "@lloyal-labs/lloyal-agents";
+import type { JsonSchema, ToolContext } from "@lloyal-labs/lloyal-agents";
+
+export class SearchTool extends Tool<{ query: string }> {
+  readonly name = "search";
+  readonly protected = false;
+  readonly description =
+    "Search the knowledge base. Returns sections ranked by relevance with line ranges for read_file.";
+
+  readonly parameters: JsonSchema = {
+    type: "object",
+    properties: { query: { type: "string", description: "Search query" } },
+    required: ["query"],
+  };
+
+  constructor(private chunks: Chunk[], private reranker: Reranker, opts?: { threshold?: number }) {
+    super();
+    this._threshold = opts?.threshold ?? 0;
+  }
+
+  *execute(args: { query: string }, ctx?: ToolContext): Operation<unknown> {
+    const query = args.query?.trim();
+    if (!query) return { error: "query must not be empty" };
+
+    const tw = yield* Trace.expect();
+    tw.write({ traceId: tw.nextId(), parentTraceId: null, ts: performance.now(),
+               type: "rerank:start", query, chunkCount: this.chunks.length });
+
+    const results = yield* call(async () => {
+      let last: ScoredChunk[] = [];
+      for await (const { results, filled, total } of this.reranker.score(query, this.chunks)) {
+        ctx?.onProgress?.({ filled, total });
+        last = results;
+      }
+      return last;
+    });
+
+    const passing = results.filter(r => r.score >= this._threshold);
+    const topRejected = passing.length === 0 ? results.slice(0, 3) : [];
+
+    return { hits: passing, thresholdScore: this._threshold, totalScored: results.length, topRejected };
+  }
+}
+```
+
+The patterns to copy:
+
+- **Args via type parameter.** `Tool<{ query: string }>` types `execute`'s first argument so the generator body is type-safe.
+- **`name` matches the manifest.** Must exactly equal an entry in `protocol.tools[]`; `defineApp` validates this.
+- **`description` is what the model reads** to pick between tools. Be precise about what's returned (line ranges, score ranges, etc.) — the model uses this to plan follow-ups.
+- **JSON Schema → GBNF.** The framework compiles `parameters` into a GBNF grammar at the sampler level, so the model can only emit tokens that produce structurally valid arguments. Invalid JSON is unreachable, not just rare.
+- **`*execute` is an Effection generator.** Async work goes through `yield* call(() => promise)`. Inside, you have access to `Trace` (for event emission), `Ctx`, `Store` — and you can spawn sub-agents via `agentPool` if the tool wants to delegate.
+- **`ToolContext`** carries dispatch-time state — `agentId`, `branch`, an `onProgress` callback, an optional `scorer` (set in exploit mode), and a snapshot of peer agents' tool histories (`peerHistory`). The latter is how `fetch_page` dedups across siblings — see [Agents & pools](/build-a-harness/agents-and-pools).
+- **Return value is JSON-serialized.** Whatever you return gets `JSON.stringify`'d and prefilled into the agent's KV at the call position; the next PRODUCE attends over it.
+
+## The `protected` bit
+
+**Read tools (the default, `protected: false` or unset)** are open: any agent in the pool may call them. Retrieval, file reads, web fetches — anything that *gathers* information rather than mutating state.
+
+**Protected tools (`protected: true`)** are gated at DISPATCH by `authGuard` against a session-held grant. The model sees the tool in the schema and can emit a call; the framework denies the call if no grant exists and emits a `tool:authReject` event:
+
+```ts
+export class SendEmailTool extends Tool<{ to: string; subject: string; body: string }> {
+  readonly name = "send_email";
+  readonly protected = true;            // ← write/sensitive action
+  readonly description = "Send an email via the user's connected account.";
+  readonly parameters = /* ... */;
+
+  *execute(args, ctx): Operation<unknown> {
+    // Runs only if the session holds a grant for "send_email".
+    return yield* call(() => this.smtp.send(args));
+  }
+}
+```
+
+The credential itself never enters the model's context. The session holds the grant; the tool body holds the secret; the model only triggers. [App security](/build-an-app/app-security) covers the threat model, grant acquisition flows, and what happens when grants are revoked mid-session.
+
+<Note>
+Open-by-default isn't a permission downgrade — it's a recognition that *which tools an agent can call* is already gated at the spine layer: the catalog only lists enabled Apps' tools, and every per-spawn message is prefixed with `Apply the **<protocol>** protocol.` so the model knows the discipline. `protected` is the orthogonal gate for *consequential* actions, not the gate for routing.
+</Note>
+
+## The probe hook
+
+`probe(result): string | null` lets a tool *nudge the model to reason in prose* about its result before generating the next tool call:
+
+```ts
+probe(result: unknown): string | null {
+  if (typeof result === "object" && result && "hits" in result) {
+    const r = result as { hits: unknown[]; topRejected: unknown[] };
+    if (r.hits.length === 0 && r.topRejected.length > 0) {
+      return "Reflect: nothing matched above the floor. Should I broaden the query or look elsewhere?";
+    }
+  }
+  return null;
+}
+```
+
+The pool prefills this text into the agent's context *after* the tool result, *before* the lazy grammar resets — so the next sampled tokens are prose, not another tool call. Use sparingly: every probe extends the agent's tokens and counts against KV budget. Return `null` to skip.
+
+## How dispatch works
+
+Every tool call goes through the agent pool's DISPATCH phase. The contract you write to:
+
+1. **The model emits a tool call.** Grammar-constrained against your `parameters` schema, so `args` is structurally valid JSON when it lands in `execute`.
+2. **The pool calls `execute(args, ctx)`** inside a child scope of the tick fiber. Cancellable, traceable.
+3. **You return a value.** The value is `JSON.stringify`'d, the resulting tokens are prefilled into the agent's KV at the call position.
+4. **The next PRODUCE attends over the prefill.** Sampling continues. If you set a `probe`, the probe tokens get prefilled too before sampling resumes.
+
+The whole loop is in-process — no IPC, no HTTP, no serialization across a process boundary. A tool that's CPU-bound or network-bound shouldn't block the tick loop forever (long network calls will benefit from the dispatch-fiber detachment work tracked as TICK-021).
+
+## Tool-spawning patterns
+
+A tool's `execute` is an Effection operation — it can spawn sub-agents:
+
+```ts
+*execute(args, ctx): Operation<unknown> {
+  const findings = yield* agentPool({
+    parent: ctx?.branch,                              // warm fork
+    tools: [searchTool, reportTool],
+    terminal: reportTool,
+    orchestrate: parallel(
+      args.subQuestions.map(q => ({ content: q, systemPrompt: SUB_PROMPT }))
+    ),
+  });
+  return { subFindings: findings.agents.map(a => a.result) };
+}
+```
+
+The sub-agents inherit the parent agent's full KV state (system prompt, tool schemas, prior tool results) via metadata-only fork. Depth adds context, not cost. [Continuous-context spine](/under-the-hood/continuous-context-spine) covers the warm-fork mechanics.
+
+## Tool authoring checklist
+
+When writing a tool for an App:
+
+- **Type the args.** `Tool<{ query: string }>` not `Tool` — payoff is type-safe `execute` and clearer reviewer signal.
+- **Make `description` actionable.** "Search corpus" is weaker than "Search the knowledge base. Returns sections ranked by relevance with line ranges for read_file." The model uses descriptions to plan multi-step sequences.
+- **Validate edges in `execute`.** Empty queries, oversized inputs, missing required ctx — return structured errors (`{ error: "..." }`) rather than throwing; the agent gets a chance to recover.
+- **Set `protected: true` on anything that mutates external state.** Writes, deletes, transfers, sends. If unsure, mark protected — the harness can grant freely; an open write tool is much harder to recall.
+- **Return small, structured payloads.** A 50 KB tool result prefilled into KV is 50 KB the model has to attend over for the rest of the agent's lifetime. Trim or summarize at the tool boundary, not in synth.
+- **Use `probe` sparingly.** It's powerful when a result needs reflection; it's noise when results are routine.
+
+---
+
+## Where next
+
+<CardGroup cols={2}>
+  <Card title="App security" icon="shield-halved" href="/build-an-app/app-security">
+    The full `protected` + `authGuard` story. Grant acquisition. The injection threat model.
+  </Card>
+  <Card title="Sources & retrieval" icon="database" href="/build-an-app/sources-and-retrieval">
+    The Source base, the reranker scorer, RIG inside the loop.
+  </Card>
+  <Card title="Agent policy" icon="gauge" href="/under-the-hood/agent-policy">
+    How `DefaultAgentPolicy` interacts with tool calls — pressure-aware gating, terminal tools, recovery.
+  </Card>
+  <Card title="Grammar & ordering" icon="code" href="/under-the-hood/grammar-and-ordering">
+    The GBNF grammar that constrains tool-call emission, and the recency-bias tool-ordering rule.
+  </Card>
+</CardGroup>

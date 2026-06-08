@@ -165,7 +165,7 @@ const delegate = new DelegateTool({
   systemPrompt: RESEARCH_PROMPT,
   poolOpts: {
     tools: [searchTool, grepTool, readFileTool, reportTool],
-    terminalToolName: 'report',
+    terminal: reportTool,
     maxTurns: 20,
   },
 });
@@ -175,7 +175,7 @@ const pool = yield* agentPool({
     questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
   ),
   tools: [searchTool, grepTool, readFileTool, reportTool, delegate],
-  terminalToolName: 'report',
+  terminal: reportTool,
   maxTurns: 20,
 });
 ```
@@ -197,7 +197,7 @@ const pool = yield* agentPool({
     new GrepTool(resources),
     reportTool,
   ],
-  terminalToolName: 'report',
+  terminal: reportTool,
   maxTurns: 20,
 });
 ```
@@ -208,7 +208,7 @@ When you want delegation, instantiate a `DelegateTool` and add it to the `tools`
 
 Tool order in the `tools` array matters — terminal tools should not be last, particularly when they share a name prefix with another tool. The recency bias of the model's logit distribution favors trailing tool names, which can flip an agent's behavior toward early termination.
 
-→ **[Grammar & tool ordering](/reference/grammar-and-ordering)** has the full rule, the failure case, and the GBNF construction details.
+→ **[Grammar & tool ordering](/under-the-hood/grammar-and-ordering)** has the full rule, the failure case, and the GBNF construction details.
 
 ## Terminal tool pattern
 
@@ -230,13 +230,13 @@ class ReportTool extends Tool<{ result: string }> {
 }
 ```
 
-Register it as `terminalTool` in the pool options:
+Pass the tool instance as `terminal` in the pool options — by reference, not by name:
 
 ```typescript
 const pool = yield* agentPool({
   orchestrate: parallel([{ content: query, systemPrompt: RESEARCH_PROMPT }]),
   tools: [searchTool, reportTool],
-  terminalToolName: 'report',  // Matches ReportTool.name
+  terminal: reportTool,
 });
 ```
 
@@ -315,7 +315,7 @@ The agent sees `"Resource unavailable"` as a tool error and adjusts its query �
 
 ### Recursive forking
 
-If your tool spawns sub-agents, pass `context.branch` as `parent` for [warm path forking](/reference/prefix-sharing#warm-path-fork-from-parent). Sub-agents inherit the calling agent's full attention state:
+If your tool spawns sub-agents, pass `context.branch` as `parent` for [warm path forking](/under-the-hood/prefix-sharing#warm-path-fork-from-parent). Sub-agents inherit the calling agent's full attention state:
 
 ```typescript
 *execute(args: { questions: string[] }, context?: ToolContext): Operation<unknown> {
@@ -324,7 +324,7 @@ If your tool spawns sub-agents, pass `context.branch` as `parent` for [warm path
       args.questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
     ),
     tools: [searchTool, reportTool],
-    terminalToolName: 'report',
+    terminal: reportTool,
     parent: context?.branch,
   });
 }

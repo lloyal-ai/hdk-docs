@@ -1,0 +1,137 @@
+---
+title: Distribution
+description: How Apps reach harnesses. The canonical channel is apps.lloyal.ai — framework-locked into @lloyal-labs/rig. First-party harnesses may also bundle apps they own at build time.
+---
+
+The App protocol defines **two acquisition paths**, both producing an `AppFactory` and both terminating at `createAppRegistry` or `registry.enable`. Which path applies depends on who owns the App:
+
+1. **The canonical channel** (`apps.lloyal.ai`) — for *any* App reaching a harness it doesn't own. Third-party Apps, first-party Apps published for external consumption — all flow through here.
+2. **First-party build-time inclusion** — for a harness vendor bundling Apps **it owns** from a private source (private monorepo, private registry, git+ssh dep). Not a parallel public path.
+
+## The canonical channel — `apps.lloyal.ai`
+
+Every App published to `apps.lloyal.ai` is reviewed by Lloyal Labs for Source-contract conformance, tool-safety review (which tools are `protected`, what data they touch, what consent they require), manifest validation, and signature provenance before listing. The catalog at `apps.lloyal.ai` is the verified registry that consumers rely on.
+
+The framework points at this verified registry by default. `loadBundle` takes a name, not a URL; the catalog URL (`CHANNEL_CATALOG_URL`) and trust roots (`CHANNEL_TRUST_ROOTS`) are compile-time constants in `@lloyal-labs/rig/src/protocol.ts`. This way, every harness built on HDK loads Apps through the same verified channel by default — Apps interoperate across harnesses, consumers see one coherent ecosystem, and the App protocol does not fragment into incompatible sub-catalogs.
+
+```
+                 ┌──────────────────────────────┐
+                 │  App author                  │
+                 │  harness.dev publish         │
+                 │   ↓ build + Ed25519-sign     │
+                 │   ↓ upload to apps.lloyal.ai │
+                 └──────────────┬───────────────┘
+                                │
+                ┌───────────────▼────────────────┐
+                │  apps.lloyal.ai                │
+                │  (Cloudflare R2 + signed       │
+                │   catalog.json at /v1/)        │
+                └───────────────┬────────────────┘
+                                │
+                ┌───────────────▼────────────────┐
+                │  Harness                       │
+                │  yield* loadBundle('jira',     │
+                │                    { semver }) │
+                │   ↓ resolve via CHANNEL_       │
+                │     CATALOG_URL + verify       │
+                │     against CHANNEL_TRUST_     │
+                │     ROOTS (framework-locked)   │
+                │   ↓ AppFactory                 │
+                │  registry.enable()             │
+                └────────────────────────────────┘
+```
+
+### What `loadBundle` does
+
+```ts
+import { loadBundle } from "@lloyal-labs/rig";
+
+const factory = yield* loadBundle('jira', { semver: '^1.2.0' });
+yield* registry.enable(factory);
+```
+
+Internally `loadBundle`:
+
+1. Fetches `CHANNEL_CATALOG_URL` (currently `https://apps.lloyal.ai/v1/catalog.json`).
+2. Verifies the catalog's Ed25519 signature against `CHANNEL_TRUST_ROOTS`. If verification fails the call rejects — no further fetching, no trust path through a tampered catalog.
+3. Looks up `'jira'` in the verified catalog; resolves `^1.2.0` against the published versions; picks the highest match (or rejects with `AppNotFoundError`).
+4. Fetches the resolved bundle's manifest, verifies it against `CHANNEL_TRUST_ROOTS`, then fetches the bundle bytes and verifies them against the manifest's signature.
+5. Dynamic-`import`s the verified ESM module and returns its default-exported `AppFactory`.
+
+The harness sees one call. Every URL and every verification key is framework-vendored.
+
+### Publishing — the App author flow
+
+```bash
+harness.dev publish   # auth → build → submit to apps.lloyal.ai for review + signing
+```
+
+The CLI:
+
+1. Authenticates the publisher against `apps.lloyal.ai`. Two modes: an interactive OAuth flow when run from a developer terminal (short-lived session, no persistent credential on disk), or long-lived service credentials provisioned by Lloyal during publisher onboarding for use in CI environments (read from environment variables, not from disk).
+2. esbuilds the App into a single ESM bundle with `@lloyal-labs/*` as externals.
+3. Submits the bundle bytes + an unsigned manifest stub (name, version, entry, sizeBytes, peerDependencies) to the apps.lloyal.ai publish endpoint.
+
+The platform side then:
+
+4. Authenticates the publisher token and runs review checks — bundle source conformance, framework-version compatibility, `skill.eta` sanitization, `protected` tool surfacing.
+5. Signs the bundle bytes with the Lloyal platform Ed25519 key (the same key listed in `CHANNEL_TRUST_ROOTS`), and writes the bundle + the signed `AppBundleManifest` to R2.
+6. Re-signs `catalog.json` (adding/updating the new entry) with the platform key and atomically replaces `https://apps.lloyal.ai/v1/catalog.json`.
+
+There is no "self-hosted catalog" option, and no per-publisher signing keys: publishers authenticate to submit, but every signature on every byte in the catalog comes from the Lloyal platform key after Lloyal's review. The signature on a bundle is the cryptographic record of that review.
+
+### Installing — the harness operator flow
+
+```bash
+harness.dev install jira@^1.2.0   # resolves + downloads + caches
+```
+
+The CLI is a thin ergonomics wrapper over `loadBundle`. It writes the resolved bundle bytes to `~/.harness-cache/apps/<name>-<version>/` (cache convention per RFC §8.6). Subsequent boots reuse the cached bytes; verification still runs against the signature on every cold load.
+
+## First-party build-time inclusion
+
+A harness vendor MAY bundle Apps it owns at build time from a private source. This is an internal build mechanism, **not** a public distribution path. The reasoning.run reference harness uses this path for `@lloyal-labs/web-app` and `@lloyal-labs/corpus-app`:
+
+```ts
+import { createWebApp } from "@lloyal-labs/web-app";
+import { createCorpusApp } from "@lloyal-labs/corpus-app";
+
+const registry = yield* createAppRegistry({
+  configStore,
+  apps: [createWebApp, createCorpusApp],
+});
+```
+
+Constraints:
+
+- The vendor must own the source repos (private monorepo, private registry, git+ssh with auth).
+- Third-party Apps NEVER use this path. There is no "publish your App to npm" story — third-party distribution goes through `apps.lloyal.ai` exclusively.
+- Audience: a harness vendor shipping its own first-party Apps preinstalled.
+
+If you don't own the App, you go through the canonical channel.
+
+## The `harness.dev` CLI
+
+A separate dev tool, distinct from the framework runtime, wraps both sides of the channel — scaffolding, publisher accounts, publish + install. **See the [CLI reference](/cli) for the full command surface and workflows.**
+
+| Command | What it does |
+| --- | --- |
+| `harness.dev <name>` | [Scaffold a harness](/cli/scaffolding) |
+| `harness.dev app <name>` | [Scaffold an app](/cli/scaffolding) |
+| `harness.dev publishers register` | [Claim a publisher handle](/cli/publishers) |
+| `harness.dev publish` | [Submit an app for review + signing](/cli/publishing) |
+| `harness.dev install <publisher>/<short>[@<semver>]` | [Install a signed app](/cli/installing) |
+
+## Where next
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle & registry" icon="circle-nodes" href="/build-an-app/lifecycle-and-registry">
+    The registry's per-app detached scope model — applies identically to channel-loaded and build-time-included Apps.
+  </Card>
+  <Card title="App security" icon="shield-halved" href="/build-an-app/app-security">
+    The signing model — what the framework verifies and what it cannot.
+  </Card>
+  <Card title="What is an App" icon="puzzle-piece" href="/build-an-app/what-is-an-app">
+    Back to the App protocol anatomy.
+  </Card>
+</CardGroup>

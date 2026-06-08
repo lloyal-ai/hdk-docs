@@ -1,0 +1,172 @@
+---
+title: Lifecycle & registry
+description: createAppRegistry, the per-app detached scope model, AppFactory, AppState, and dynamic enable/disable.
+---
+
+The harness owns the registry; the registry owns each App's lifetime. The two key contracts:
+
+- `createAppRegistry(opts)` — the harness-wide registry. Declarative `apps` set + dynamic `enable` / `disable`. Per-app **detached** Effection scopes, structured teardown on registry-scope exit.
+- `AppFactory` — the App's own constructor. An `() => Operation<App>` that reads its config + reranker, builds, and returns.
+
+No `install` / `uninstall` / `enable` / `disable` lifecycle hooks. Setup is the factory body; teardown is `ensure(...)`.
+
+## `createAppRegistry`
+
+```ts
+import { createAppRegistry, createInMemoryConfigStore } from "@lloyal-labs/rig";
+import { createWebApp } from "@lloyal-labs/web-app";
+import { createCorpusApp } from "@lloyal-labs/corpus-app";
+
+yield* RerankerCtx.set(reranker);   // BEFORE — factories that read it look here
+const configStore = createInMemoryConfigStore();
+yield* configStore.set("corpus", { corpusPath: "/path/to/docs" });
+
+const registry = yield* createAppRegistry({
+  configStore,
+  grantStore: createGrantStore(),     // optional; omit ⇒ protected tools all denied
+  apps: [createWebApp, createCorpusApp],
+});
+
+// registry.enabled()    → readonly App[]
+// registry.byName(name)  → App | undefined
+// registry.stateOf(name) → 'enabled' | 'disabled'
+// yield* registry.enable(factory)
+// yield* registry.disable(name)
+
+// registry scope-exit tears every enabled App down (factory ensure()s fire).
+```
+
+### The options
+
+```ts
+export interface CreateAppRegistryOpts {
+  configStore: AppConfigStore;        // per-app config, set on AppConfigStoreCtx
+  grantStore?: GrantStore;            // optional protected-tool grants, set on GrantStoreCtx
+  apps?: readonly AppFactory[];       // boot set — enabled at construction
+}
+```
+
+`createAppRegistry` itself does three things on construction:
+
+1. Sets `AppRegistryCtx` and `AppConfigStoreCtx` (and `GrantStoreCtx` if a `grantStore` was provided) on the **caller's** scope so the pool, the dispatch authGuard, and consumers can read them.
+2. Enables each factory in `apps` in declaration order. Each one runs in its own detached scope.
+3. Registers a scope-exit teardown that halts every enabled App's detached scope in **reverse register-order**, best-effort.
+
+### The interface
+
+```ts
+export interface AppRegistry {
+  byName(name: string): App | undefined;
+  installed(): readonly App[];
+  stateOf(name: string): AppState;                       // 'enabled' | 'disabled'
+  enable(factory: AppFactory): Operation<App>;
+  disable(name: string): Operation<void>;
+}
+```
+
+`installed()` returns Apps in **register-order** — the harness's planner / spine renderer can rely on a stable ordering (`installed()[0]` is the App that registered first).
+
+## The factory model — no hooks, just scopes
+
+An `AppFactory` is `() => Operation<App>`. It runs once per `enable` and returns once — the registry holds the `App` for the rest of the App's enabled lifetime.
+
+```ts
+export function* createCorpusApp(): Operation<App> {
+  // 1. Read framework contexts.
+  const reranker = yield* RerankerCtx.expect();
+  const cfgStore = yield* AppConfigStoreCtx.expect();
+  const cfg = (yield* cfgStore.get("corpus")) ?? {};
+
+  // 2. Construct heavy state.
+  const chunks = chunkResources(loadResources(cfg.corpusPath));
+  yield* call(() => reranker.tokenizeChunks(chunks));
+
+  // 3. If you allocated something that needs teardown, register `ensure`.
+  // (The corpus app doesn't need one — the in-memory chunks GC naturally.)
+  // yield* ensure(() => watcher.close());
+
+  // 4. Return defineApp(...).
+  return defineApp({ manifest, source: new CorpusSource(chunks, reranker), tools, skill });
+}
+```
+
+The protocol:
+
+- **Setup is the body.** Read config, allocate resources, construct.
+- **Teardown is `ensure(...)`.** Anything that needs explicit cleanup — a connection pool, a file watcher, a periodic timer — gets an `ensure(() => …)` so it fires when the registry tears the App's scope down.
+- **No `install` / `uninstall` hooks.** They'd be redundant with the body + `ensure` and would invite teardown bugs (forgetting to fire one of them; firing them in the wrong order). Effection scope guarantees both happen, and in the right order, by construction.
+- **Validation throws synchronously.** If `defineApp` throws on a bad manifest or config validation fails, the partial scope tears down and the error propagates. The App never enters the registry. Sibling Apps are unaffected.
+
+## Per-app detached scopes
+
+Each factory runs in its own **detached** Effection scope, not as a child of the registry's caller scope. Why this matters:
+
+- **Teardown isolation.** If `createWebApp`'s teardown throws, it can't propagate up to the harness's scope and crash the session. The detached scope swallows the throw; the error is logged; sibling Apps tear down normally. A throwing teardown in one App can never strand another or crash the harness.
+- **`disable(name)` is safe.** A mid-session `registry.disable("corpus")` halts the corpus App's scope — but a throwing teardown stays inside the scope. The session continues.
+- **`enable(factory)` failure is safe.** If the factory throws (or `defineApp` validation fails), the partial scope tears down before the error propagates. The registry never half-installs.
+
+The mechanism lives in `rig/src/registry.ts` using `createScope()` + `scope.run()` + a `suspend()` that holds the App alive between construction and `destroy()`. App authors don't manage any of this; the framework wires it.
+
+## Boot set vs dynamic enable
+
+Two ways an App enters the registry:
+
+**Build-time imports (the boot set).** The harness `import`s factories and hands them to `createAppRegistry({ apps: [...] })`. This is the path the reasoning.run harness uses today — `createWebApp` and `createCorpusApp` are build-time deps.
+
+**Dynamic enable.** `yield* registry.enable(factory)` mid-session. This is the path channel-distributed Apps use: `yield* loadBundle('jira', { semver: '^1.2.0' })` resolves against `apps.lloyal.ai` (URL and trust roots are framework-locked constants), verifies, and returns an `AppFactory`. `enable` then runs it in its own scope. See [Distribution](/build-an-app/distribution).
+
+Both paths converge on the same invariant: the App enters the registry only if (a) the factory body completes without throwing, (b) `defineApp` validation passes, (c) the App protocol version is supported, and (d) an existing entry with the same `name` doesn't already occupy the slot.
+
+## `AppState`
+
+```ts
+type AppState = "enabled" | "disabled";
+```
+
+Two states, no half-life. `stateOf(name)` returns `'enabled'` if the App is currently in the registry, `'disabled'` otherwise. An App can move from `disabled` → `enabled` via `enable`, and from `enabled` → `disabled` via `disable` (which halts its detached scope and fires `ensure`s).
+
+There's no `'installing'` or `'erroring'` state. If a factory throws, the App was never `enabled`. If a teardown throws, the App is already `disabled` — the throw is swallowed and logged.
+
+## Framework contexts seeded by the registry
+
+When the registry runs a factory, it seeds these contexts into the App's detached scope so the factory can read them:
+
+| context | what it carries |
+| --- | --- |
+| `AppConfigStoreCtx` | The harness's per-app config store — call `cfgStore.get(manifest.name)` for this App's config. |
+| `AppRegistryCtx` | A reference back to the registry itself — useful for an App that needs to enumerate peers. |
+| `RerankerCtx` | The shared reranker, if any — for Apps whose Source needs cross-encoder scoring. |
+| `GrantStoreCtx` | The session's protected-tool grants — relevant if the App's tools need to query their own grant state (rare). |
+
+These are Effection contexts (from `agents/src/context.ts`). Set on the App's scope, accessible via `.expect()`. They don't leak across Apps — each factory's scope sees only what the registry seeded.
+
+## Idiomatic patterns
+
+**Heavy setup in the factory, not in the source constructor.** Tokenizing chunks, indexing, opening a connection pool — do it once in the factory body. Source/tool constructors should be cheap.
+
+**Throw clearly on missing config.** A factory that throws `"missing config 'corpusPath'"` at `enable` time gives a much better failure than one that throws at first search.
+
+**Make `ensure` mirror allocation.** Every long-lived resource you open in the body gets a matching `ensure` for its close. Scope-halt guarantees they fire in reverse allocation order.
+
+**Don't leak context-set across Apps.** A factory may `yield* SomeCtx.set(...)` — but it only affects that App's detached scope, not siblings'. If you find yourself wanting cross-App state, that's a harness concern, not an App concern.
+
+**Versioning lives in `package.json`.** Bump `package.json` `version` for App-internal changes — that's the version the channel catalog publishes as `<publisher>/<short-name>@<version>`. `app.json` carries `appProtocolVersion` (which target App protocol the App was authored against; rarely changes — the framework's protocol is `'3.0'`); the registry refuses to enable an App that declares a `appProtocolVersion` outside `SUPPORTED_APP_PROTOCOL_VERSIONS`.
+
+---
+
+## Where next
+
+<CardGroup cols={2}>
+  <Card title="App security" icon="shield-halved" href="/build-an-app/app-security">
+    How the `GrantStoreCtx` the registry seeds drives authGuard at dispatch.
+  </Card>
+  <Card title="Distribution" icon="boxes-stacked" href="/build-an-app/distribution">
+    The canonical channel (apps.lloyal.ai) + harness.dev CLI for publishing and installing Apps.
+  </Card>
+  <Card title="Thinking in Effection" icon="brain" href="/start-here/thinking-in-effection">
+    The structured-concurrency model the per-app detached scopes are built on.
+  </Card>
+  <Card title="What is an App" icon="puzzle-piece" href="/build-an-app/what-is-an-app">
+    Back to the App anatomy if you skipped here from the spine.
+  </Card>
+</CardGroup>

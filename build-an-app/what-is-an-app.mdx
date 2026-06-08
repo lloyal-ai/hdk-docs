@@ -1,0 +1,104 @@
+---
+title: What is an App
+description: A packaged capability — Source + Tools + skill + manifest — wired with defineApp.
+---
+
+An **App** is the HDK's unit of capability packaging. A harness consumes Apps; a third party builds one. Same person can wear both hats on day one — the split scales when other teams start shipping Apps for harnesses they didn't write.
+
+## Anatomy
+
+An App bundles five parts. `defineApp(spec): App` (in `@lloyal-labs/rig`) wires and validates them:
+
+| part | type | role |
+| --- | --- | --- |
+| **manifest** | `AppManifest` (from `app.json`) | Declarative identity + the **protocol**: `name`, `protocol.name`, `protocol.useWhen`, `protocol.tools[]`, `appProtocolVersion`. |
+| **source** | `Source` | Data access to a live system + retrieval intelligence: tools getter, `promptData()` (TOC/contents advert), `createScorer()` (reranker-backed `EntailmentScorer`). |
+| **tools** | `Record<name, Tool>` | The actual actions. Each `Tool` has a JSON-schema `parameters`, an `execute()` generator, and a **`protected` flag** marking sensitive (write) ops. Keys must equal `protocol.tools[]` as a set — no missing, no extras. |
+| **skill** | `string \| SkillTemplateFn` | The per-spawn agent preamble — *how* an agent should investigate/act with this app. Rendered via Eta with the agent-render context. |
+| **examples?** / **hints?** / **configFlow?** | optional | `examples` is discipline/few-shot rendered per-spawn (never enters the shared spine). `hints` are UX/marketplace metadata. `configFlow` is an optional interactive credential/config flow. |
+
+## A two-app example
+
+Two reference apps ship with the HDK. Both follow the same pattern:
+
+**`corpus_research`** — local docs:
+- `app.json` declares `protocol.name: "corpus_research"`, `tools: ["grep", "read_file", "search"]`, `configSchema.required: ["corpusPath"]`.
+- `skill.eta` is the research-assistant preamble (RULES, PROCESS) the agent sees per spawn.
+- `src/index.ts` is the factory: it reads the reranker from `RerankerCtx`, the `corpusPath` from `AppConfigStoreCtx`, loads + tokenizes the corpus, constructs `CorpusSource`, builds the tool map, and returns `defineApp({ manifest, source, tools, skill })`.
+
+**`web_research`** — open web:
+- `protocol.name: "web_research"`, `tools: ["web_search", "fetch_page"]`, `configSchema.tavilyKey` (secret).
+- `src/index.ts` picks Tavily vs the keyless DuckDuckGo provider based on config, optionally pulls a reranker, constructs `WebSource`, returns `defineApp(...)`.
+
+These are full HDK 3.0 Apps — every concept on this page is real code you can read.
+
+## The App protocol — what the model actually sees
+
+Every enabled App contributes to the runtime's **shared spine** — the KV prefix decoded once and inherited by every forked agent. Five constants in `@lloyal-labs/rig`'s `protocol.ts` are the entire bytes-locked surface the model encounters:
+
+| constant | role |
+| --- | --- |
+| `FRAMEWORK_INTRO` | The intro paragraph at the top of every spine. |
+| `CATALOG_ENTRY(name, tools[], useWhen)` | Per-app catalog block emitted under `# Protocols`. |
+| `TOOL_SELECTION_RULE` | The model's routing rule across enabled Apps. |
+| `BOUNDARY_MARKER(name)` | `Apply the **<name>** protocol.\n\n` — prefixes every per-spawn message. |
+| `APP_PROTOCOL_VERSION` | Bumped only when the marker/catalog/rule changes. |
+
+Every byte of framework-rendered prompt content the model sees traces to one of those constants (or to grammar-sanitized `app.json` metadata interpolated through them). [Continuous-context spine](/under-the-hood/continuous-context-spine) walks the spine's physical layout.
+
+## What `defineApp` enforces
+
+The wiring step is also a security boundary. `defineApp` validates the spec synchronously, before the App enters the registry — so a malformed App can never ride the prompt:
+
+- **Manifest schema.** `name`/`protocol.name` match `[a-z][a-z0-9_-]{1,63}`. `protocol.tools[]` is non-empty, unique, same regex.
+- **`useWhen` sanitization.** Single bounded sentence, no chat-role markers, no markdown code fences, no newlines. App-supplied strings can't break out of the catalog block.
+- **App protocol version.** `manifest.appProtocolVersion` must be in `SUPPORTED_APP_PROTOCOL_VERSIONS` (currently `"3.0"`).
+- **Tool-map coverage.** `Object.keys(tools)` equals `protocol.tools[]` as a set. Every declared tool has an implementation; no extras.
+- **Boundary-marker double-emission.** If `skill` is a string, it MUST NOT contain the literal `Apply the **` substring — the framework prepends the marker, so an `skill.eta` carrying the line would emit it twice.
+
+These run synchronously and throw on failure. App factories should call `defineApp` **last** (after constructing source + tools) so a bad manifest fails at construction, not later at registration.
+
+## Lifecycle — no hooks, just scopes
+
+There are no `install`/`uninstall`/`enable`/`disable` hooks on the App. Lifecycle is Effection scope:
+
+- **Factory body = setup.** An `AppFactory` is `() => Operation<App>`. Read config + reranker, construct, return.
+- **`ensure(...) = teardown`.** Anything the factory allocates that needs cleanup (a connection pool, a watcher) goes inside `ensure(...)` so the registry's scope-halt fires it.
+- **Per-app detached scope.** The registry runs each factory in its own detached scope and tears them down in reverse register-order on registry-scope exit — best-effort, so a throwing teardown can never strand a sibling or crash the harness.
+
+[Lifecycle & registry](/build-an-app/lifecycle-and-registry) walks the registry's scope model in detail.
+
+## Security at a glance
+
+Apps run in-process with the model, so the trust boundary is **the prompt itself**:
+
+- **`Tool.protected`** marks sensitive (write) tools. The framework's `authGuard` denies a protected tool unless the session holds a **grant** for it (`GrantStoreCtx`). The credential never enters the model's context; the model only triggers the call.
+- **Metadata sanitization** at `defineApp` time prevents an app's strings from breaking out of the catalog block (the regex/forbidden-pattern checks above).
+- **Per-spawn prose isolation.** Each agent's per-spawn user message is prefixed with `Apply the **<name>** protocol.` — the model knows which App's discipline applies to *this* turn.
+
+[App security](/build-an-app/app-security) covers the threat model and the full defense stack.
+
+## Distribution
+
+First-party Apps that ship inside the HDK reference harness (`reasoning.run`) are loaded as build-time imports (the harness `import { createWebApp } from '@lloyal-labs/web-app'` and hands the factory to `createAppRegistry`). Third-party Apps — and any App reaching a harness it doesn't own — flow through the canonical **signed-bundle channel** at `apps.lloyal.ai`. The harness resolves Apps by name (`yield* loadBundle('jira', { semver: '^1.2.0' })`); the catalog URL and the trust roots used to verify signatures are **compile-time constants in `@lloyal-labs/rig`** — the harness does not configure them.
+
+The runtime primitives live in `@lloyal-labs/rig` (`loadBundle`, `verifyBundle`, `CHANNEL_CATALOG_URL`, `CHANNEL_TRUST_ROOTS`). The `harness.dev` CLI wraps them for scaffolding, publishing, and installing Apps. [Distribution](/build-an-app/distribution) covers the full flow.
+
+---
+
+## Where next
+
+<CardGroup cols={2}>
+  <Card title="Your first App" icon="rocket" href="/build-an-app/your-first-app">
+    Walk through `createCorpusApp` line-by-line. Manifest, factory, source, tools, skill — the whole loop.
+  </Card>
+  <Card title="Sources & retrieval" icon="database" href="/build-an-app/sources-and-retrieval">
+    The `Source` abstract base, the reranker-backed `EntailmentScorer`, and how RIG inverts classical RAG.
+  </Card>
+  <Card title="Tools" icon="screwdriver-wrench" href="/build-an-app/tools">
+    The `Tool<TArgs>` base, the protected bit, the schema auto-generation.
+  </Card>
+  <Card title="App security" icon="shield-halved" href="/build-an-app/app-security">
+    `protected` + `authGuard` + grants. The threat model the in-process App trust boundary lives by.
+  </Card>
+</CardGroup>

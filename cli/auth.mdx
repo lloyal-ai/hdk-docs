@@ -1,0 +1,90 @@
+---
+title: "Authentication"
+description: "How `harness.dev` authenticates against api.lloyal.ai — interactive Cloudflare Access OAuth for developers, Service Tokens for CI."
+---
+
+Commands that hit `api.lloyal.ai` (anything under `publishers`, `publish`, plus pre-release `install` flows) are gated by Cloudflare Access. The CLI supports two auth modes — interactive for human developers, Service Token for automation.
+
+## Interactive (developer terminals)
+
+The first time you run an authenticated command from a fresh terminal, `harness.dev` opens your default browser to the Cloudflare Access sign-in page:
+
+```bash
+npx harness.dev publishers me
+# harness.dev publish: opening browser for Cloudflare Access SSO...
+#   If the browser doesn't open automatically, visit:
+#   https://lloyal.cloudflareaccess.com/cdn-cgi/access/oauth/authorization?...
+```
+
+The flow uses RFC 8252 OAuth + PKCE + RFC 7591 dynamic client registration. You complete one-time PIN authentication (Cloudflare emails you a code), and on success an access token + refresh token are written to:
+
+```
+~/.cache/lloyal/auth.json   (mode 0600)
+```
+
+Token shape:
+
+```json
+{
+  "access_token": "...",
+  "refresh_token": "...",
+  "expires_at": 1780897962009,
+  "authorization_server": "https://lloyal.cloudflareaccess.com",
+  "client_id": "...",
+  "team_domain": "lloyal"
+}
+```
+
+The CLI refreshes the access token transparently on each invocation using the cached refresh token — you only see the browser flow on first run and after the refresh token itself expires.
+
+### Clearing the cache
+
+```bash
+rm ~/.cache/lloyal/auth.json
+```
+
+The next authenticated command will trigger a fresh browser flow.
+
+## Service Token (CI)
+
+For automation (GitHub Actions, GitLab CI, etc.) where there's no human to complete a browser flow, set two environment variables:
+
+```bash
+export CF_ACCESS_CLIENT_ID=<client-id>.access
+export CF_ACCESS_CLIENT_SECRET=<client-secret>
+```
+
+When these are present, the CLI uses them as the auth headers (`CF-Access-Client-Id` + `CF-Access-Client-Secret`) and skips the OAuth flow entirely. Both must be set; if either is missing the CLI falls back to the interactive flow (which fails in non-TTY environments).
+
+Service Tokens are administered by your Lloyal contact. The token's common-name is mapped server-side to a publisher account, so a CI Service Token publishes under the same handle as the human team that owns it.
+
+<Note>
+**Service Tokens cannot register publisher accounts.** Registration (`harness.dev publishers register`) requires an SSO identity — run it from an interactive terminal first; once a publisher record exists, CI Service Tokens bound to the same identity can publish under that record.
+</Note>
+
+## What's NOT authenticated
+
+`harness.dev install` is *partially* authenticated:
+
+- Catalog + tarball + manifest fetches (`apps.lloyal.ai/...`) are **public read** — no auth needed. All bytes are Ed25519-signature-verified by the CLI against the framework-vendored trust root.
+- Some pre-release `install` flows may hit `api.lloyal.ai` for resolution; those follow the same auth rules as above.
+
+Plain `npm ci` against a committed lockfile fetches the canonical channel URL directly — **no harness.dev required in CI** for installing already-published apps.
+
+## Troubleshooting
+
+### `401 invalid_token`
+
+Usually a stale access token in a long-lived shell environment variable. Run any `harness.dev` command (e.g., `harness.dev publishers me`) to trigger a refresh — the CLI rewrites the cache file with a fresh token.
+
+### `403 unauthorized`
+
+Cloudflare Access denied the request. Either:
+- Your Cloudflare-Access-issued identity doesn't match any of the publish-worker's Allow policies (e.g., wrong email domain).
+- A Service Token's `CF_ACCESS_CLIENT_ID` / `SECRET` are invalid or expired.
+
+Re-run with `DEBUG=harness.dev:* harness.dev <command>` to see the headers being sent.
+
+### `403 no-publisher-account`
+
+The Cloudflare-Access JWT identifies you, but you haven't registered a publisher handle yet. Run [`harness.dev publishers register --handle <handle>`](/cli/publishers) first.
