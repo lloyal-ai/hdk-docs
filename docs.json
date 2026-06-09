@@ -116,7 +116,7 @@
               "under-the-hood/grammar-and-ordering",
               "under-the-hood/prompt-composition",
               "under-the-hood/agent-policy",
-              "under-the-hood/scratchpad-extraction",
+              "under-the-hood/recovery-extraction",
               "under-the-hood/search-strategy",
               "under-the-hood/mixed-role-pools"
             ]
@@ -191,7 +191,8 @@
     { "source": "/reference/playbooks", "destination": "/under-the-hood/mixed-role-pools", "permanent": true },
     { "source": "/reference/prefix-sharing", "destination": "/under-the-hood/prefix-sharing", "permanent": true },
     { "source": "/reference/prompt-composition", "destination": "/under-the-hood/prompt-composition", "permanent": true },
-    { "source": "/reference/scratchpad-extraction", "destination": "/under-the-hood/scratchpad-extraction", "permanent": true },
+    { "source": "/reference/scratchpad-extraction", "destination": "/under-the-hood/recovery-extraction", "permanent": true },
+    { "source": "/under-the-hood/scratchpad-extraction", "destination": "/under-the-hood/recovery-extraction", "permanent": true },
     { "source": "/reference/search-strategy", "destination": "/under-the-hood/search-strategy", "permanent": true },
     { "source": "/reference/rig/overview", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },
     { "source": "/reference/rig/corpus-source", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },

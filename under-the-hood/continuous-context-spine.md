@@ -231,4 +231,4 @@ If the inner pool's spine re-prefills the system prompt when the warm path could
 
 ### Spine bloat from large tool results
 
-Each tool result prefilled into an agent's branch permanently extends its KV spine. A fetch_page returning 2000 tokens consumes 2000 cells. Sub-agents at deeper delegation levels inherit the cost. Use scratchpad extraction (fork, attend, extract, prune) for large results that should be compressed before entering the spine.
+Each tool result prefilled into an agent's branch permanently extends its KV spine. A fetch_page returning 2000 tokens consumes 2000 cells. Sub-agents at deeper delegation levels inherit the cost. Tools that return large payloads should compress server-side (the `lloyal/web` app's `fetch_page` does this via reranker-based chunk selection) before returning into the spine.

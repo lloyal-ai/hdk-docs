@@ -82,27 +82,27 @@ Each `DAGNode`'s `task.systemPrompt` is the role assignment for that agent. In c
 
 When you adopt the App protocol, this convention moves up a level: each App ships its own `skill.eta` describing how an agent should use that App's tools, and the per-role prompt collapses into "use App `X`". See [What is an App](/build-an-app/what-is-an-app#skill) for the protocol.
 
-## Swap sources
+## Swap Apps
 
-Sources are configured in `main.ts` and passed as a typed array. Compare's flow is `web + corpus`, but the `Source` contract is uniform — swap in any combination:
+Once you adopt the App protocol, sources are configured by enabling Apps on a registry in `main.ts`. The registry hands each App its scope, factory, and teardown — uniform across `lloyal/web`, `lloyal/corpus`, or anything you build with `harness.dev app`:
 
 ```typescript
-const sources: Source<SourceContext, Chunk>[] = [];
+yield* RerankerCtx.set(reranker);
+const configStore = createInMemoryConfigStore();
+if (corpusDir)
+  yield* configStore.set("corpus", { corpusPath: corpusDir });
+if (process.env.TAVILY_API_KEY)
+  yield* configStore.set("web", { tavilyKey: process.env.TAVILY_API_KEY });
 
-if (corpusDir) {
-  const resources = loadResources(corpusDir);
-  const chunks = chunkResources(resources);
-  sources.push(new CorpusSource(resources, chunks));
-}
+const registry = yield* createAppRegistry({ configStore });
+if (corpusDir) yield* registry.enable(createCorpusApp);
+yield* registry.enable(createWebApp);
 
-if (process.env.TAVILY_API_KEY) {
-  sources.push(new WebSource(new TavilyProvider()));
-}
-// Add custom sources — vector stores, databases, internal APIs. Anything that
-// implements Source<TCtx, TChunk> works. See /build-an-app/sources-and-retrieval.
+const sources = registry.enabled().map((app) => app.source);
+const tools = registry.enabled().flatMap((app) => [...app.tools]);
 ```
 
-If you only want one research lane, drop the corresponding research node from the DAG and remove the `dependsOn` on it from descendants. The orchestrator scales to whatever topology you declare.
+Custom Apps install with `harness.dev install <publisher>/<name>` and register the same way. If you only want one research lane, drop the corresponding research node from the DAG and remove the `dependsOn` on it from descendants.
 
 ## Choose an orchestrator
 

@@ -192,15 +192,17 @@ const pool = yield* agentPool({
     questions.map(q => ({ content: q, systemPrompt: RESEARCH_PROMPT })),
   ),
   tools: [
-    new SearchTool(chunks, reranker),
-    new ReadFileTool(resources),
-    new GrepTool(resources),
+    new MySearchTool(chunks, reranker),
+    new MyReadFileTool(resources),
+    new MyGrepTool(resources),
     reportTool,
   ],
   terminal: reportTool,
   maxTurns: 20,
 });
 ```
+
+In a production harness those tools live inside an App: the App registry owns construction, scope, and teardown, and the harness reads `tools` off the enabled App rather than instantiating tool classes directly. See [What is an App](/build-an-app/what-is-an-app) for the protocol; `harness.dev app <name>` scaffolds the wiring.
 
 When you want delegation, instantiate a `DelegateTool` and add it to the `tools` array alongside the others — it's a tool, not a config option.
 
@@ -294,7 +296,7 @@ interface ToolContext {
 
 ### Cross-agent dedup pattern
 
-The built-in `WebSearchTool` and `FetchPageTool` both check `peerHistory` to prevent duplicate calls:
+The first-party `lloyal/web` app's `web_search` and `fetch_page` tools both check `peerHistory` to prevent duplicate calls (see `packages/apps/web/src/tools/`):
 
 ```typescript
 *execute(args: { query: string }, context?: ToolContext): Operation<unknown> {

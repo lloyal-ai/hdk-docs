@@ -28,7 +28,7 @@ export DIGEST_TO="you@example.com"
 ## Install
 
 ```bash
-npm i @lloyal-labs/lloyal-agents @lloyal-labs/lloyal.node @lloyal-labs/sdk @lloyal-labs/rig effection
+npm i @lloyal-labs/lloyal-agents @lloyal-labs/lloyal.node @lloyal-labs/sdk @lloyal-labs/rig @lloyal-labs/web-app effection
 ```
 
 ## The harness
@@ -37,10 +37,16 @@ npm i @lloyal-labs/lloyal-agents @lloyal-labs/lloyal.node @lloyal-labs/sdk @lloy
 import { main, call } from "effection";
 import { createContext } from "@lloyal-labs/lloyal.node";
 import {
-  initAgents, agentPool, chain, Tool,
+  initAgents, agentPool, chain, Tool, RerankerCtx,
 } from "@lloyal-labs/lloyal-agents";
 import type { JsonSchema, Operation } from "@lloyal-labs/lloyal-agents";
-import { WebSource, TavilyProvider, reportTool } from "@lloyal-labs/rig";
+import {
+  createAppRegistry,
+  createInMemoryConfigStore,
+  reportTool,
+} from "@lloyal-labs/rig";
+import { createReranker } from "@lloyal-labs/rig/node";
+import { createWebApp } from "@lloyal-labs/web-app";
 
 // ── Mailgun delivery tool — wraps the v3 Messages API ──────────
 class MailgunTool extends Tool<{ subject: string; html: string; to: string }> {
@@ -100,17 +106,20 @@ await main(function* () {
     typeK: "q4_0",
     typeV: "q4_0",
   }));
-  const reranker = yield* call(() => createContext({
-    modelPath: process.env.RERANKER_PATH || "reranker.gguf",
-    nCtx: 4096, nSeqMax: 1, typeK: "q4_0", typeV: "q4_0",
-    pooling: "mean",
-  }));
+  const reranker = yield* createReranker(
+    process.env.RERANKER_PATH || "reranker.gguf",
+    { nCtx: 4096, nSeqMax: 1 },
+  );
 
   yield* initAgents(ctx);
 
-  // 2. Wire sources and tools
-  const web = new WebSource(new TavilyProvider(process.env.TAVILY_API_KEY!));
-  yield* web.bind({ reranker });
+  // 2. Wire an App — its Source + Tools + skill template are
+  //    auto-wired into the agent runtime by the registry.
+  yield* RerankerCtx.set(reranker);
+  const configStore = createInMemoryConfigStore();
+  yield* configStore.set("web", { tavilyKey: process.env.TAVILY_API_KEY });
+  const registry = yield* createAppRegistry({ configStore });
+  const web = yield* registry.enable(createWebApp);
 
   // 3. Two-step chain — research, then synth-and-deliver
   const pool = yield* agentPool({

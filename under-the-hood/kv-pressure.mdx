@@ -77,7 +77,7 @@ pressure.percentAvailable  // 0–100 integer: remaining / nCtx * 100
 
 `percentAvailable` is the single source of truth for the KV availability percentage. It is used by `policy.shouldExplore()` to decide explore vs exploit mode, recorded on `ToolHistoryEntry.contextAfterPercent` after each tool result settles, and injected into tool results as `_contextAvailablePercent` so agents can make pressure-aware decisions.
 
-**Defaults:** `softLimit = 1024`, `hardLimit = 512` (matches llama.cpp's default `n_batch`). Pools that use recovery with a larger expected report body should raise `hardLimit` accordingly — e.g. `hardLimit: 1024` to fit a ~400-token scratchpad extraction.
+**Defaults:** `softLimit = 1024`, `hardLimit = 512` (matches llama.cpp's default `n_batch`). Pools that use recovery with a larger expected report body should raise `hardLimit` accordingly — e.g. `hardLimit: 1024` to fit a ~400-token recovery extraction.
 
 ## Enforcement points
 
@@ -249,7 +249,7 @@ When `shouldExit` (or stall-break, or post-loop cleanup) kills an agent:
 5. **Set grammar**: `branch.setGrammar(reportGrammar)`. Eager mode — active from the first generated token.
 6. **Generate**: Single-agent produce/commit loop until stop token.
 7. **Parse + diagnostics**: Parse the JSON output. Emit `pool:recoveryProduce` with token count + output length, then one of:
-   - `pool:recoveryReturn` — parse succeeded, findings captured via `setResult(parsed.result, 'scratchpad')`.
+   - `pool:recoveryReturn` — parse succeeded, findings captured via `setResult(parsed.result, 'recovery')`.
    - `pool:recoveryFailed` — parse failed. Event carries `reason` (`parse_error`, `no_result_field`, `scope_error`) and `outputExcerpt` (first 200 chars) so ops can diagnose without re-running.
 8. **Prune**: Free the agent's branch. The freed KV cells give remaining agents headroom.
 
@@ -286,7 +286,7 @@ During normal generation, agents use lazy grammar with tool-call triggers — th
 The `hardLimit` reserve exists specifically for recovery. Agents are killed when `remaining < hardLimit`. Recovery needs to fit:
 
 - Extraction prompt prefill: ~100–200 tokens (short system + user turn).
-- JSON `{"result": "..."}` generation: 200–500 tokens for a typical scratchpad report.
+- JSON `{"result": "..."}` generation: 200–500 tokens for a typical recovery report.
 - Native batch workspace: ~512 cells (the `nBatch` floor).
 
 Default `hardLimit = 512` satisfies the invariant but is tight for verbose reports. Policies expecting longer extractions should bump to 1024+.
@@ -328,7 +328,7 @@ For **single-level pools** with default `nBatch=512`:
 | Policy | softLimit | hardLimit | Rationale |
 |---|---|---|---|
 | Baseline (default) | 1024 | 512 | Minimum invariant-satisfying config |
-| Research with recovery | 1024–2048 | 1024 | Generous recovery budget for scratchpad extraction |
+| Research with recovery | 1024–2048 | 1024 | Generous recovery budget for recovery extraction |
 | Chain pipeline (4+ tasks) | 2048 | 1024 | Spine accumulates across tasks — size for the last task's constraints |
 | Nested / recursive pools | 3072 | 1024 | Outer pool reserves enough for inner pool's full lifecycle |
 

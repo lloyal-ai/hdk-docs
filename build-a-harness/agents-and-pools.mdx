@@ -53,9 +53,10 @@ The pool enforces valid transitions. An agent cannot go backward or skip states.
 
 Agents produce results through a single write path with provenance tracking:
 
-- `report_tool` — agent voluntarily called `report()`
+- `voluntary_return` — agent voluntarily called the terminal tool (e.g. `report()`)
 - `free_text` — agent emitted prose without a tool call
-- `scratchpad` — extracted post-idle via grammar-constrained fork
+- `recovery` — extracted post-idle via the recovery path (`recoverInline`)
+- `nudge` — agent returned after a nudge injection
 - `tool_error` — tool threw, error captured as result
 
 ### Tool history

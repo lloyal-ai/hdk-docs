@@ -1,6 +1,6 @@
 ---
 title: "Agent Policy"
-description: "The policy interface — lifecycle hooks (produce / settle / recover), budget gating, tool guards, scratchpad recovery."
+description: "The policy interface — lifecycle hooks (produce / settle / recover), budget gating, tool guards, recovery extraction."
 ---
 
 Every agent lifecycle decision passes through a policy. When an agent hits a stop token, when a tool result won't fit in KV, when a tool call is about to dispatch — the pool consults the policy and executes the returned action. The pool handles mechanics (transitions, prefills, prunes). The policy handles judgment.
@@ -170,7 +170,7 @@ Called by the pool at the start of each tick iteration. Resets per-tick flags us
 
 Optional — only needed if the policy tracks per-tick state. `DefaultAgentPolicy` implements this.
 
-## `onRecovery` — scratchpad extraction
+## `onRecovery` — recovery extraction
 
 Called inline when the trailing stop kills an agent during PRODUCE (or at pool close for agents that ended idle without result). The policy decides whether to extract findings, and renders its extraction prompt with the live pressure snapshot so the model knows its budget.
 
@@ -279,7 +279,7 @@ const policy = new DefaultAgentPolicy({
     time: { softLimit: 480_000, hardLimit: 600_000 },  // ms since policy creation
   },
 
-  // Recovery (scratchpad extraction for killed agents)
+  // Recovery extraction for killed agents
   recovery: {
     prompt: { system: "Summarize all findings.", user: "Report your findings." },
     minTokens: 100,      // confabulation guard
@@ -300,7 +300,7 @@ const policy = new DefaultAgentPolicy({
 | `budget.context.hardLimit` | 512 | KV tokens remaining that triggers kill; reserves recovery budget. Must be >= `nBatch` (enforced at pool startup). |
 | `budget.time.softLimit` | — | Milliseconds since policy creation that triggers nudge |
 | `budget.time.hardLimit` | — | Milliseconds since policy creation that triggers kill |
-| `recovery.prompt` | — | System + user prompt for scratchpad extraction |
+| `recovery.prompt` | — | System + user prompt for recovery extraction |
 | `recovery.minTokens` | 100 | Skip extraction for agents with fewer tokens |
 | `recovery.minToolCalls` | 2 | Skip extraction for agents with fewer tool calls |
 

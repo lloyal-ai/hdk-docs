@@ -729,28 +729,35 @@
                     class="accordion-header"
                     onclick="toggleAccordion(this)"
                   >
-                    <span class="icon">[-]</span> built-in &mdash; WebSource +
-                    CorpusSource share one reranker
+                    <span class="icon">[-]</span> built-in &mdash; web + corpus
+                    Apps share one reranker
                   </button>
                   <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { call } <span class="keyword">from</span> <span class="string">'effection'</span>;
-<span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { WebSource, CorpusSource, createReranker, reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+                    <pre><code><span class="keyword">import</span> { useAgent, RerankerCtx } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { createAppRegistry, createInMemoryConfigStore, reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+<span class="keyword">import</span> { createReranker } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig/node'</span>;
+<span class="keyword">import</span> { createWebApp } <span class="keyword">from</span> <span class="string">'@lloyal-labs/web-app'</span>;
+<span class="keyword">import</span> { createCorpusApp } <span class="keyword">from</span> <span class="string">'@lloyal-labs/corpus-app'</span>;
 <span class="keyword">import</span> { workerPrompt, today } <span class="keyword">from</span> <span class="string">'./harness'</span>;
 
 <span class="comment">// The Reranker is the cross-encoder focal lens. One instance feeds</span>
-<span class="comment">// every source's retrieval pipeline. At each tool call it scores</span>
+<span class="comment">// every App's retrieval pipeline. At each tool call it scores</span>
 <span class="comment">// candidate chunks against the agent's current task and admits only</span>
 <span class="comment">// verbatim top-K within a token budget. Never paraphrased, never</span>
 <span class="comment">// summarized &mdash; context grows by exactly what the model needs.</span>
-<span class="keyword">const</span> reranker = <span class="keyword">yield*</span> <span class="function">call</span>(() => <span class="function">createReranker</span>({ modelPath: rerankerPath }));
+<span class="keyword">const</span> reranker = <span class="keyword">yield*</span> <span class="function">createReranker</span>(rerankerPath);
+<span class="keyword">yield*</span> RerankerCtx.<span class="function">set</span>(reranker);
 
-<span class="comment">// Sources expose retrieval tools. One contract for any data &mdash;</span>
-<span class="comment">// files, SQL, web, your records. Each source binds the shared</span>
-<span class="comment">// reranker via bind(), then its tools become available to agents.</span>
-<span class="keyword">const</span> web = <span class="keyword">new</span> <span class="class">WebSource</span>({ apiKey: tavilyKey });
-<span class="keyword">const</span> corpus = <span class="keyword">new</span> <span class="class">CorpusSource</span>(resources, chunks);
-<span class="keyword">for</span> (<span class="keyword">const</span> s <span class="keyword">of</span> [web, corpus]) <span class="keyword">yield*</span> s.<span class="function">bind</span>({ reranker });
+<span class="comment">// Apps are the unit of capability. Each App ships a Source +</span>
+<span class="comment">// Tools + skill template + manifest. The registry hands every App</span>
+<span class="comment">// its own scope, feeds it config + the shared reranker, and tears</span>
+<span class="comment">// it down with the harness.</span>
+<span class="keyword">const</span> configStore = <span class="function">createInMemoryConfigStore</span>();
+<span class="keyword">yield*</span> configStore.<span class="function">set</span>(<span class="string">'web'</span>, { tavilyKey });
+<span class="keyword">yield*</span> configStore.<span class="function">set</span>(<span class="string">'corpus'</span>, { corpusPath });
+<span class="keyword">const</span> registry = <span class="keyword">yield*</span> <span class="function">createAppRegistry</span>({ configStore });
+<span class="keyword">const</span> web = <span class="keyword">yield*</span> registry.<span class="function">enable</span>(createWebApp);
+<span class="keyword">const</span> corpus = <span class="keyword">yield*</span> registry.<span class="function">enable</span>(createCorpusApp);
 
 <span class="comment">// Retrieval happens mid-generation, not upfront. The agent decides</span>
 <span class="comment">// what to look up based on what it's discovered so far; results</span>
@@ -774,33 +781,41 @@
                     data; same pipeline, same focal lens
                   </button>
                   <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { Source, <span class="keyword">type</span> Reranker } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+                    <pre><code><span class="keyword">import</span> { Source, <span class="keyword">type</span> Tool, RerankerCtx } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { defineApp } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
 <span class="keyword">import</span> { <span class="keyword">type</span> Operation } <span class="keyword">from</span> <span class="string">'effection'</span>;
-<span class="keyword">import</span> { SearchCustomersTool, ReadCustomerTool } <span class="keyword">from</span> <span class="string">'./customer-tools'</span>;
+<span class="keyword">import</span> { readFileSync } <span class="keyword">from</span> <span class="string">'node:fs'</span>;
+<span class="keyword">import</span> { join } <span class="keyword">from</span> <span class="string">'node:path'</span>;
+<span class="keyword">import</span> { SearchCustomersTool, ReadCustomerTool } <span class="keyword">from</span> <span class="string">'./tools'</span>;
 <span class="keyword">import</span> { db } <span class="keyword">from</span> <span class="string">'./app'</span>;
 
-<span class="comment">// Bridge your app's own data. Implementing Source slots your retrieval</span>
-<span class="comment">// into the same pipeline as built-in Web and Corpus &mdash; same reranker,</span>
-<span class="comment">// same focal-lens admission, same KV-resident results. No vector DB,</span>
-<span class="comment">// no embedding ETL, no parallel knowledge layer. Your customer table</span>
-<span class="comment">// becomes an agent-accessible source just by writing this class.</span>
-<span class="keyword">class</span> <span class="class">CustomerSource</span> <span class="keyword">extends</span> <span class="class">Source</span>&lt;{ reranker: <span class="class">Reranker</span> }&gt; {
+<span class="comment">// Your own data slots into the same App protocol as the built-ins.</span>
+<span class="comment">// Implement Source, define your tools, render a skill template, and</span>
+<span class="comment">// defineApp(...) returns a validated App ready to enable on any</span>
+<span class="comment">// registry. Same reranker, same focal-lens admission, same KV-</span>
+<span class="comment">// resident results &mdash; no vector DB, no embedding ETL.</span>
+<span class="keyword">class</span> <span class="class">CustomerSource</span> <span class="keyword">extends</span> <span class="class">Source</span> {
   <span class="keyword">readonly</span> name = <span class="string">'customers'</span>;
-  <span class="keyword">readonly</span> searchTool = <span class="keyword">new</span> <span class="class">SearchCustomersTool</span>(db);
-  <span class="keyword">readonly</span> readTool = <span class="keyword">new</span> <span class="class">ReadCustomerTool</span>(db);
+  <span class="keyword">private</span> _tools: <span class="class">Tool</span>[];
 
-  <span class="keyword">get</span> <span class="function">tools</span>() { <span class="keyword">return</span> [<span class="keyword">this</span>.searchTool, <span class="keyword">this</span>.readTool]; }
-
-  *<span class="function">bind</span>(ctx: { reranker: <span class="class">Reranker</span> }): <span class="class">Operation</span>&lt;<span class="keyword">void</span>&gt; {
-    <span class="keyword">this</span>.searchTool.<span class="function">setReranker</span>(ctx.reranker);
+  <span class="keyword">constructor</span>(reranker: <span class="class">Reranker</span>) {
+    <span class="keyword">super</span>();
+    <span class="keyword">this</span>._reranker = reranker;
+    <span class="keyword">this</span>._tools = [<span class="keyword">new</span> <span class="class">SearchCustomersTool</span>(db, reranker), <span class="keyword">new</span> <span class="class">ReadCustomerTool</span>(db)];
   }
 
-  <span class="function">getChunks</span>() { <span class="keyword">return</span> db.customers.<span class="function">iterate</span>(); }
+  <span class="keyword">get</span> <span class="function">tools</span>() { <span class="keyword">return</span> <span class="keyword">this</span>._tools; }
 }
 
-<span class="comment">// Drop in alongside any other source &mdash; same wiring, same scorer.</span>
-<span class="keyword">const</span> customers = <span class="keyword">new</span> <span class="class">CustomerSource</span>();
-<span class="keyword">yield*</span> customers.<span class="function">bind</span>({ reranker });</code></pre>
+<span class="keyword">export</span> <span class="keyword">function</span>* <span class="function">createCustomerApp</span>(): <span class="class">Operation</span>&lt;App&gt; {
+  <span class="keyword">const</span> dir = <span class="function">join</span>(__dirname, <span class="string">'..'</span>);
+  <span class="keyword">const</span> manifest = <span class="class">JSON</span>.<span class="function">parse</span>(<span class="function">readFileSync</span>(<span class="function">join</span>(dir, <span class="string">'app.json'</span>), <span class="string">'utf8'</span>));
+  <span class="keyword">const</span> skill = <span class="function">readFileSync</span>(<span class="function">join</span>(dir, <span class="string">'skill.eta'</span>), <span class="string">'utf8'</span>);
+  <span class="keyword">const</span> reranker = <span class="keyword">yield*</span> RerankerCtx.<span class="function">expect</span>();
+  <span class="keyword">const</span> source = <span class="keyword">new</span> <span class="class">CustomerSource</span>(reranker);
+  <span class="keyword">const</span> tools = <span class="class">Object</span>.<span class="function">fromEntries</span>(source.tools.<span class="function">map</span>(t => [t.name, t]));
+  <span class="keyword">return</span> <span class="function">defineApp</span>({ manifest, source, tools, skill });
+}</code></pre>
                   </div>
                 </div>
               </div>

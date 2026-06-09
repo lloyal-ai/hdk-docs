@@ -3,7 +3,7 @@ title: "Branch Lifecycle"
 description: "Create, fork, prefill, produce/commit, prune — the full lifecycle of an inference branch."
 ---
 
-`Branch` is the fundamental inference handle. It owns everything needed for independent generation: a KV cache sequence, sampler chain, logits snapshot, and perplexity tracker. Every agent, every scratchpad extraction, every diverge attempt -- all are branches. Understanding the branch lifecycle is prerequisite to understanding prefix sharing, multi-agent pools, and KV pressure.
+`Branch` is the fundamental inference handle. It owns everything needed for independent generation: a KV cache sequence, sampler chain, logits snapshot, and perplexity tracker. Every agent, every recovery extraction, every diverge attempt -- all are branches. Understanding the branch lifecycle is prerequisite to understanding prefix sharing, multi-agent pools, and KV pressure.
 
 ## Under the App protocol
 
@@ -312,7 +312,7 @@ function* agent(opts) {
 }
 ```
 
-Whether generation succeeds, fails, or is cancelled, branches are pruned. For scratchpad extraction (`parent` provided), this means the temporary fork is always cleaned up and the parent's KV is untouched.
+Whether generation succeeds, fails, or is cancelled, branches are pruned. For sub-agent forks (`parent` provided), this means the temporary fork is always cleaned up and the parent's KV is untouched.
 
 ## Branch as the foundation
 
@@ -321,7 +321,7 @@ Everything in the agent framework builds on Branch:
 - **Prefix sharing**: `withSpine` creates the spine, prefills the shared prompt, agents fork from it. See [Prefix Sharing](/under-the-hood/prefix-sharing).
 - **Agent pools**: Each agent is a forked branch. The tick loop calls `produceSync()` and `store.commit()` on branch arrays. See [Concurrency Model](/under-the-hood/concurrency).
 - **KV pressure**: `ContextPressure` reads `cellsUsed` which is incremented by branch decode operations. See [KV Pressure](/under-the-hood/kv-pressure).
-- **Scratchpad extraction**: `agent({ parent })` forks a temporary branch for grammar-constrained extraction. See [Scratchpad Extraction](/under-the-hood/scratchpad-extraction).
+- **Recovery extraction**: when an agent is killed by KV pressure, `recoverInline` prefills a nudge onto the agent's own branch, swaps to eager grammar, generates, and prunes. See [Recovery Extraction](/under-the-hood/recovery-extraction).
 - **Grammar constraining**: `setGrammar()` and `setGrammarLazy()` are branch methods. Grammar state is cloned on fork. See [Grammar & Tool Ordering](/under-the-hood/grammar-and-ordering).
 
 The produce/commit separation, O(1) fork, and scope-tree cleanup are the primitives that make multi-agent generation on shared GPU compute possible.

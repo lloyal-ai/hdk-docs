@@ -160,7 +160,7 @@ Previously `agent:report` fired for BOTH voluntary completion (via `handleReport
 After the rename:
 
 - **`agent:return`** — fires only when the model voluntarily called the terminal tool and `handleReturn` ran. `ResultSource` = `'voluntary_return'`.
-- **`agent:recovered`** — fires only when `recoverInline` extracted findings via grammar-constrained generation after the agent was killed. `ResultSource` = `'scratchpad'`.
+- **`agent:recovered`** — fires only when `recoverInline` extracted findings via grammar-constrained generation after the agent was killed. `ResultSource` = `'recovery'`.
 - Both still populate `agent.result` and fire `agent:done` for lifecycle.
 
 **Consumer migration:** code that previously listened for `agent:report` to capture any agent's value should subscribe to BOTH `agent:return` and `agent:recovered` (or to `agent:done` and read `agent.result` directly). The lloyal-sdk examples and reasoning.run use case-fall-through (`case 'agent:return': case 'agent:recovered': { ... }`) to preserve the prior union semantics.
@@ -172,7 +172,7 @@ After the rename:
 - **`agent.result`, `agent.resultSource`** field names — the noun stays; only the act renames.
 - **`agent:tool_call` event** — still fires for terminal-tool calls (the model emitted a parsed tool call from its POV; the interception happens at the policy layer, not the event layer).
 - **`agent:done`** — lifecycle event, always fires.
-- **`'free_text'`, `'scratchpad'`, `'tool_error'`, `'nudge'`** ResultSource literals — unchanged.
+- **`'free_text'`, `'recovery'`, `'tool_error'`, `'nudge'`** ResultSource literals — note: `'scratchpad'` was renamed to `'recovery'` in v0.5 alongside the dead-surface cleanup.
 
 ### Why
 

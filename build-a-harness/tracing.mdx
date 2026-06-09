@@ -38,7 +38,7 @@ Every trace event has a `traceId`, `parentTraceId` (for building the tree), and 
 | `tool:result` | Full result object, prefill token count, duration |
 | `pool:open/close` | Agent count, suffix token costs, pressure snapshot, per-agent findings |
 | `pool:agentDrop` | Why an agent was killed: `pressure_init`, `pressure_critical`, `pressure_softcut`, `pressure_settle_reject` (stall-breaker), `maxTurns` |
-| `generate:start/end` | Single-branch generation (plan, eval, scratchpad) with output |
+| `generate:start/end` | Single-branch generation (plan, eval, recovery) with output |
 | `branch:create/prefill/prune` | KV lifecycle with token counts and roles |
 | `rerank:start/end` | Query, chunk count, top scored results |
 | `entailment:search` | Steering-boundary scoring of web search results against original query |
@@ -94,8 +94,8 @@ for e in (json.loads(l) for l in sys.stdin):
   <Card title="Agents killed by pressure" icon="gauge-high">
     Filter `pool:agentDrop` events. The `reason` field tells you exactly where: init pressure, PRODUCE critical (trailing stop), or PRODUCE soft-cut. See [KV pressure](/under-the-hood/kv-pressure).
   </Card>
-  <Card title="Scratchpad failures" icon="code-branch">
-    Look for `generate:start` events with `hasParent: true`. If the matching `generate:end` has no `parsed` field, the extraction failed. See [scratchpad extraction](/under-the-hood/scratchpad-extraction).
+  <Card title="Recovery failures" icon="code-branch">
+    Look for `pool:recoveryFailed` trace events. The `reason` field discriminates `parse_error` / `no_result_field` / `scope_error`. See [recovery extraction](/under-the-hood/recovery-extraction).
   </Card>
   <Card title="Wrong prompt content" icon="file-lines">
     Check `prompt:format` events with `role: "agentSuffix"`. The `taskContent` field shows the raw filled template. The `promptText` field shows what the model physically sees.
