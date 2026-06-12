@@ -232,3 +232,7 @@ If the inner pool's spine re-prefills the system prompt when the warm path could
 ### Spine bloat from large tool results
 
 Each tool result prefilled into an agent's branch permanently extends its KV spine. A fetch_page returning 2000 tokens consumes 2000 cells. Sub-agents at deeper delegation levels inherit the cost. Tools that return large payloads should compress server-side (the `lloyal/web` app's `fetch_page` does this via reranker-based chunk selection) before returning into the spine.
+
+## Related: rerank-architecture
+
+The cross-encoder reranker composes the same `Branch` + `BranchStore` primitives over a permanent warm trunk — same physics, different consumer. See [Rerank architecture](/under-the-hood/rerank-architecture) for the trunk / queryBranch / leaves topology and the BM25 first-stage that caps cross-encoder workload at top-K candidates.

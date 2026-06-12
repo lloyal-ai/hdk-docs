@@ -134,3 +134,11 @@ A prompt engineer can restructure the synthesis prompt — reorder sections, cha
 - `.md` files for static prompts (system `---` user split via `loadTask`)
 
 Both live alongside the harness in the `tasks/` directory. Templates are loaded as raw strings at startup and rendered at call time.
+
+## App reference data — `Source.promptData()`
+
+Some apps carry prompt data that is identical for every agent in a pool — a corpus app's table of contents, an index of available entities. Per-spawn placement multiplies it by the agent count in physical KV (six TOC-bearing 4.8k-token suffixes once overran a 32k context); shared data belongs in shared KV.
+
+The contract: `Source.promptData()` (base default `{}`) returns the app's reference data. The **harness** renders it once as an appendix to the spine prompt, after `renderSpine(...)` — decoded once, prefix-shared by every fork, with per-spawn suffixes staying lean (preamble + task only).
+
+Placement is deliberately the harness's call, not the framework's: this is free prose derived from source *content*, and the shared spine prefix is read by every agent regardless of app routing. `renderSpine` itself stays prose-free as the cross-app injection defense — a harness should append `promptData` only from apps it trusts (its own first-party corpora), never blanket-append from third-party bundles.

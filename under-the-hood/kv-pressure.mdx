@@ -485,3 +485,7 @@ The `pool:agentDrop` trace event records the specific enforcement point:
 | `tool_error` | DISPATCH | Tool's `execute()` threw |
 
 Every drop reason (except `pressure_init`, which is pre-spawn) is followed by a recovery attempt whose outcome is visible in `pool:recoveryReturn` or `pool:recoveryFailed` — no silent data loss.
+
+## Spawn admission reserves batch-mates
+
+Admission (`canFit`) is checked per spawn, but SPAWN-phase prefill is batched — every spawn admitted in a tick prefills together. The check therefore reserves the suffix tokens of already-admitted, not-yet-prefilled batch-mates: each spawn must fit *after* the ones before it, not merely against the pre-batch headroom. Without the reservation, N individually-valid spawns can overrun the context in one prefill and every agent dies `pressure_softcut` on its first turn; with it, oversubscription refuses the spawn loudly at admission time.

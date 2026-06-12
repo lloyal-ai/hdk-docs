@@ -5,6 +5,27 @@ description: "Public-API renames and removals. Append-only — when a name chang
 
 This page tracks renames, removals, and notable shape changes in the public API surface of `@lloyal-labs/lloyal-agents`, `@lloyal-labs/sdk`, and `@lloyal-labs/rig`. New entries are appended at the top.
 
+## v3.0 — tool retry parking, `Source.promptData`, spawn admission reservation
+
+`@lloyal-labs/lloyal-agents` additions (no breaking changes):
+
+- **`ToolRetryError`** — a tool throws this (with `retryAfterMs`) to signal a transient backend condition (rate limit, brief outage). The pool parks the agent in `awaiting_tool` and re-dispatches the same call after the delay; the model's context never records the failure. Infra weather stays out of KV — by the Continuous Context argument, a transient error the model can't act on doesn't belong in its history.
+- **`AgentPolicy.onToolRetry(agent, tool, error, attempt)` → `ToolRetryAction`** — policy hook deciding `{ type: 'retry', afterMs? }` vs `{ type: 'fail', message? }`. `DefaultAgentPolicy` retries while `attempt <= maxToolRetries` (new opt, default 1). Exhaustion delivers a directive tool result the model can pivot on, not an agent-killing error.
+- **Events**: `agent:tool_retry` (AgentEvent) and `tool:retry` (TraceEvent) carry `retryAfterMs` + `attempt` so harness UIs can render the wait instead of appearing stuck.
+- **`Source.promptData()`** — base-contract method (default `{}`) for app-level prompt data such as a corpus TOC. Identical for every agent in a pool, so it belongs in shared KV: a harness renders it ONCE as a spine appendix instead of duplicating it into each spawn's suffix. Placement is the harness's trust decision — `renderSpine` itself remains prose-free (cross-app injection defense); append only data from apps you trust.
+- **Spawn admission reservation** — `PoolContext.spawn` now reserves KV for batch-mates admitted earlier in the same tick. Previously N individually-valid spawns could overrun the context in one SPAWN-phase prefill and die `pressure_softcut` on turn 0; oversubscription now refuses the spawn loudly at admission.
+
+`@lloyal-labs/rig`: the keyless search provider classifies rate-limit challenges (202/403/429 + challenge-page markers) and throws `ToolRetryError`; genuinely empty SERPs still return an honest empty result for the model to rephrase against.
+
+## v3.0 — rerank: position-read scoring, BM25 first stage
+
+`@lloyal-labs/sdk` `Rerank` restructure (verified score-preserving by the frozen-fixture eval pack — same-pair drift below 0.02 logits, rank order τ ≥ 0.99 vs the 2.x implementation):
+
+- Leaf scoring reads logits at the final prompt position via `Branch` position reads (`ForkOpts.cloneLogits`, `BranchSampleError` on the sdk surface); per-leaf re-decode is gone.
+- `Rerank.create(ctx, opts)` enforces exclusive decode ownership of its `SessionContext` and fires three fail-loud calibration gates (single-token labels, BPE-boundary drift, boot-canary ordering gap).
+- Scores are log-odds of an absolute yes/no judgment: `sigmoid(score) = P(yes)`, floor `0 ≡ P 0.5`. Docstrings previously describing a "relative ranker" were corrected — see [Rerank architecture](/under-the-hood/rerank-architecture).
+- `@lloyal-labs/corpus-app` 1.1.0 adds an Okapi-BM25 first stage over reranker-token ids (top-100 lexical gate ahead of the cross-encoder) and moves its TOC from per-spawn prompts to `Source.promptData()`.
+
 ## v3.0 — `loadBundle` resolves by name (pre-launch breaking change)
 
 `loadBundle`'s signature changed from `(url, manifest, { trustRoots })` to `(name, { semver })`. Trust roots and catalog URL moved from harness-supplied runtime arguments into compile-time constants in `@lloyal-labs/rig/src/protocol.ts`: `CHANNEL_CATALOG_URL` (`https://apps.lloyal.ai/v1/catalog.json`) and `CHANNEL_TRUST_ROOTS` (Lloyal platform Ed25519 keys — single active key with additive rotation slots for compromise recovery).

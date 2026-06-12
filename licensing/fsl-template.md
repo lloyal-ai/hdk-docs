@@ -9,10 +9,10 @@ substituted in.
 
 | Marker | Value at instantiation |
 |---|---|
-| `<Year>` | Year of release (e.g. `2026`) |
-| `<Licensor>` | The party offering the Software (`Lloyal Labs`) |
-| `<Software>` | The name of the software (`liblloyal`, `lloyal-node`, or the lloyal-sdk package name) |
-| `<Change Date>` | Two years from the version's release date (e.g. release `2026-06-01` → Change Date `2028-06-01`). **Per-release**: every new published version sets its own Change Date at release time. Do not use a single global Change Date across versions. |
+| `\<Year>` | Year of release (e.g. `2026`) |
+| `\<Licensor>` | The party offering the Software (`Lloyal Labs`) |
+| `\<Software>` | The name of the software (`liblloyal`, `lloyal-node`, or the lloyal-sdk package name) |
+| `\<Change Date>` | Two years from the version's release date (e.g. release `2026-06-01` → Change Date `2028-06-01`). **Per-release**: every new published version sets its own Change Date at release time. Do not use a single global Change Date across versions. |
 
 ## Template
 
@@ -29,7 +29,7 @@ FSL-1.1-Apache-2.0
 
 ## Notice
 
-Copyright <Year> <Licensor>
+Copyright \<Year> \<Licensor>
 
 ## Terms and Conditions
 
@@ -133,7 +133,7 @@ limitations under the License.
 
 ## Notes for repo maintainers
 
-- **`<Change Date>` calculation**: Take the version's release date and add
+- **`\<Change Date>` calculation**: Take the version's release date and add
   exactly two years. Format as ISO-8601 (`YYYY-MM-DD`). The Change Date is
   expressed in the "Grant of Future License" section above as "the second
   anniversary of the date we make the Software available" — the date itself

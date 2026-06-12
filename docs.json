@@ -118,6 +118,7 @@
               "under-the-hood/agent-policy",
               "under-the-hood/recovery-extraction",
               "under-the-hood/search-strategy",
+              "under-the-hood/rerank-architecture",
               "under-the-hood/mixed-role-pools"
             ]
           }

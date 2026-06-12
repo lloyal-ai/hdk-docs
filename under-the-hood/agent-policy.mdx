@@ -382,3 +382,17 @@ yield* agentPool({ tasks, tools, systemPrompt, policy: new MyPolicy() });
 Signatures are narrow by design: `(agent, pressure)`. The policy is a class — time, cost, or other signals live on `this`. The pool passes what it owns (agent + pressure snapshot); the policy combines with its own state.
 
 The policy instance is shared across all agents in a pool. For nested pools (recursive tools), the inner pool receives the same policy instance.
+
+## Tool retry parking
+
+Tools own their backend semantics: when a backend is transiently unavailable (rate limit, brief outage), the tool throws `ToolRetryError` with a `retryAfterMs` hint instead of returning an error result. The pool parks the agent — it stays `awaiting_tool`, costing zero in PRODUCE — and re-dispatches the **same call, same callId** after the delay. The model's context never records the failure: by the Continuous Context argument, a transient condition the model can't act on doesn't belong in its KV.
+
+Policy decides the budget, the pool provides the mechanism:
+
+```ts
+onToolRetry(agent, tool, error, attempt): ToolRetryAction
+// { type: 'retry', afterMs? }  — park and re-dispatch (afterMs overrides the tool's hint)
+// { type: 'fail', message? }   — deliver a directive tool result; the model pivots
+```
+
+`DefaultAgentPolicy` retries while `attempt <= maxToolRetries` (default 1). Exhaustion is **not** a `tool_error` — the agent receives a normal tool result saying the source is unavailable, and decides its next move with its evidence intact. Observability: the pool emits `agent:tool_retry` (with `retryAfterMs` and `attempt`) and traces `tool:retry`, so a harness can render "rate-limited — retrying in ~90s" instead of appearing stuck.
