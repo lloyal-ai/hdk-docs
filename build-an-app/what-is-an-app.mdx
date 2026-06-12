@@ -3,11 +3,32 @@ title: What is an App
 description: A packaged capability — Source + Tools + skill + manifest — wired with defineApp.
 ---
 
-An **App** is the HDK's unit of capability packaging. A harness consumes Apps; a third party builds one. Same person can wear both hats on day one — the split scales when other teams start shipping Apps for harnesses they didn't write.
+**An App is what you publish so any HDK harness can load your capability — and this is all the model ever learns about it:**
+
+```json app.json
+{
+  "name": "corpus",
+  "appProtocolVersion": "3.0",
+  "protocol": {
+    "name": "corpus_research",
+    "useWhen": "investigating a local document corpus — finding occurrences of terms, reading specific files at line offsets, semantic retrieval over indexed corpus content.",
+    "tools": ["grep", "read_file", "search"]
+  },
+  "configSchema": {
+    "type": "object",
+    "required": ["corpusPath"],
+    "properties": {
+      "corpusPath": { "type": "string" }
+    }
+  }
+}
+```
+
+That's the real manifest of the `corpus` reference App. The `protocol` block — a name, a `useWhen` routing sentence, a tool list — is what the registry decodes into the **shared spine** once, at boot; every forked agent inherits the whole catalog through attention and routes tasks by reading `useWhen` at execution time. Behind the manifest sit the implementations: a `Source` (data access + retrieval scoring), the `Tool`s named in `protocol.tools`, and a `skill` preamble rendered per spawn. `defineApp` wires the parts and refuses malformed ones before they can touch the prompt.
 
 ## Anatomy
 
-An App bundles five parts. `defineApp(spec): App` (in `@lloyal-labs/rig`) wires and validates them:
+`defineApp(spec): App` (in `@lloyal-labs/rig`) wires and validates five parts:
 
 | part | type | role |
 | --- | --- | --- |
@@ -17,20 +38,9 @@ An App bundles five parts. `defineApp(spec): App` (in `@lloyal-labs/rig`) wires 
 | **skill** | `string \| SkillTemplateFn` | The per-spawn agent preamble — *how* an agent should investigate/act with this app. Rendered via Eta with the agent-render context. |
 | **examples?** / **hints?** / **configFlow?** | optional | `examples` is discipline/few-shot rendered per-spawn (never enters the shared spine). `hints` are UX/marketplace metadata. `configFlow` is an optional interactive credential/config flow. |
 
-## A two-app example
+Notice what the anatomy implies: **an App ships with its placement in the model's memory hierarchy.** Its protocol is encoded once onto the shared spine, where every agent inherits it at zero re-encoding cost; its reference content stays corpus-resident, retrieved into live attention only when a task needs it; its tools cost nothing until invoked. Orchestration frameworks can't express this distinction — without a memory hierarchy, an integration's knowledge gets exactly one residency: re-sent with every call.
 
-Two reference apps ship with the HDK. Both follow the same pattern:
-
-**`corpus_research`** — local docs:
-- `app.json` declares `protocol.name: "corpus_research"`, `tools: ["grep", "read_file", "search"]`, `configSchema.required: ["corpusPath"]`.
-- `skill.eta` is the research-assistant preamble (RULES, PROCESS) the agent sees per spawn.
-- `src/index.ts` is the factory: it reads the reranker from `RerankerCtx`, the `corpusPath` from `AppConfigStoreCtx`, loads + tokenizes the corpus, constructs `CorpusSource`, builds the tool map, and returns `defineApp({ manifest, source, tools, skill })`.
-
-**`web_research`** — open web:
-- `protocol.name: "web_research"`, `tools: ["web_search", "fetch_page"]`, `configSchema.tavilyKey` (secret).
-- `src/index.ts` picks Tavily vs the keyless DuckDuckGo provider based on config, optionally pulls a reranker, constructs `WebSource`, returns `defineApp(...)`.
-
-These are full HDK 3.0 Apps — every concept on this page is real code you can read.
+Both reference Apps follow this exact shape — **`corpus_research`** (local docs) and **`web_research`** (Tavily / keyless web search) — and [Your first App](/build-an-app/your-first-app) walks `createCorpusApp` line by line. Every concept on this page is real code you can read.
 
 ## The App protocol — what the model actually sees
 
@@ -44,17 +54,17 @@ Every enabled App contributes to the runtime's **shared spine** — the KV prefi
 | `BOUNDARY_MARKER(name)` | `Apply the **<name>** protocol.\n\n` — prefixes every per-spawn message. |
 | `APP_PROTOCOL_VERSION` | Bumped only when the marker/catalog/rule changes. |
 
-Every byte of framework-rendered prompt content the model sees traces to one of those constants (or to grammar-sanitized `app.json` metadata interpolated through them). [Continuous-context spine](/under-the-hood/continuous-context-spine) walks the spine's physical layout.
+Every byte of framework-rendered prompt content the model sees traces to one of those constants (or to grammar-sanitized `app.json` metadata interpolated through them). [Continuous Context](/under-the-hood/continuous-context-spine) walks the spine's physical layout.
 
 ## What `defineApp` enforces
 
 The wiring step is also a security boundary. `defineApp` validates the spec synchronously, before the App enters the registry — so a malformed App can never ride the prompt:
 
 - **Manifest schema.** `name`/`protocol.name` match `[a-z][a-z0-9_-]{1,63}`. `protocol.tools[]` is non-empty, unique, same regex.
-- **`useWhen` sanitization.** Single bounded sentence, no chat-role markers, no markdown code fences, no newlines. App-supplied strings can't break out of the catalog block.
+- **`useWhen` sanitization.** Single bounded sentence (≤280 chars), no chat-role markers, no markdown code fences, no newlines. App-supplied strings can't break out of the catalog block.
 - **App protocol version.** `manifest.appProtocolVersion` must be in `SUPPORTED_APP_PROTOCOL_VERSIONS` (currently `"3.0"`).
-- **Tool-map coverage.** `Object.keys(tools)` equals `protocol.tools[]` as a set. Every declared tool has an implementation; no extras.
-- **Boundary-marker double-emission.** If `skill` is a string, it MUST NOT contain the literal `Apply the **` substring — the framework prepends the marker, so an `skill.eta` carrying the line would emit it twice.
+- **Tool-map coverage.** `Object.keys(tools)` equals `protocol.tools[]` as a set, and each instance's `.name` matches its key — the catalog's `Tools:` line and the dispatcher must agree.
+- **Boundary-marker double-emission.** If `skill` is a string, it MUST NOT contain the literal `Apply the **` substring — the framework prepends the marker, so a `skill.eta` carrying the line would emit it twice.
 
 These run synchronously and throw on failure. App factories should call `defineApp` **last** (after constructing source + tools) so a bad manifest fails at construction, not later at registration.
 
@@ -63,7 +73,7 @@ These run synchronously and throw on failure. App factories should call `defineA
 There are no `install`/`uninstall`/`enable`/`disable` hooks on the App. Lifecycle is Effection scope:
 
 - **Factory body = setup.** An `AppFactory` is `() => Operation<App>`. Read config + reranker, construct, return.
-- **`ensure(...) = teardown`.** Anything the factory allocates that needs cleanup (a connection pool, a watcher) goes inside `ensure(...)` so the registry's scope-halt fires it.
+- **`ensure(...)` = teardown.** Anything the factory allocates that needs cleanup (a connection pool, a watcher) goes inside `ensure(...)` so the registry's scope-halt fires it.
 - **Per-app detached scope.** The registry runs each factory in its own detached scope and tears them down in reverse register-order on registry-scope exit — best-effort, so a throwing teardown can never strand a sibling or crash the harness.
 
 [Lifecycle & registry](/build-an-app/lifecycle-and-registry) walks the registry's scope model in detail.
@@ -74,15 +84,15 @@ Apps run in-process with the model, so the trust boundary is **the prompt itself
 
 - **`Tool.protected`** marks sensitive (write) tools. The framework's `authGuard` denies a protected tool unless the session holds a **grant** for it (`GrantStoreCtx`). The credential never enters the model's context; the model only triggers the call.
 - **Metadata sanitization** at `defineApp` time prevents an app's strings from breaking out of the catalog block (the regex/forbidden-pattern checks above).
-- **Per-spawn prose isolation.** Each agent's per-spawn user message is prefixed with `Apply the **<name>** protocol.` — the model knows which App's discipline applies to *this* turn.
+- **Per-spawn prose isolation.** Each agent's per-spawn user message is prefixed with `Apply the **<name>** protocol.` — the model knows which App's discipline applies to *this* turn, and no other App's `skill`/`examples` enters the rendering.
 
 [App security](/build-an-app/app-security) covers the threat model and the full defense stack.
 
 ## Distribution
 
-First-party Apps that ship inside the HDK reference harness (`reasoning.run`) are loaded as build-time imports (the harness `import { createWebApp } from '@lloyal-labs/web-app'` and hands the factory to `createAppRegistry`). Third-party Apps — and any App reaching a harness it doesn't own — flow through the canonical **signed-bundle channel** at `apps.lloyal.ai`. The harness resolves Apps by name (`yield* loadBundle('jira', { semver: '^1.2.0' })`); the catalog URL and the trust roots used to verify signatures are **compile-time constants in `@lloyal-labs/rig`** — the harness does not configure them.
+First-party Apps that ship inside the HDK reference harness (`reasoning.run`) are loaded as build-time imports (the harness `import { createWebApp } from '@lloyal-labs/web-app'` and hands the factory to `createAppRegistry`). Third-party Apps — and any App reaching a harness it doesn't own — flow through the canonical **signed-bundle channel** at `apps.lloyal.ai`. The harness resolves Apps by name; the catalog URL and the trust roots used to verify signatures are **compile-time constants in `@lloyal-labs/rig`** — the harness does not configure them.
 
-The runtime primitives live in `@lloyal-labs/rig` (`loadBundle`, `verifyBundle`, `CHANNEL_CATALOG_URL`, `CHANNEL_TRUST_ROOTS`). The `harness.dev` CLI wraps them for scaffolding, publishing, and installing Apps. [Distribution](/build-an-app/distribution) covers the full flow.
+The runtime primitives live in `@lloyal-labs/rig` (`resolveAppEntry`, `verifyBundle`, `CHANNEL_CATALOG_URL`, `CHANNEL_TRUST_ROOTS`). The `harness.dev` CLI wraps them for scaffolding, publishing, and installing Apps. [Distribution](/build-an-app/distribution) covers the full flow.
 
 ---
 
@@ -96,7 +106,7 @@ The runtime primitives live in `@lloyal-labs/rig` (`loadBundle`, `verifyBundle`,
     The `Source` abstract base, the reranker-backed `EntailmentScorer`, and how RIG inverts classical RAG.
   </Card>
   <Card title="Tools" icon="screwdriver-wrench" href="/build-an-app/tools">
-    The `Tool<TArgs>` base, the protected bit, the schema auto-generation.
+    The `Tool<TArgs>` base, the protected bit, recursive tools — the App author's deep-agents surface.
   </Card>
   <Card title="App security" icon="shield-halved" href="/build-an-app/app-security">
     `protected` + `authGuard` + grants. The threat model the in-process App trust boundary lives by.
