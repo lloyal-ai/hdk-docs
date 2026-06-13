@@ -154,6 +154,7 @@
         <a href="https://docs.lloyal.ai/start-here/what-is-the-hdk">Learn</a>
         <a href="https://docs.lloyal.ai/under-the-hood/concurrency">Reference</a>
         <a href="https://docs.lloyal.ai/examples/compare">Examples</a>
+        <a href="#contact">Contact</a>
         <span class="nav-star-wrapper">
           <a
             class="github-button"
@@ -844,7 +845,8 @@ orchestrate: <span class="function">dag</span>(nodes)             <span class="c
           </p>
           <div class="mobile-cta">
             <a
-              href="mailto:hello@lloyal.ai?subject=HDK%20Mobile%20Runtime%20%E2%80%94%20Request%20Access"
+              href="#contact"
+              data-topic="Mobile runtime access"
               class="btn btn-primary"
               >Request Access</a
             >
@@ -948,7 +950,8 @@ orchestrate: <span class="function">dag</span>(nodes)             <span class="c
           </p>
           <div class="mobile-cta">
             <a
-              href="mailto:hello@lloyal.ai?subject=HDK%20C%2B%2B%20Runtime%20%E2%80%94%20OEM%20Partnership"
+              href="#contact"
+              data-topic="OEM partnership"
               class="btn btn-primary"
               >Talk to us</a
             >
@@ -956,6 +959,68 @@ orchestrate: <span class="function">dag</span>(nodes)             <span class="c
               >Native C++26 runtime &middot; OEM development partnerships</span
             >
           </div>
+        </div>
+      </section>
+
+      <section class="contact" id="contact">
+        <div class="container contact-inner">
+          <div class="contact-copy">
+            <h2 class="headline">Get in touch.</h2>
+            <p class="contact-caption">
+              Questions about the runtime, early access to the mobile build, or
+              an OEM partnership &mdash; leave a note and we&rsquo;ll reply by
+              email.
+            </p>
+          </div>
+          <form class="contact-form" id="contact-form">
+            <div class="form-row">
+              <label class="form-field">
+                <span class="form-label">Name</span>
+                <input type="text" name="name" autocomplete="name" required />
+              </label>
+              <label class="form-field">
+                <span class="form-label">Email</span>
+                <input
+                  type="email"
+                  name="email"
+                  autocomplete="email"
+                  required
+                />
+              </label>
+            </div>
+            <label class="form-field">
+              <span class="form-label">Topic</span>
+              <select name="topic">
+                <option value="General">General</option>
+                <option value="Mobile runtime access">
+                  Mobile runtime access
+                </option>
+                <option value="OEM partnership">OEM partnership</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="form-label">Message</span>
+              <textarea name="message" rows="5" required></textarea>
+            </label>
+            <input
+              type="text"
+              name="_gotcha"
+              class="contact-hp"
+              tabindex="-1"
+              autocomplete="off"
+              aria-hidden="true"
+            />
+            <button type="submit" class="btn btn-primary contact-submit">
+              Send message
+            </button>
+            <p
+              class="contact-status"
+              id="contact-status"
+              role="status"
+              aria-live="polite"
+            ></p>
+          </form>
         </div>
       </section>
     </main>
@@ -1083,6 +1148,67 @@ orchestrate: <span class="function">dag</span>(nodes)             <span class="c
           }
         });
       });
+
+      // Contact form → Google Sheet (via a Google Apps Script web app).
+      // Deploy the script in contact-apps-script.gs, then paste its /exec URL here.
+      const CONTACT_ENDPOINT =
+        "https://script.google.com/macros/s/AKfycbypYl2bXl199hfm0RjCdTcmlMkoGVBMGrShnYn1yACjm9mkhe6to3wsn9_GuoHLG0wN9Q/exec";
+      const contactForm = document.getElementById("contact-form");
+      const contactStatus = document.getElementById("contact-status");
+      if (contactForm && contactStatus) {
+        contactForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          if (CONTACT_ENDPOINT.startsWith("PASTE_")) {
+            contactStatus.textContent =
+              "Form isn't wired up yet — email hello@lloyal.ai.";
+            contactStatus.className = "contact-status error";
+            return;
+          }
+          // Honeypot: a hidden field only bots fill. Fake success, send nothing.
+          const honey = contactForm.querySelector('[name="_gotcha"]');
+          if (honey && honey.value) {
+            contactForm.reset();
+            contactStatus.textContent = "Thanks — we'll be in touch shortly.";
+            contactStatus.className = "contact-status success";
+            return;
+          }
+          const email = contactForm.querySelector('[name="email"]').value.trim();
+          if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            contactStatus.textContent = "Please enter a valid email address.";
+            contactStatus.className = "contact-status error";
+            return;
+          }
+          const btn = contactForm.querySelector(".contact-submit");
+          btn.disabled = true;
+          contactStatus.textContent = "Sending…";
+          contactStatus.className = "contact-status";
+          try {
+            await fetch(CONTACT_ENDPOINT, {
+              method: "POST",
+              mode: "no-cors",
+              body: new FormData(contactForm),
+            });
+            contactForm.reset();
+            contactStatus.textContent = "Thanks — we'll be in touch shortly.";
+            contactStatus.className = "contact-status success";
+          } catch (err) {
+            contactStatus.textContent =
+              "Something went wrong. Email hello@lloyal.ai instead.";
+            contactStatus.className = "contact-status error";
+          } finally {
+            btn.disabled = false;
+          }
+        });
+
+        // CTAs that jump to the form can preselect a topic (data-topic).
+        const topicSelect = contactForm.querySelector('[name="topic"]');
+        document.querySelectorAll("a[data-topic]").forEach((link) => {
+          link.addEventListener("click", () => {
+            const topic = link.getAttribute("data-topic");
+            if (topic && topicSelect) topicSelect.value = topic;
+          });
+        });
+      }
     </script>
     <script async defer src="https://buttons.github.io/buttons.js"></script>
   </body>
