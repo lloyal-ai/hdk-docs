@@ -191,4 +191,4 @@ const parsed = JSON.parse(result.rawOutput);
 
 `jsonSchemaToGrammar` (called internally by `agent`) converts a JSON Schema into a GBNF grammar string. The grammar constrains generation from the first token, so the output is guaranteed to be valid JSON conforming to the schema. No retry logic, no post-hoc validation.
 
-This is the mechanism behind recovery extraction (see [Recovery Extraction](/under-the-hood/recovery-extraction)) -- nudge the dying branch with an extraction prompt, swap to an eager JSON grammar, generate the report, prune.
+This is the mechanism behind recovery extraction (see [Recovery Extraction](/under-the-hood/kv-pressure#recovery-extraction)) -- nudge the dying branch with an extraction prompt, swap to an eager JSON grammar, generate the report, prune.

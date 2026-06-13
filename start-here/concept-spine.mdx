@@ -45,7 +45,7 @@ The unit of parallel agent execution. An `agentPool` decodes N agents in one bat
 The shared KV-cache prefix every Pool's agents fork from. The **Spine** holds the framework intro, the catalog of enabled Apps (their protocol names + `useWhen` + tools), and the tool-selection rule — decoded **once** and inherited by every forked agent via metadata-only fork. This is what makes N parallel agents cost roughly the wall-time of one.
 
 - **Owns:** the system prompt, the tool schemas, the per-tick batched decode.
-- **Go deeper:** [Continuous-context spine](/under-the-hood/continuous-context-spine) · [Prefix sharing](/under-the-hood/prefix-sharing)
+- **Go deeper:** [Continuous-context spine](/under-the-hood/continuous-context-spine) · [Prefix sharing](/under-the-hood/continuous-context-spine)
 
 ## Session
 

@@ -31,7 +31,7 @@ PHASE 4 — DISPATCH      execute collected tool calls (currently sequential)
 
 **Phase 1 (PRODUCE)** samples one token per agent per tick via `produceSync()`. Each token is accumulated into `rawOutput` and pushed to `entries` for COMMIT. After accumulation, `agent.observe(ctx)` runs a partial parse (`parseChatOutput` with `isPartial: true`) to detect which tool the agent is generating — this populates `agent.currentTool` as soon as the tool name appears in the stream, before the turn completes. When `produceSync()` returns `isStop: true`, `agent.finalize(ctx)` runs the strict parse — extracting tool calls, content, and reasoning from the complete turn. Terminal tools (e.g. `report`) are intercepted immediately — findings extracted, agent marked done, never dispatched. Non-terminal tool calls are collected for the DISPATCH phase.
 
-`agent.currentTool` is used by `shouldExit` to protect agents mid-generation of the terminal tool from time-budget kills. See [Agent Policy — shouldExit](/under-the-hood/agent-policy#shouldexit--pre-generate-kill-gate).
+`agent.currentTool` is used by `shouldExit` to protect agents mid-generation of the terminal tool from time-budget kills. See [Agent Policy — shouldExit](/under-the-hood/kv-pressure#2-produce-critical--the-kill-threshold-shouldexit).
 
 **Phase 2 (COMMIT)** batch-decodes all produced tokens in a single `store.commit(entries)` call — one GPU dispatch for all agents.
 

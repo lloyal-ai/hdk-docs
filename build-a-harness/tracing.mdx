@@ -95,7 +95,7 @@ for e in (json.loads(l) for l in sys.stdin):
     Filter `pool:agentDrop` events. The `reason` field tells you exactly where: init pressure, PRODUCE critical (trailing stop), or PRODUCE soft-cut. See [KV pressure](/under-the-hood/kv-pressure).
   </Card>
   <Card title="Recovery failures" icon="code-branch">
-    Look for `pool:recoveryFailed` trace events. The `reason` field discriminates `parse_error` / `no_result_field` / `scope_error`. See [recovery extraction](/under-the-hood/recovery-extraction).
+    Look for `pool:recoveryFailed` trace events. The `reason` field discriminates `parse_error` / `no_result_field` / `scope_error`. See [recovery extraction](/under-the-hood/kv-pressure#recovery-extraction).
   </Card>
   <Card title="Wrong prompt content" icon="file-lines">
     Check `prompt:format` events with `role: "agentSuffix"`. The `taskContent` field shows the raw filled template. The `promptText` field shows what the model physically sees.

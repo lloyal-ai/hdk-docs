@@ -97,7 +97,7 @@ The reranker's `score(query, doc)` returns a **logit-diff**: `logit(yes) − log
 The default `_entailmentFloor` on `Source` is `0`: a hit passes the gate when the cross-encoder leans toward "yes." Subclasses can tighten (`2` for "confident yes" in noise-heavy corpora) or loosen (negative floors for sparse data where leaning-no hits are still worth investigating).
 
 <Note>
-The prior softmax form returned `P(yes | yes_or_no) ∈ (0,1)` with a `0.25` default floor — small logit gaps got compressed to extreme probabilities (a gap of 5 → 0.993; 10 → 0.99995) which saturated top-K ordering and erased confidence differences in dense result sets. Logit-diff preserves the dynamic range. See the calibration probe at `reasoning.run/scripts/inspect-rerank.mjs` and the [search-strategy](/under-the-hood/search-strategy) doc for the empirical evidence.
+The prior softmax form returned `P(yes | yes_or_no) ∈ (0,1)` with a `0.25` default floor — small logit gaps got compressed to extreme probabilities (a gap of 5 → 0.993; 10 → 0.99995) which saturated top-K ordering and erased confidence differences in dense result sets. Logit-diff preserves the dynamic range. See the calibration probe at `reasoning.run/scripts/inspect-rerank.mjs` and [Rerank architecture](/under-the-hood/rerank-architecture) for the empirical evidence.
 </Note>
 
 ## Where scoring happens
@@ -170,7 +170,7 @@ When authoring a custom Source:
   <Card title="Tools" icon="screwdriver-wrench" href="/build-an-app/tools">
     The `Tool<TArgs>` base — name, parameters, execute, protected, probe.
   </Card>
-  <Card title="Search strategy" icon="layer-group" href="/under-the-hood/search-strategy">
+  <Card title="Rerank architecture" icon="layer-group" href="/under-the-hood/rerank-architecture">
     The full reranker scoring model: where each method fires in the tick loop, and the calibration story behind the logit-diff fix.
   </Card>
   <Card title="App security" icon="shield-halved" href="/build-an-app/app-security">

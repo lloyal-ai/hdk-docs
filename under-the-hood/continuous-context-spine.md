@@ -1,27 +1,11 @@
 ---
-title: "Continuous Context Spine"
-description: "How KV state accumulates and propagates through recursive delegation — the physical mechanics that make cascaded research work."
+title: "Continuous Context"
+description: "The KV physics of agent forking — what a fork costs, what prune frees, how the spine propagates attention state through pools, delegation, and sessions."
 ---
 
-## Under the App protocol
+**A sub-agent's first token attends over every token its parent ever decoded — for a turn separator's worth of prefill.**
 
-The spine's *content* in the HDK 3.0 era is whatever `renderSpine({ apps })` produces from the enabled Apps in the registry. Concretely:
-
-- `FRAMEWORK_INTRO` (the spine's opening paragraph)
-- `# Protocols` header
-- One `CATALOG_ENTRY(name, tools, useWhen)` per enabled App — sanitized at `defineApp` time so app-supplied strings can't break the block
-- `TOOL_SELECTION_RULE` (the model's routing rule across the catalog)
-- The tool schemas of every enabled App's tools, embedded by the chat template
-
-Per-spawn, the agent's suffix starts with `BOUNDARY_MARKER(app.protocol.name)` (literally `Apply the **<name>** protocol.\n\n`) followed by the App's rendered `skill.eta`. That marker is what tells the model *which* App's discipline applies to *this* turn — both the rendering and the bytes are governed by the App protocol codified in `@lloyal-labs/rig/protocol.ts`.
-
-The mechanics on the rest of this page (fork, prefill, prune, KV share) describe how *that* spine content propagates through delegation. The substrate hasn't changed; what fills it has. See [What is an App](/build-an-app/what-is-an-app#the-app-protocol) for the five constants, [Mixed-role pools](/under-the-hood/mixed-role-pools) for the catalog convention, and [Lifecycle & registry](/build-an-app/lifecycle-and-registry) for how Apps are loaded into the registry that `renderSpine` reads.
-
-## The Spine
-
-When an agent researches a topic, calls tools, reads pages, and then delegates sub-questions via `web_research`, the sub-agents don't start cold. They fork from the parent agent's branch. Every token the parent decoded — system prompt, tool calls, tool results, generated reasoning — is physically present in the sub-agents' KV cache at their original positions. The sub-agents attend over the parent's full state. No re-encoding. No lossy summarization. The parent's attention state IS the sub-agents' starting context.
-
-The **spine** is the chain of KV state that persists through a recursive delegation sequence. Each delegation extends the spine. Each level's findings become part of the context for the next level.
+When an agent that has searched, fetched, and reasoned calls `web_research`, its sub-agents fork from its branch. Everything the parent decoded is physically present in their KV cache at its original positions:
 
 ```
 Session trunk (prior conversation, if warm)
@@ -29,157 +13,196 @@ Session trunk (prior conversation, if warm)
 Spine (system prompt + tool schemas — decoded once)
   ↓ fork
 Agent A (task: "survey voice agent architectures")
-  position 0-100: spine prefix
+  position 0-100:   spine prefix
   position 100-300: Agent A's suffix (system+user prompt)
   position 300-500: web_search result (prefilled via SETTLE)
   position 500-700: fetch_page result (survey article)
   position 700-750: Agent A's reasoning about what it read
-  
+
   Agent A calls web_research(["Moshi architecture", "Sesame prosody"])
-  ↓ fork (warm path — only turn separator prefilled)
-  
-  Inner spine (forkHead=750, position=755)
+  ↓ fork (warm path — only a turn separator prefilled)
+
+  Inner spine (forkHead=750, position=752)
     ↓ fork × 2
-    
+
     Sub-agent B (task: "Moshi architecture")
-      Attends over positions 0-755 (entire spine)
-      Sees: system prompt + survey article + Agent A's reasoning
+      Attends over positions 0-752 (the entire spine)
       Searches "Moshi" with vocabulary from the survey already in attention
-      
-    Sub-agent C (task: "Sesame prosody")  
-      Attends over positions 0-755 (same spine)
-      Searches "Sesame" with the same accumulated context
+
+    Sub-agent C (task: "Sesame prosody")
+      Attends over positions 0-752 (same spine)
 ```
 
-Sub-agents B and C don't re-discover the survey. They don't re-search for "voice agent architectures." The survey is at positions 500-700 in their KV — their `produceSync()` attends over it on every token. When Sub-agent B searches for "Moshi," the model's query formulation is informed by the survey content because those key-value pairs are in the attention window.
+Sub-agents B and C never re-search "voice agent architectures." The survey is at positions 500–700 in their KV — every `produceSync()` attends over it. No re-encoding, no summary handoff — the parent's attention state **is** their starting context. This page is the physics: what fork costs, what prune frees, how the prefix is shared, and the three spine lifetimes that compose.
 
-## Physical Mechanics
+This page documents `spine.ts` and the fork/prefill paths of `agent-pool.ts` in `@lloyal-labs/lloyal-agents`, over `Branch`/`BranchStore` from `@lloyal-labs/sdk`.
+
+## Physical mechanics
 
 ### Fork is metadata-only
 
-`Branch.forkSync()` creates a new sequence ID that shares all KV cells up to the fork point. No tensor copy. The child reads the parent's K and V vectors at shared positions. Only tokens decoded after the fork point write new cells exclusive to the child.
+`Branch.forkSync()` calls `llama_kv_self_seq_cp()` under the hood — it does not copy KV tensors. It tags the existing KV cells (which hold the parent's key/value vectors) with a new sequence ID. Multiple branches read the same physical memory up to the fork point; only tokens decoded after it write cells exclusive to the child.
 
-Cost of forking: ~0. The child's unique overhead is its suffix tokens (system prompt reformatting + user message), typically 150-300 tokens.
+```
+KV cache layout after 3 forks:
+
+Position:  0 ─────────── N ──────── N+M₀
+           │ spine │ agent 0  │
+           │ (seq 0,1,2,3)│ (seq 1)  │
+           └──────────────┘          │
+                          │ agent 1  │ N+M₁
+                          │ (seq 2)  │
+                          └──────────┘
+                          │ agent 2  │ N+M₂
+                          │ (seq 3)  │
+                          └──────────┘
+```
+
+Cells at positions 0..N-1 are tagged with all four seq_ids and occupy one set of physical memory. Cost of forking: ~0. The child's unique cost is whatever it prefills after the fork.
+
+### Position-aware decode
+
+Why suffix prefill doesn't re-decode shared tokens — position inheritance, in three steps:
+
+```cpp
+// branch.hpp — fork implementation
+dst->position = src->position;  // Child starts where parent left off
+```
+
+```cpp
+// branch.hpp — prefill()
+decode::many(state->ctx, tokens, n_tokens,
+             state->position,    // ← 866, not 0
+             state->n_batch, state->seq_id);
+state->position += n_tokens;    // ← advances past the suffix
+```
+
+```cpp
+// decode.hpp — building the llama_batch
+const int32_t pos = n_past + i;  // n_past = 866, i = 0,1,2,...
+```
+
+After a spine prefills 866 tokens, `root->position = 866`; a forked agent starts at 866 and its suffix tokens land at 866, 867, … The GPU attends to the prior KV entries at 0–865 (already in cache) and computes new entries only for the suffix. The spine's tokens are never re-processed.
 
 ### Prune frees only unique cells
 
-When a sub-agent prunes, it releases cells from `forkHead` to `position` — its unique tokens above the fork point. The parent's cells (positions 0 to forkHead) are unaffected. Siblings forked from the same parent are unaffected.
+When a branch prunes, it releases cells from `forkHead` to `position` — its unique tokens above the fork point. The parent and siblings are untouched:
 
 ```
 Before prune:
-  Agent A: 400 unique cells (positions 100-500)
-  Sub-agent B: 300 unique cells (positions 755-1055)
-  Sub-agent C: 300 unique cells (positions 755-1055)
-  Total unique: 1000 cells
-
-After pruning Sub B and Sub C:
-  Agent A: 400 unique cells (unchanged)
-  Total unique: 400 cells
-  Freed: 600 cells for Agent A to continue
+  Agent A: 400 unique cells          After pruning Sub B and Sub C:
+  Sub-agent B: 300 unique cells        Agent A: 400 unique cells (unchanged)
+  Sub-agent C: 300 unique cells        Freed: 600 cells for Agent A to continue
 ```
 
-### The warm path saves the prefix
+With `pruneOnReturn: true`, an agent's branch is pruned the moment it reports — its cells free mid-pool, and the siblings still working gain headroom. In recursive delegation the inner pool shrinks as sub-agents finish; when it completes, `withSpine`'s finally block prunes the inner spine and any remaining descendants. The calling agent's branch is fully restored — its cells were never touched.
 
-When `agentPool` is called with `parent: context.branch` (the DelegateTool's warm path), the inner pool's spine forks from the calling agent's branch. It only prefills the turn separator (~5 tokens). The system prompt, tool schemas, and all prior tool results are already in the parent's KV — inherited for free.
+`cells_used` accounting follows the same shape: incremented on every decode (`decode_each`, `decode_scatter`), decremented by each branch's unique cells on prune. The spine's own cells free only when its `withSpine` scope exits — they're still needed by surviving forks until then. [Pressure & policy](/under-the-hood/kv-pressure) reads these numbers every tick.
 
-Cold path (no parent): spine at position 0, prefills full system prompt + tool schemas (~300-500 tokens).
+### The warm path costs a turn separator
 
-Warm path (parent provided): spine forks from parent, prefills separator only (~5 tokens). Saves ~300-500 tokens per recursive level.
+When a spine is created with a `parent` branch (the `DelegateTool` path: `agentPool({ parent: context.branch })`), it forks instead of cold-starting at position 0, and prefills only `getTurnSeparator()` — **1–2 tokens, template-dependent** (ChatML: `<|im_end|>\n` = 2 tokens; Llama-3: 1) — so the next suffix lands on a clean turn boundary.
 
-### pruneOnReturn and mid-pool KV recovery
+```
+Cold path:  spine at position 0, prefills full system + tool schemas  (~700-900 tokens)
+Warm path:  spine forks from parent, prefills a turn separator        (1-2 tokens)
+```
 
-When `pruneOnReturn: true`, an agent's branch is pruned immediately after it calls `report()`. The agent's unique cells are freed while the pool is still running. Other agents gain headroom.
-
-In recursive delegation: the inner pool's sub-agents report and prune individually. As each sub-agent finishes, its cells are freed for the remaining sub-agents. The inner pool shrinks as it progresses.
-
-After the inner pool completes, `withSpine`'s finally block prunes the inner spine and all remaining descendants. The calling agent's branch is fully restored — its cells were never touched.
+The system prompt, tool schemas, and every prior tool result are already in the parent's KV — inherited through the fork, not re-paid. The savings compound per recursive level.
 
 ### SETTLE extends the branch
 
-Tool results are prefilled into the calling agent's branch via `store.prefill([[branch, tokens]])`. The branch's `position` advances. The next `produceSync()` attends over the newly prefilled tokens. This is how tool results become part of the attention state — they're decoded into KV at the branch's current position, not re-serialized as text.
+Tool results are prefilled into the calling agent's branch via `store.prefill([[branch, tokens]])` — decoded into KV at the branch's current position, not re-serialized as text. The next `produceSync()` attends over them. When `web_research` returns, the JSON-serialized sub-agent findings prefill into the calling agent's branch the same way: the agent resumes with its sub-agents' findings physically in attention.
 
-When `web_research` returns, DelegateTool's result (JSON-serialized sub-agent findings) is prefilled into the calling agent's branch during SETTLE. The calling agent resumes with sub-agent findings in its KV, at the position where the delegation result was prefilled.
-
-## Two Spine Types
-
-The system uses two distinct spine mechanisms that compose at different levels.
-
-### KV spine — within a task's delegation
-
-When an agent calls `web_research`/`research`, DelegateTool creates an inner pool with `parent: context.branch`. Sub-agents fork from the calling agent's branch and inherit its full KV state.
+## How a pool shares the prefix
 
 ```
-Position 0-100:    Spine (system prompt + tool schemas)
-Position 100-300:  Agent suffix (system+user prompt with task)
-Position 300-500:  web_search result (prefilled via SETTLE)
-Position 500-900:  fetch_page result (survey article content)
-Position 900-950:  Agent reasoning + web_research call
-
-  Agent calls web_research(["Moshi architecture", "Sesame prosody"])
-  ↓ fork (warm path — only turn separator prefilled)
-
-  Inner spine (forkHead=950, position=955)
-    ↓ fork × 2
-
-    Sub-agent B (task: "Moshi architecture")
-      Attends over positions 0-955 (entire KV spine)
-      Searches with vocabulary from the survey already in attention
-
-    Sub-agent C (task: "Sesame prosody")
-      Attends over positions 0-955 (same spine)
+withSpine({ systemPrompt, tools })
+  │
+  ├── Branch.create(ctx, 0, params)    ← spine branch at position 0
+  ├── prefill(headerTokens)            ← GPU decode: positions 0..N-1, ONCE
+  │
+  └── useAgentPool({ ... })
+        ├── setupAgent → forkSync()    ← O(1) metadata: child at position N
+        │              → prefill(suffix)  ← GPU decode: N..N+M only
+        ├── setupAgent                 ← same: fork at N, decode from N
+        └── setupAgent                 ← same
 ```
 
-The KV spine is the chain of decoded state within a single agent's branch. Sub-agents inherit it at zero cost. Delegation results are JSON-serialized and prefilled back into the calling agent's branch during SETTLE, extending the spine for subsequent tool calls.
+In shared mode (`systemPrompt` + `tools` on `withSpine` / `agentPool`), the chat header — system prompt plus every tool's JSON schema — is decoded once into the spine. Tool schemas are the largest contributor: a 5-tool toolkit formats to ~800–900 tokens. Each App's tools cost roughly schema-size × 1, not × N agents; per-spawn suffixes shrink to the task itself.
 
-### KV spine — between task stages (`extendSpine`)
+**Why `setupAgent` still formats the full message array.** Each agent calls `formatChatSync` with its own `[system, user]` messages even though the spine carries the header. This is intentional, not duplication: format detection requires the complete message context (the returned `fmt.format` / `grammar` / `grammarTriggers` / `parser` drive output parsing and tool-call constraint, and differ per system prompt and tool set), and agents in one pool can carry different roles. The CPU cost of tokenizing ~866 tokens per agent is milliseconds; the GPU cost is zero, because prefill starts at the fork position. In shared mode, `setupAgent` detects the spine's pre-computed `SpineFmt` and skips re-emitting the header bytes entirely — the agent inherits the spine's parser/grammar configuration and contributes only its user turn.
 
-The harness sequences tasks via a `reduce` combinator inside a `withSpine` scope. A query-scoped `querySpine` branch is created once; all tasks fork from it, and between tasks, findings are prefilled directly into `querySpine` as user+assistant turns via the `extendSpine` helper.
+**Measuring it.** The spine's contribution is visible in traces — `prompt:format` records the tokenized length, `branch:prefill` the actual decode:
+
+```json
+{"type": "prompt:format",  "role": "spine",       "tokenCount": 866}
+{"type": "branch:prefill", "role": "spineHeader", "tokenCount": 866}
+{"type": "branch:prefill", "role": "agentSuffix", "tokenCount": 896}
+```
+
+The suffix prefill reports the full formatted length, but `position` starts at 866 from the fork — the GPU decodes only the ~30-token delta:
+
+```
+Without sharing: 3 agents × 896 tokens = 2,688 GPU decode ops
+With sharing:    866 shared + 3 × 30 unique = 956 GPU decode ops
+Savings:         64% fewer decode ops
+```
+
+Nested pools compose: an inner spine forked from an outer agent shares the same `BranchStore` and physical KV cache, and `ContextPressure` sees `cells_used` across all of it.
+
+## Three spine lifetimes
+
+Three spine mechanisms compose at different timescales. Same physics, different owners.
+
+### 1. Delegation spine — within a task
+
+When an agent delegates, `DelegateTool` creates an inner pool with `parent: context.branch`. Sub-agents fork from the calling agent's branch and inherit its full KV state — the opener diagram is this case. Delegation results are JSON-serialized and prefilled back into the calling agent's branch during SETTLE, extending its spine for subsequent tool calls. Lifetime: one tool call.
+
+### 2. Query spine — between task stages (`extendSpine`)
+
+A chain (or DAG) harness creates a query-scoped spine once; all task pools fork from it, and between tasks each task's findings are prefilled directly onto it as user+assistant turns:
 
 ```
 querySpine (position 0)
   └─ Task 1 pool forks from querySpine (position 0)
-       → Agent searches, fetches, reports → findings A
-       → extendSpine: prefill [user: "Task 1", assistant: findings A] into querySpine
+       → findings A → extendSpine([user: "Task 1", assistant: A])
          querySpine advances to position 500
 
   └─ Task 2 pool forks from querySpine (position 500)
-       → Agent inherits Task 1's findings via KV share (zero re-encoding)
-       → Searches for entities from Task 1 → findings B
-       → extendSpine: prefill [user: "Task 2", assistant: findings B] into querySpine
-         querySpine advances to position 1100
+       → inherits Task 1's findings via KV share, zero re-encoding
+       → findings B → extendSpine → position 1100
 
   └─ Task 3 pool forks from querySpine (position 1100)
-       → Agent inherits Tasks 1+2 findings via KV share
-       → Deepens specific entities → findings C
+       → inherits Tasks 1+2 findings
 ```
 
-Each task's pool forks from the EXTENDED `querySpine`. Findings are decoded once into `querySpine`; every subsequent fork shares them at zero marginal cost. No text re-encoding per agent.
+Findings are decoded once into `querySpine`; every subsequent fork shares them at zero marginal cost. A post-pool synth agent forks the fully-extended spine and attends over the complete research chain. Lifetime: one query — the spine is pruned when its `withSpine` scope exits.
 
-### `extendSpine` is queue-and-drain serialized
+**`extendSpine` is queue-and-drain serialized.** It does NOT issue a native `store.prefill` from the orchestrator's fiber: it queues onto `pendingExtends` and suspends on an Effection `action()` until the tick loop's Phase 0 (SPAWN+EXTEND) drains it — batching all pending extends and fork suffixes into one `store.prefill` call, then resolving each suspended action with its delta token count. This matters when sibling tasks complete near-simultaneously (flat DAGs): without queue-and-drain, two `extendSpine` calls from separate fibers would race into native decode and violate the single-fiber discipline — only the tick loop's fiber issues native model calls.
 
-`PoolContext.extendSpine` does NOT issue a native `store.prefill` from the orchestrator's fiber. It queues a request onto `pendingExtends` and suspends on an Effection [`action()`][action] until the tick loop's Phase 0 (SPAWN+EXTEND) drains it. The drain batches all pending extends with all pending fork suffixes into a single `store.prefill(prefillPairs)` call, then resolves each suspended action with its delta token count.
+### 3. Session trunk — across queries
 
-This matters in flat-mode DAGs where multiple sibling tasks complete near-simultaneously. Without queue-and-drain, two `extendSpine` calls firing from separate fibers would race into `store.prefill` and violate the single-fiber discipline (only the tick loop's fiber issues native model calls). The action-based rendezvous serializes them through the next Phase 0 without blocking the orchestrator's other work.
+The `Session` trunk persists across queries: pools fork from it, investigate, prune; `session.commitTurn(query, answer)` appends one Q&A turn; the next query's pools fork from the extended trunk and read the prior conversation through attention. Lifetime: the conversation. Only the trunk survives a query — all intermediate research KV is gone; the compounding is deliberate and minimal (one turn per query).
 
-[action]: https://frontside.com/effection/api/v4/action
+Short-term (delegation) compounds evidence within a task; medium-term (query spine) compounds findings across tasks; long-term (trunk) compounds conversation across queries.
 
-### Where to put the spine: harness `withSpine` vs `agentPool({ systemPrompt })`
+## Where to put the spine: harness `withSpine` vs `agentPool({ systemPrompt })`
 
-Spine extensions write to the pool's `spineRoot`. Two configurations decide which branch that is:
+Spine extensions write to the pool's spine root — and **which branch that is depends on shared mode**. This is the most consequential footgun on this page:
 
-- **`agentPool` invoked WITHOUT `systemPrompt`** (the common case for chains that need cross-pool spine persistence). `spineRoot = warmParent` — the root the harness passed in via `parent:`. The harness's outer `withSpine` owns this root for its full scope, so extensions persist past pool exit and a post-pool `useAgent({ parent: querySpine })` forks the spine and attends to all chain extensions.
-- **`agentPool` invoked WITH `systemPrompt`** (shared-mode). `agentPool` internally creates a *nested* `withSpine` whose root carries the catalog (the protocol entries + tool schemas). `spineRoot = inner spine`. Extensions write to that inner spine, which gets pruned at `agentPool` exit. A post-pool `useAgent({ parent: querySpine })` would fork the OUTER querySpine and find an empty branch — chain extensions disappeared with the inner spine.
+- **`agentPool` WITHOUT `systemPrompt`** (non-shared): the spine root is the `parent` you passed in. The harness's outer `withSpine` owns that branch for its full scope, so `extendSpine` extensions **persist past pool exit** — a post-pool `useAgent({ parent: querySpine })` forks the spine and attends over all chain extensions.
+- **`agentPool` WITH `systemPrompt`** (shared mode): `agentPool` creates a *nested* spine carrying the catalog header, and extensions write to that inner spine — which is **pruned at `agentPool` exit**. A post-pool agent forking the outer branch finds none of the chain's extensions.
 
-Two patterns both work; pick by where the synth runs:
+Two working patterns; pick by where the synth runs:
 
 ```typescript
-// Pattern A: synth as a DAG node INSIDE the pool (compare's pattern)
-yield* withSpine({ parent: session.trunk }, function*(querySpine) {
+// Pattern A: synth as a node INSIDE the pool (compare's DAG pattern)
+yield* withSpine({ parent: session.trunk }, function* (querySpine) {
   return yield* agentPool({
-    orchestrate: dag(nodes),    // research → compare → synth as nodes
-    systemPrompt: catalog,  // shared-mode is fine: synth's branch
-                                // forks the inner spineRoot
-    parent: querySpine,
+    orchestrate: dag(nodes),     // research → compare → synth as nodes
+    systemPrompt: catalog,       // shared mode is fine: synth's branch
+    parent: querySpine,          //   forks the same inner spine
     tools, terminal: reportTool,
   });
 });
@@ -188,51 +211,64 @@ yield* withSpine({ parent: session.trunk }, function*(querySpine) {
 yield* withSpine(
   {
     parent: session.trunk,
-    systemPrompt: catalog,      // ← protocol catalog on harness root
-    tools,  // ← so spine extensions land here
+    systemPrompt: catalog,       // ← catalog on the HARNESS's spine
+    tools,                       // ← so extensions land on a branch that survives
   },
-  function*(querySpine) {
+  function* (querySpine) {
     yield* agentPool({
-      orchestrate: chain(tasks),
-      // NO systemPrompt — non-shared mode, spineRoot = querySpine
+      orchestrate: chain(steps),
+      // NO systemPrompt — non-shared; extensions write to querySpine
       parent: querySpine,
       tools, terminal: reportTool,
     });
     // synth forks querySpine and sees all chain extensions via attention
-    return yield* useAgent({ parent: querySpine, /* ... */ });
+    return yield* useAgent({ parent: querySpine /* ... */ });
   },
 );
 ```
 
-See [Mixed-role pools](/under-the-hood/mixed-role-pools) for the prompt convention for mixed-role pools and [Concurrency](/under-the-hood/concurrency#spinefmt--shared-mode) for the `SpineFmt` context that drives shared-mode behavior.
+See [Mixed-role pools](/under-the-hood/mixed-role-pools) for the shared-mode prompt convention and [Concurrency](/under-the-hood/concurrency) for the `SpineFmt` context that drives it.
 
-### How they compose
+## What this replaces — APIs and orchestration frameworks
 
-Within a task, the KV spine operates through delegation — sub-agents inherit the calling agent's KV state. Between tasks, `extendSpine` extends `querySpine` with tokenized user+assistant turns. The synthesis pool forks from the fully-extended `querySpine` and attends over the complete research chain. After synthesis, `querySpine` is pruned (scope exit frees all intermediate KV). Only the final Q&A persists on the session trunk via `session.commitTurn`.
+Cloud APIs rebuild per request: the full `tools` array and conversation history ride every call as input tokens, re-processed each time. Prompt caching (e.g. `cache_control: ephemeral`) is a billing optimization — cached tokens still occupy context and the client controls none of it. MCP adds tool *discovery*, not residency — discovered schemas still ship in every request. Orchestration frameworks (AgentExecutor, LangGraph) construct the full prompt per step; there is no cross-step KV sharing because each API call is independent.
 
-Within-query spine compounds evidence task-by-task via KV share. Cross-query spine stays minimal (one Q&A turn per query on the trunk).
+| Aspect | API-based (cloud APIs, MCP clients) | Prefix sharing |
+|--------|--------------------------------------|----------------|
+| Tool schema cost per agent | Full input-token cost per request | Decoded once, forked O(1) |
+| Multi-agent (3 agents, 5 tools) | 3× full schema processing | 1× decode + 3× ~30-token delta |
+| Multi-turn (6 turns per agent) | 6× full schema as input tokens | 1× decode; tool results as branch deltas |
+| Grammar enforcement | None — client validates JSON post-hoc | Lazy GBNF masks invalid tokens at the sampler |
+| Prompt caching | Server-side, billing only | Physical KV sharing, zero re-decode |
+| Cross-agent KV sharing | Impossible — requests are independent | Fork inherits parent KV at O(1) |
 
-## Session Trunk as Long-Term Spine
+The tradeoff is deployment flexibility vs compute: APIs are stateless and tool lists can change per request; prefix sharing requires a branch lifecycle and a local model. For one-shot calls the difference is negligible. For multi-agent pipelines it is the difference between feasible and not:
 
-The Session trunk persists across queries in a multi-turn conversation:
+<Tip>
+Measured on a traced corpus research run (6 agents, 26 turns, 5 tools) — actual GPU decode under prefix sharing vs the token count a prompt-rebuilding approach would process (re-sending system + tools + full history per turn):
 
-1. `handleQuery` runs — agent pools fork from trunk, investigate, prune
-2. All pools complete — branches pruned, trunk survives
-3. `session.commitTurn(query, answer)` appends to trunk
-4. Next query — pools fork from updated trunk, inherit prior conversation
+```
+Agent 3:  6 turns   Our decode:  3,899 tok   Rebuild: 17,721 tok   (4.5×)
+Agent 4:  6 turns   Our decode:  1,453 tok   Rebuild: 10,386 tok   (7.1×)
+Agent 5:  7 turns   Our decode:  5,637 tok   Rebuild: 26,936 tok   (4.8×)
+Agent 6:  1 turn    Our decode:     30 tok   Rebuild:    896 tok
+Synth:    5 turns   Our decode:  4,603 tok   Rebuild: 16,410 tok   (3.6×)
+Reporter: 1 turn    Our decode:     30 tok   Rebuild:    896 tok
+─────────────────────────────────────────────────────────────────────
+Total               Our decode: 16,518 tok   Rebuild: 73,245 tok
+                    Savings: 78%             Ratio: 4.4× fewer tokens
+```
 
-The trunk is the long-term spine across queries. The textual spine is the medium-term spine across task stages within a single query. The KV spine is the short-term spine within a single task's delegation chain.
+Two compounding effects: the 866-token shared prefix is decoded once instead of on all 26 turns (22,516 redundant tokens avoided), and history stays in KV as deltas instead of being re-sent (turn 6 of Agent 5 would re-send ~5,600 tokens already in its cache). The deeper the trajectory, the larger the ratio. Conservative: excludes the fixed per-request overhead cloud APIs add and the growth of generation tokens per turn.
+</Tip>
 
 ## Anti-patterns
 
-### Wasteful prefill
+- **Cold inner spines.** If a delegation's inner pool re-prefills the system prompt when it could fork warm, ~700–900 tokens are wasted per recursive level. `DelegateTool` passes `parent: context.branch`; custom recursive tools must too.
+- **Spine bloat from large tool results.** Every settled result permanently extends the branch's KV — a 2,000-token `fetch_page` result costs 2,000 cells, and deeper delegation levels inherit it. Tools should compress before returning into the spine (the web app's `fetch_page` reranks chunks and returns top-K verbatim instead of the full page).
 
-If the inner pool's spine re-prefills the system prompt when the warm path could fork from the parent, ~300-500 tokens are wasted per recursive level. Always pass `parent: context.branch` in the DelegateTool.
+---
 
-### Spine bloat from large tool results
+**What fills the spine** is governed by the App protocol: `renderSpine({ apps })` produces the framework intro, one sanitized `CATALOG_ENTRY` per enabled App, the tool-selection rule, and the tool schemas — see [What is an App](/build-an-app/what-is-an-app#the-app-protocol--what-the-model-actually-sees). The mechanics on this page are the substrate; the protocol decides the bytes.
 
-Each tool result prefilled into an agent's branch permanently extends its KV spine. A fetch_page returning 2000 tokens consumes 2000 cells. Sub-agents at deeper delegation levels inherit the cost. Tools that return large payloads should compress server-side (the `lloyal/web` app's `fetch_page` does this via reranker-based chunk selection) before returning into the spine.
-
-## Related: rerank-architecture
-
-The cross-encoder reranker composes the same `Branch` + `BranchStore` primitives over a permanent warm trunk — same physics, different consumer. See [Rerank architecture](/under-the-hood/rerank-architecture) for the trunk / queryBranch / leaves topology and the BM25 first-stage that caps cross-encoder workload at top-K candidates.
+**Same physics, different consumer:** the cross-encoder reranker composes the same `Branch` + `BranchStore` primitives over a permanent warm trunk — see [Rerank architecture](/under-the-hood/rerank-architecture).

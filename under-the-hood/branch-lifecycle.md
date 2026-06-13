@@ -318,10 +318,10 @@ Whether generation succeeds, fails, or is cancelled, branches are pruned. For su
 
 Everything in the agent framework builds on Branch:
 
-- **Prefix sharing**: `withSpine` creates the spine, prefills the shared prompt, agents fork from it. See [Prefix Sharing](/under-the-hood/prefix-sharing).
+- **Prefix sharing**: `withSpine` creates the spine, prefills the shared prompt, agents fork from it. See [Prefix Sharing](/under-the-hood/continuous-context-spine).
 - **Agent pools**: Each agent is a forked branch. The tick loop calls `produceSync()` and `store.commit()` on branch arrays. See [Concurrency Model](/under-the-hood/concurrency).
 - **KV pressure**: `ContextPressure` reads `cellsUsed` which is incremented by branch decode operations. See [KV Pressure](/under-the-hood/kv-pressure).
-- **Recovery extraction**: when an agent is killed by KV pressure, `recoverInline` prefills a nudge onto the agent's own branch, swaps to eager grammar, generates, and prunes. See [Recovery Extraction](/under-the-hood/recovery-extraction).
+- **Recovery extraction**: when an agent is killed by KV pressure, `recoverInline` prefills a nudge onto the agent's own branch, swaps to eager grammar, generates, and prunes. See [Recovery Extraction](/under-the-hood/kv-pressure#recovery-extraction).
 - **Grammar constraining**: `setGrammar()` and `setGrammarLazy()` are branch methods. Grammar state is cloned on fork. See [Grammar & Tool Ordering](/under-the-hood/grammar-and-ordering).
 
 The produce/commit separation, O(1) fork, and scope-tree cleanup are the primitives that make multi-agent generation on shared GPU compute possible.

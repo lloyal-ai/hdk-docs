@@ -317,7 +317,7 @@ The agent sees `"Resource unavailable"` as a tool error and adjusts its query â€
 
 ### Recursive forking
 
-If your tool spawns sub-agents, pass `context.branch` as `parent` for [warm path forking](/under-the-hood/prefix-sharing#warm-path-fork-from-parent). Sub-agents inherit the calling agent's full attention state:
+If your tool spawns sub-agents, pass `context.branch` as `parent` for [warm path forking](/under-the-hood/continuous-context-spine#the-warm-path-costs-a-turn-separator). Sub-agents inherit the calling agent's full attention state:
 
 ```typescript
 *execute(args: { questions: string[] }, context?: ToolContext): Operation<unknown> {
