@@ -5,9 +5,9 @@ description: "Dynamic prompt assembly with Eta templates — templates own text,
 
 Prompts in production pipelines are rarely static. The synthesis prompt needs different instructions depending on whether source passages are available, whether agents disagreed, and what tools the synthesizer has. A fixed template with `(none)` placeholders wastes the model's attention on capabilities it doesn't have.
 
-## Under the AgentApp protocol
+## Per-spawn templates: `renderAgentPreamble`
 
-In the HDK 3.0 era each **AgentApp ships its own per-spawn template** as `skill.eta` (and an optional `examples.eta` for discipline/few-shot rendered alongside). The framework's `renderAgentPreamble(app, ctx)` (in `@lloyal-labs/rig/spine-render.ts`) prepends `BOUNDARY_MARKER(app.protocol.name)` then renders the AgentApp's skill via Eta, with the `AgentRenderCtx` *plus* `app.source.promptData()` spread into the render context. So a corpus AgentApp's `skill.eta` can reference `it.toc` because `CorpusSource.promptData()` supplies it; a web AgentApp's skill renders without that key because `WebSource` returns `{}`.
+Each **AgentApp ships its own per-spawn template** as `skill.eta` (and an optional `examples.eta` for discipline/few-shot rendered alongside). The framework's `renderAgentPreamble(app, ctx)` (in `@lloyal-labs/rig/spine-render.ts`) prepends `BOUNDARY_MARKER(app.protocol.name)` then renders the AgentApp's skill via Eta, with the `AgentRenderCtx` *plus* `app.source.promptData()` spread into the render context. So a corpus AgentApp's `skill.eta` can reference `it.toc` because `CorpusSource.promptData()` supplies it; a web AgentApp's skill renders without that key because `WebSource` returns `{}`.
 
 Harness-side prompts (planner, synth, recovery) still use `renderTemplate` directly — they aren't bound to any AgentApp and don't go through `renderAgentPreamble`. The two primitives below — `renderTemplate` and `composePrompt` — are what `renderAgentPreamble` is built on, and what harnesses use for their own prompts.
 

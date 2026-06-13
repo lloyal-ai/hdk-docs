@@ -5,16 +5,9 @@ description: "Create, fork, prefill, produce/commit, prune — the full lifecycl
 
 `Branch` is the fundamental inference handle. It owns everything needed for independent generation: a KV cache sequence, sampler chain, logits snapshot, and perplexity tracker. Every agent, every recovery extraction, every diverge attempt -- all are branches. Understanding the branch lifecycle is prerequisite to understanding prefix sharing, multi-agent pools, and KV pressure.
 
-## Under the AgentApp protocol
-
-Branches are the substrate the AgentApp-protocol surface ultimately runs on:
-
-- **The spine is a branch** whose KV holds `renderSpine({ apps })` — the framework intro + each enabled AgentApp's `CATALOG_ENTRY` (`protocol.name`, `useWhen`, tools) + the tool-selection rule, plus the tool schemas decoded once.
-- **Each spawned agent is a fork** of the spine branch. Per-spawn it gets a suffix containing `BOUNDARY_MARKER(app.protocol.name)` + the AgentApp's rendered `skill.eta` + the user task — that's the per-spawn KV everything else is built on.
-- **AgentApp lifecycle is scope, not branches.** The registry runs each `AppFactory` in a *detached* Effection scope; the AgentApp's allocations (chunks, indexes, watchers) tear down via `ensure(...)` on scope halt — independent of branch lifecycle. See [Lifecycle & registry](/build-an-app/lifecycle-and-registry).
-- **`Tool.execute` runs in a child of the dispatch fiber**, not on a branch — but its return value gets `JSON.stringify`'d and prefilled into the *calling agent's branch* at the call position via SETTLE. The `authGuard` check for `protected` tools fires before `execute` runs; see [AgentApp security](/build-an-app/app-security).
-
-The rest of this page describes branch primitives that work the same way at the bytes-and-batches layer regardless of which AgentApp owns the spawn.
+<Note>
+The **spine** is just a branch whose KV holds the rendered AgentApp catalog and tool schemas; each spawned agent is a **fork** of it. AgentApp *lifecycle*, by contrast, is scope-bound, not branch-bound — the registry tears each AgentApp down via `ensure(...)` on scope halt, independent of any branch. See [What is an AgentApp](/build-an-app/what-is-an-app#the-agentapp-protocol--what-the-model-actually-sees) for the protocol and [Lifecycle & registry](/build-an-app/lifecycle-and-registry) for teardown.
+</Note>
 
 ## Branch as a KV sequence
 

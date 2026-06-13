@@ -48,7 +48,7 @@
               "start-here/what-is-the-hdk",
               "start-here/concept-spine",
               "start-here/quick-start",
-              "start-here/thinking-in-effection"
+              "start-here/thinking-in-lloyal"
             ]
           }
         ]
@@ -296,7 +296,12 @@
     },
     {
       "source": "/learn/thinking-in-lloyal",
-      "destination": "/start-here/thinking-in-effection",
+      "destination": "/start-here/thinking-in-lloyal",
+      "permanent": true
+    },
+    {
+      "source": "/start-here/thinking-in-effection",
+      "destination": "/start-here/thinking-in-lloyal",
       "permanent": true
     },
     {

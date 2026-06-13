@@ -5,15 +5,14 @@ description: "GBNF grammar constraining, lazy vs eager activation, trigger types
 
 When agents make tool calls, the output must be structurally valid -- a malformed XML tag or broken JSON means a parse failure and a wasted turn. Grammar constraining solves this at the token level: a GBNF grammar masks invalid tokens from the sampler before they can be produced, making malformed tool calls structurally impossible while the grammar is active.
 
-## Under the AgentApp protocol
+## Where the grammar's inputs come from
 
-Grammar shows up in three AgentApp-protocol places:
+Two facts tie this page to the AgentApp protocol ([definition](/build-an-app/what-is-an-app#the-agentapp-protocol--what-the-model-actually-sees)):
 
-- **`defineApp` grammar-sanitizes AgentApp metadata** before it enters the shared prompt (RFC §3.2 M3). `name` and `protocol.name` must match `[a-z][a-z0-9_-]{1,63}`; `protocol.useWhen` is one bounded sentence with no chat-role markers, no markdown code fences, no newlines. These rules close the catalog-escape vector — an AgentApp-supplied string can't break the catalog block in the shared spine.
-- **The catalog's tool ordering is the AgentApp's `protocol.tools[]` order.** Tools later in the array exhibit the recency bias the rest of this page documents; AgentApp authors who care about ordering can express it via the array.
-- **Eager grammar from `jsonSchemaToGrammar`** is what the planner uses to produce schema-constrained JSON output (`intent`, `clarifyQuestions[]`, `tasks[]` with `app` field). AgentApps can use the same path for schema-typed terminal tools — give the report tool a schema-constrained `parameters` and bind an eager grammar at dispatch time. See [Tools](/build-an-app/tools) and [AgentApp security](/build-an-app/app-security).
+- **Catalog tool ordering is the AgentApp's `protocol.tools[]` order.** Tools later in the array exhibit the recency bias the rest of this page documents — AgentApp authors control it through the array.
+- **Schema-typed terminal tools reuse the planner's eager-grammar path.** `jsonSchemaToGrammar` constrains JSON output token-by-token; give a report tool a schema-constrained `parameters` and bind an eager grammar at dispatch. See [Tools](/build-an-app/tools).
 
-The lazy/eager activation model and the tool-ordering effects below apply identically; the AgentApp protocol just specifies *where* the strings going into the grammar come from.
+Separately, `defineApp` grammar-*sanitizes* AgentApp metadata (`name`, `protocol.useWhen`) before it enters the shared spine — a string-validation pass, not GBNF — see [AgentApp security](/build-an-app/app-security).
 
 ## How grammar gets generated
 

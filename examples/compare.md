@@ -55,7 +55,7 @@ Required flags: `--x`, `--y`, `--corpus`, `--reranker`, `TAVILY_API_KEY`. Option
 - **Sibling parallelism with shared deps** — the three compare nodes fire the moment both research nodes complete, then run concurrently.
 - **Multi-child convergence** — `synthesize` waits on all three siblings before spawning.
 - **Spine extension is causal, not just sequential** — each node's `userContent` is prefilled onto the spine via `ctx.extendSpine`. The compare nodes don't merely *follow* the research nodes — they *attend to* them. The edge in the diagram is the spine.
-- **Shared catalog, mixed roles** — researcher, comparer, synthesizer all draw from one tool catalog amortized at the root. Per-spec system prompts say which subset to use. (Under the AgentApp protocol, this collapses into per-AgentApp `skill.eta` — see [What is an AgentApp](/build-an-app/what-is-an-app#skill).)
+- **Shared catalog, mixed roles** — researcher, comparer, synthesizer all draw from one tool catalog amortized at the root. Per-spec system prompts say which subset to use. (Under the AgentApp protocol, this collapses into per-AgentApp `skill.eta` — see [What is an AgentApp](/build-an-app/what-is-an-app#anatomy).)
 
 ## Code walkthrough
 
