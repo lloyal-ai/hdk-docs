@@ -515,19 +515,16 @@
 
       <section class="demo cli-demo">
         <div class="demo-info">
-          <h2 class="headline demo-headline">From zero to a running agent in one command.</h2>
+          <h2 class="headline demo-headline">From zero to a multi-agent harness in one command.</h2>
           <p class="demo-caption">
-            <code>harness.dev</code> is the on-ramp.
             <code>npx harness.dev my-research</code> scaffolds a complete,
-            runnable harness &mdash; model, agent pool, retrieval, terminal UI,
-            wired and ready to <code>npm run dev</code>. No account, no keys, no
-            config.
+            runnable harness &mdash; model, agent pool, retrieval, terminal UI.
+            No account, no keys, no config.
           </p>
           <p class="demo-caption">
-            Then grow it: <code>harness.dev install lloyal/corpus</code> pulls a
-            signed capability from the channel; <code>harness.dev publish</code>
-            ships your own back to it. Scaffold, extend, contribute &mdash; the
-            same CLI for all three.
+            Then grow it: <code>install</code> pulls signed capabilities from the
+            channel, <code>publish</code> ships your own back. One CLI, scaffold
+            to contribute.
           </p>
           <p class="demo-license">Apache-2.0.</p>
           <a href="https://docs.lloyal.ai/cli" class="demo-cta"
@@ -537,51 +534,145 @@
         <div class="code-window demo-window">
           <div class="window-header">
             <div class="code-tabs">
-              <span class="tab-btn active">terminal</span>
+              <span class="tab-btn active" onclick="switchTab('cli-scaffold')">scaffold</span>
+              <span class="tab-btn" onclick="switchTab('cli-extend')">extend</span>
+              <span class="tab-btn" onclick="switchTab('cli-publish')">publish</span>
             </div>
           </div>
-          <div class="demo-command">
-            <div class="demo-command-text">
-              <span class="demo-prompt">$</span> npx harness.dev my-research
+          <div id="tab-cli-scaffold" class="code-content active">
+            <div class="demo-command">
+              <div class="demo-command-text">
+                <span class="demo-prompt">$</span> npx harness.dev my-research
+              </div>
+              <button
+                class="demo-copy"
+                data-copy="npx harness.dev my-research"
+                aria-label="Copy command"
+                title="Copy"
+              >
+                <svg
+                  class="demo-copy-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path
+                    d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                  ></path>
+                </svg>
+                <svg
+                  class="demo-copy-check"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </button>
             </div>
-            <button
-              class="demo-copy"
-              data-copy="npx harness.dev my-research"
-              aria-label="Copy command"
-              title="Copy"
-            >
-              <svg
-                class="demo-copy-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+          </div>
+          <div id="tab-cli-extend" class="code-content">
+            <div class="demo-command">
+              <div class="demo-command-text">
+                <span class="demo-prompt">$</span> npx harness.dev install lloyal/corpus
+              </div>
+              <button
+                class="demo-copy"
+                data-copy="npx harness.dev install lloyal/corpus"
+                aria-label="Copy command"
+                title="Copy"
               >
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path
-                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                ></path>
-              </svg>
-              <svg
-                class="demo-copy-check"
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                <svg
+                  class="demo-copy-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path
+                    d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                  ></path>
+                </svg>
+                <svg
+                  class="demo-copy-check"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div id="tab-cli-publish" class="code-content">
+            <div class="demo-command">
+              <div class="demo-command-text">
+                <span class="demo-prompt">$</span> npx harness.dev publish
+              </div>
+              <button
+                class="demo-copy"
+                data-copy="npx harness.dev publish"
+                aria-label="Copy command"
+                title="Copy"
               >
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </button>
+                <svg
+                  class="demo-copy-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path
+                    d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                  ></path>
+                </svg>
+                <svg
+                  class="demo-copy-check"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </section>
