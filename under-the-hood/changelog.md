@@ -41,7 +41,7 @@ Migration:
 
 - Any harness calling `loadBundle(url, manifest, { trustRoots })` now calls `loadBundle(name, { semver })`.
 - [`harness.dev install <publisher>/<short>[@<semver>]`](/cli/installing) (in `harness.dev@0.4.0`) fetches, signature-verifies, and `npm install`s a signed app from the channel.
-- [`harness.dev publish`](/cli/publishing) (in `harness.dev@0.4.0`) packages an app via `npm pack` and submits it to the channel for review + signing. See [`harness.dev publishers register`](/cli/publishers) for the one-time handle claim.
+- [`harness.dev publish`](/cli/publishing) (in `harness.dev@0.4.0`) packages an app via `npm pack` and submits it to the channel for review + signing. See [`harness.dev publishers register`](/cli/publishing) for the one-time handle claim.
 
 See [Distribution](/build-an-app/distribution) for the mechanics.
 

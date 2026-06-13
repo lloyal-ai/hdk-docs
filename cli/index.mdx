@@ -25,20 +25,30 @@ npx harness.dev <command>
 |---|---|---|
 | `harness.dev <name>` | Scaffold a new harness | [Scaffolding](/cli/scaffolding) |
 | `harness.dev app <name>` | Scaffold a new app | [Scaffolding](/cli/scaffolding) |
-| `harness.dev publishers register --handle <handle>` | Claim a publisher handle | [Publisher accounts](/cli/publishers) |
-| `harness.dev publishers me` | Show your publisher record | [Publisher accounts](/cli/publishers) |
+| `harness.dev publishers register --handle <handle>` | Claim a publisher handle | [Publishing](/cli/publishing) |
+| `harness.dev publishers me` | Show your publisher record | [Publishing](/cli/publishing) |
 | `harness.dev publish` | Submit an app for review + signing | [Publishing](/cli/publishing) |
 | `harness.dev publish status <id>` | Poll review state of a submission | [Publishing](/cli/publishing) |
 | `harness.dev install <publisher>/<short>[@semver]` | Install a signed app into the current project | [Installing](/cli/installing) |
 
 ## Authentication
 
-All commands that hit `api.lloyal.ai` (publishers, publish, install of unpublished pre-release versions) authenticate via Cloudflare Access. The CLI supports two modes:
+Commands that hit `api.lloyal.ai` (anything under `publishers`, `publish`, plus pre-release `install` flows) are gated by Cloudflare Access. Two modes:
 
-- **Interactive** (developers) — embedded OAuth + PKCE flow that opens a browser, completes one-time PIN at your email, and caches a refresh token at `~/.cache/lloyal/auth.json` (mode 0600). Subsequent commands re-use the cached token until it expires.
-- **Service Token** (CI) — set `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET` env vars. The CLI skips the browser flow.
+**Interactive (developer terminals).** The first authenticated command from a fresh terminal opens your browser to Cloudflare Access SSO (RFC 8252 OAuth + PKCE + dynamic client registration). Complete the one-time email PIN and the CLI caches tokens at `~/.cache/lloyal/auth.json` (mode 0600), refreshing transparently on each invocation — you see the browser only on first run and after the refresh token expires. To reset: `rm ~/.cache/lloyal/auth.json`.
 
-See [Authentication](/cli/auth) for the full flow + troubleshooting.
+**Service Token (CI).** Set both env vars and the CLI skips the browser flow entirely:
+
+```bash
+export CF_ACCESS_CLIENT_ID=<client-id>.access
+export CF_ACCESS_CLIENT_SECRET=<client-secret>
+```
+
+Service Tokens are mapped server-side to a publisher account — CI publishes under the same handle as the team that owns it. **Service Tokens cannot register publisher accounts**: run `harness.dev publishers register` from an interactive terminal once; CI can then publish under that record.
+
+**What's NOT authenticated:** catalog, manifest, and tarball fetches from `apps.lloyal.ai` are public read — all bytes are Ed25519-verified against the framework-vendored trust root. And plain `npm ci` against a committed lockfile needs no `harness.dev` at all.
+
+**Troubleshooting:** `401 invalid_token` → stale token; any command triggers a refresh. `403 unauthorized` → your Access identity doesn't match an allow policy, or the Service Token is invalid (`DEBUG=harness.dev:*` shows the headers sent). `403 no-publisher-account` → register a handle first ([Publishing](/cli/publishing)).
 
 ## Typical workflows
 

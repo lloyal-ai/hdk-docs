@@ -5,12 +5,35 @@ description: "`harness.dev publish` — submit an HDK app to apps.lloyal.ai for 
 
 When your app is ready to ship, `harness.dev publish` packages it via `npm pack` and submits the tarball to the channel for review. Every submission enters a quarantine queue; on reviewer approval, Lloyal Labs signs the tarball bytes with the platform Ed25519 key and writes the signed artifact + manifest + updated catalog to `apps.lloyal.ai`.
 
-## Prerequisites
+## Step 0 (once): register a publisher handle
 
-- A registered publisher account (`harness.dev publishers register --handle <handle>` — see [Publisher accounts](/cli/publishers)).
-- Your app's `package.json` `name` is the npm import name (e.g., `@acme/jira-app`). This is the symbol consumers `import` from once installed.
-- Your `package.json` `version` is the catalog version (e.g., `1.0.0`). The catalog publishes your app as `<your-handle>/<short-name>@<version>`.
-- Your `app.json` `name` is your app's short name (e.g., `jira`). If you prefix it with your publisher handle (`acme/jira`), the prefix must match your account's handle — otherwise the CLI auto-prefixes.
+Your handle identifies your apps in the catalog as `<handle>/<app-name>`. Registration is one-time per identity, requires an interactive terminal (Service Tokens can't register), and attests the [Publisher ToS](/licensing/publisher-tos):
+
+```bash
+npx harness.dev publishers register --handle acme [--yes]
+
+# Publisher ToS (v1): https://docs.lloyal.ai/licensing/publisher-tos
+# Accept the publisher ToS? [y/N] y
+# registered as acme
+```
+
+`<handle>` matches `[a-z][a-z0-9_-]{1,63}`. Only `lloyal` is reserved; everything else is first-come-first-served, subject to good-faith use. Re-running with the same handle is a no-op; a *different* handle returns `409 already-registered` (ownership transfers go through `support@lloyal.ai`). Registration errors:
+
+| Error | Cause / fix |
+|---|---|
+| `handle-invalid` | Doesn't match the grammar — lowercase ASCII, 2–64 chars, `_`/`-` only |
+| `handle-taken` / `handle-reserved` | Pick a different handle |
+| `tos-required` | Re-run and accept the ToS (or pass `--yes`) |
+| `already-registered` | Your identity has a handle — see `harness.dev publishers me` |
+| `service-tokens-cannot-register` | Register interactively first; CI then publishes under that record |
+
+Inspect your record anytime with `npx harness.dev publishers me` — handle, `status` (`active`/`suspended`), approved-version count, and the `tosVersion` you attested (a `tos-version-stale` error on publish means re-attest via `publishers register --yes`). The ToS in one breath: you retain ownership and license Lloyal to inspect/sign/distribute approved tarballs; you submit only non-malicious, protocol-compliant code; every submission is reviewed, outcomes communicated, rejected artifacts kept 30 days for appeal; material ToS revisions require re-attestation.
+
+## Prerequisites per app
+
+- Your app's `package.json` `name` is the npm import name (e.g., `@acme/jira-app`) — the symbol consumers `import` from once installed.
+- Your `package.json` `version` is the catalog version. The catalog publishes your app as `<your-handle>/<short-name>@<version>`.
+- Your `app.json` `name` is the short name (e.g., `jira`). If you prefix it with your handle (`acme/jira`), the prefix must match your account — otherwise the CLI auto-prefixes.
 
 ## Submit for review
 
@@ -91,7 +114,7 @@ The Worker performs these checks before quarantining a submission. Failures retu
 
 | Error code | Cause |
 |---|---|
-| `no-publisher-account` | Your identity has no publisher record. Run [`publishers register`](/cli/publishers) first. |
+| `no-publisher-account` | Your identity has no publisher record. Run [`publishers register`](/cli/publishing) first. |
 | `account-suspended` | Your publisher account is suspended. Email `support@lloyal.ai`. |
 | `tos-version-stale` | Your `tosVersion` is older than the current ToS. Re-attest via `publishers register --yes`. |
 | `rate-limit-exceeded` | You've hit the per-identity rate limit (currently 10 publishes / 24h). Response includes `Retry-After`. |

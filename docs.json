@@ -64,7 +64,7 @@
               "build-a-harness/sessions",
               "build-a-harness/tracing",
               "build-a-harness/reference-architecture",
-              "build-a-harness/bridges"
+              "guides/deployment"
             ]
           }
         ]
@@ -93,9 +93,7 @@
             "group": "CLI",
             "pages": [
               "cli/index",
-              "cli/auth",
               "cli/scaffolding",
-              "cli/publishers",
               "cli/publishing",
               "cli/installing"
             ]
@@ -116,20 +114,6 @@
               "under-the-hood/prompt-composition",
               "under-the-hood/rerank-architecture",
               "under-the-hood/mixed-role-pools"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Guides",
-        "groups": [
-          {
-            "group": "Guides",
-            "pages": [
-              "guides/deployment",
-              "guides/debugging",
-              "guides/custom-pipeline",
-              "guides/custom-tool"
             ]
           }
         ]
@@ -175,40 +159,206 @@
     ]
   },
   "redirects": [
-    { "source": "/learn/introduction", "destination": "/start-here/what-is-the-hdk", "permanent": true },
-    { "source": "/learn/sources", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },
-    { "source": "/learn/tools", "destination": "/build-an-app/tools", "permanent": true },
-    { "source": "/reference/agent-policy", "destination": "/under-the-hood/kv-pressure", "permanent": true },
-    { "source": "/under-the-hood/agent-policy", "destination": "/under-the-hood/kv-pressure", "permanent": true },
-    { "source": "/under-the-hood/recovery-extraction", "destination": "/under-the-hood/kv-pressure", "permanent": true },
-    { "source": "/reference/branch-lifecycle", "destination": "/under-the-hood/branch-lifecycle", "permanent": true },
-    { "source": "/reference/changelog", "destination": "/under-the-hood/changelog", "permanent": true },
-    { "source": "/reference/concurrency", "destination": "/under-the-hood/concurrency", "permanent": true },
-    { "source": "/reference/continuous-context-spine", "destination": "/under-the-hood/continuous-context-spine", "permanent": true },
-    { "source": "/reference/grammar-and-ordering", "destination": "/under-the-hood/grammar-and-ordering", "permanent": true },
-    { "source": "/reference/kv-pressure", "destination": "/under-the-hood/kv-pressure", "permanent": true },
-    { "source": "/reference/playbooks", "destination": "/under-the-hood/mixed-role-pools", "permanent": true },
-    { "source": "/reference/prefix-sharing", "destination": "/under-the-hood/continuous-context-spine", "permanent": true },
-    { "source": "/under-the-hood/prefix-sharing", "destination": "/under-the-hood/continuous-context-spine", "permanent": true },
-    { "source": "/reference/prompt-composition", "destination": "/under-the-hood/prompt-composition", "permanent": true },
-    { "source": "/reference/scratchpad-extraction", "destination": "/under-the-hood/kv-pressure", "permanent": true },
-    { "source": "/under-the-hood/scratchpad-extraction", "destination": "/under-the-hood/kv-pressure", "permanent": true },
-    { "source": "/reference/search-strategy", "destination": "/under-the-hood/rerank-architecture", "permanent": true },
-    { "source": "/under-the-hood/search-strategy", "destination": "/under-the-hood/rerank-architecture", "permanent": true },
-    { "source": "/reference/rig/overview", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },
-    { "source": "/reference/rig/corpus-source", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },
-    { "source": "/reference/rig/web-source", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },
-    { "source": "/guides/custom-source", "destination": "/build-an-app/sources-and-retrieval", "permanent": true },
-    { "source": "/examples/react-agent", "destination": "/start-here/quick-start", "permanent": true },
-    { "source": "/examples/reflection", "destination": "/under-the-hood/branch-lifecycle", "permanent": true },
-    { "source": "/learn/quick-start", "destination": "/start-here/quick-start", "permanent": true },
-    { "source": "/learn/thinking-in-lloyal", "destination": "/start-here/thinking-in-effection", "permanent": true },
-    { "source": "/learn/agents", "destination": "/build-a-harness/agents-and-pools", "permanent": true },
-    { "source": "/learn/pipelines", "destination": "/build-a-harness/orchestrators", "permanent": true },
-    { "source": "/learn/sessions", "destination": "/build-a-harness/sessions", "permanent": true },
-    { "source": "/learn/tracing", "destination": "/build-a-harness/tracing", "permanent": true },
-    { "source": "/reference/rig/pipeline", "destination": "/build-a-harness/reference-architecture", "permanent": true },
-    { "source": "/reference/rig/bridges", "destination": "/build-a-harness/bridges", "permanent": true }
+    {
+      "source": "/learn/introduction",
+      "destination": "/start-here/what-is-the-hdk",
+      "permanent": true
+    },
+    {
+      "source": "/learn/sources",
+      "destination": "/build-an-app/sources-and-retrieval",
+      "permanent": true
+    },
+    {
+      "source": "/learn/tools",
+      "destination": "/build-an-app/tools",
+      "permanent": true
+    },
+    {
+      "source": "/reference/agent-policy",
+      "destination": "/under-the-hood/kv-pressure",
+      "permanent": true
+    },
+    {
+      "source": "/under-the-hood/agent-policy",
+      "destination": "/under-the-hood/kv-pressure",
+      "permanent": true
+    },
+    {
+      "source": "/under-the-hood/recovery-extraction",
+      "destination": "/under-the-hood/kv-pressure",
+      "permanent": true
+    },
+    {
+      "source": "/reference/branch-lifecycle",
+      "destination": "/under-the-hood/branch-lifecycle",
+      "permanent": true
+    },
+    {
+      "source": "/reference/changelog",
+      "destination": "/under-the-hood/changelog",
+      "permanent": true
+    },
+    {
+      "source": "/reference/concurrency",
+      "destination": "/under-the-hood/concurrency",
+      "permanent": true
+    },
+    {
+      "source": "/reference/continuous-context-spine",
+      "destination": "/under-the-hood/continuous-context-spine",
+      "permanent": true
+    },
+    {
+      "source": "/reference/grammar-and-ordering",
+      "destination": "/under-the-hood/grammar-and-ordering",
+      "permanent": true
+    },
+    {
+      "source": "/reference/kv-pressure",
+      "destination": "/under-the-hood/kv-pressure",
+      "permanent": true
+    },
+    {
+      "source": "/reference/playbooks",
+      "destination": "/under-the-hood/mixed-role-pools",
+      "permanent": true
+    },
+    {
+      "source": "/reference/prefix-sharing",
+      "destination": "/under-the-hood/continuous-context-spine",
+      "permanent": true
+    },
+    {
+      "source": "/under-the-hood/prefix-sharing",
+      "destination": "/under-the-hood/continuous-context-spine",
+      "permanent": true
+    },
+    {
+      "source": "/reference/prompt-composition",
+      "destination": "/under-the-hood/prompt-composition",
+      "permanent": true
+    },
+    {
+      "source": "/reference/scratchpad-extraction",
+      "destination": "/under-the-hood/kv-pressure",
+      "permanent": true
+    },
+    {
+      "source": "/under-the-hood/scratchpad-extraction",
+      "destination": "/under-the-hood/kv-pressure",
+      "permanent": true
+    },
+    {
+      "source": "/reference/search-strategy",
+      "destination": "/under-the-hood/rerank-architecture",
+      "permanent": true
+    },
+    {
+      "source": "/under-the-hood/search-strategy",
+      "destination": "/under-the-hood/rerank-architecture",
+      "permanent": true
+    },
+    {
+      "source": "/reference/rig/overview",
+      "destination": "/build-an-app/sources-and-retrieval",
+      "permanent": true
+    },
+    {
+      "source": "/reference/rig/corpus-source",
+      "destination": "/build-an-app/sources-and-retrieval",
+      "permanent": true
+    },
+    {
+      "source": "/reference/rig/web-source",
+      "destination": "/build-an-app/sources-and-retrieval",
+      "permanent": true
+    },
+    {
+      "source": "/guides/custom-source",
+      "destination": "/build-an-app/sources-and-retrieval",
+      "permanent": true
+    },
+    {
+      "source": "/examples/react-agent",
+      "destination": "/start-here/quick-start",
+      "permanent": true
+    },
+    {
+      "source": "/examples/reflection",
+      "destination": "/under-the-hood/branch-lifecycle",
+      "permanent": true
+    },
+    {
+      "source": "/learn/quick-start",
+      "destination": "/start-here/quick-start",
+      "permanent": true
+    },
+    {
+      "source": "/learn/thinking-in-lloyal",
+      "destination": "/start-here/thinking-in-effection",
+      "permanent": true
+    },
+    {
+      "source": "/learn/agents",
+      "destination": "/build-a-harness/agents-and-pools",
+      "permanent": true
+    },
+    {
+      "source": "/learn/pipelines",
+      "destination": "/build-a-harness/orchestrators",
+      "permanent": true
+    },
+    {
+      "source": "/learn/sessions",
+      "destination": "/build-a-harness/sessions",
+      "permanent": true
+    },
+    {
+      "source": "/learn/tracing",
+      "destination": "/build-a-harness/tracing",
+      "permanent": true
+    },
+    {
+      "source": "/reference/rig/pipeline",
+      "destination": "/build-a-harness/reference-architecture",
+      "permanent": true
+    },
+    {
+      "source": "/reference/rig/bridges",
+      "destination": "/build-a-harness/reference-architecture",
+      "permanent": true
+    },
+    {
+      "source": "/build-a-harness/bridges",
+      "destination": "/build-a-harness/reference-architecture",
+      "permanent": true
+    },
+    {
+      "source": "/guides/debugging",
+      "destination": "/build-a-harness/tracing",
+      "permanent": true
+    },
+    {
+      "source": "/guides/custom-tool",
+      "destination": "/build-an-app/tools",
+      "permanent": true
+    },
+    {
+      "source": "/cli/auth",
+      "destination": "/cli/index",
+      "permanent": true
+    },
+    {
+      "source": "/cli/publishers",
+      "destination": "/cli/publishing",
+      "permanent": true
+    },
+    {
+      "source": "/guides/custom-pipeline",
+      "destination": "/examples/compare",
+      "permanent": true
+    }
   ],
   "footer": {
     "socials": {
