@@ -150,7 +150,7 @@ function dagWithEvents(nodes: DAGNode[], emit: (ev: DagEvent) => void): Orchestr
 }
 ```
 
-A 25-line illustration of the canonical Effection DAG pattern: each node runs as a child Task; "A depends on B" becomes `yield* tasks.get(B)!` inside A's body. No mutable Sets. No race window. Failure in any node halts the rest via structured concurrency. For the framework's stock `dag()` orchestrator (without the event hooks), see [Concurrency — DAG](/under-the-hood/concurrency#dag).
+A 25-line illustration of the canonical Effection DAG pattern: each node runs as a child Task; "A depends on B" becomes `yield* tasks.get(B)!` inside A's body. No mutable Sets. No race window. Failure in any node halts the rest via structured concurrency. For the framework's stock `dag()` orchestrator (without the event hooks), see [Concurrency — DAG](/under-the-hood/concurrency#dag-is-task-as-future).
 
 ### `prompts/`
 

@@ -282,7 +282,6 @@ function* withSpine(opts, body) {
   await root.prefill(sharedTokens);
 
   try {
-    yield* ScratchpadParent.set(root);
     return yield* body(root, sharedTokens.length);
   } finally {
     if (!root.disposed) root.pruneSubtreeSync();
