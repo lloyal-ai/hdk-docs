@@ -1,18 +1,18 @@
 ---
 title: Distribution
-description: How Apps reach harnesses. The canonical channel is apps.lloyal.ai — framework-locked into @lloyal-labs/rig. First-party harnesses may also bundle apps they own at build time.
+description: How AgentApps reach harnesses. The canonical channel is apps.lloyal.ai — framework-locked into @lloyal-labs/rig. First-party harnesses may also bundle AgentApps they own at build time.
 ---
 
-The App protocol defines **two acquisition paths**, both producing an `AppFactory` and both terminating at `createAppRegistry` or `registry.enable`. Which path applies depends on who owns the App:
+The AgentApp protocol defines **two acquisition paths**, both producing an `AppFactory` and both terminating at `createAppRegistry` or `registry.enable`. Which path applies depends on who owns the AgentApp:
 
-1. **The canonical channel** (`apps.lloyal.ai`) — for *any* App reaching a harness it doesn't own. Third-party Apps, first-party Apps published for external consumption — all flow through here.
-2. **First-party build-time inclusion** — for a harness vendor bundling Apps **it owns** from a private source (private monorepo, private registry, git+ssh dep). Not a parallel public path.
+1. **The canonical channel** (`apps.lloyal.ai`) — for *any* AgentApp reaching a harness it doesn't own. Third-party AgentApps, first-party AgentApps published for external consumption — all flow through here.
+2. **First-party build-time inclusion** — for a harness vendor bundling AgentApps **it owns** from a private source (private monorepo, private registry, git+ssh dep). Not a parallel public path.
 
 ## The canonical channel — `apps.lloyal.ai`
 
-Every App published to `apps.lloyal.ai` is reviewed by Lloyal Labs for Source-contract conformance, tool-safety review (which tools are `protected`, what data they touch, what consent they require), manifest validation, and signature provenance before listing. The catalog at `apps.lloyal.ai` is the verified registry that consumers rely on.
+Every AgentApp published to `apps.lloyal.ai` is reviewed by Lloyal Labs for Source-contract conformance, tool-safety review (which tools are `protected`, what data they touch, what consent they require), manifest validation, and signature provenance before listing. The catalog at `apps.lloyal.ai` is the verified registry that consumers rely on.
 
-The framework points at this verified registry by default. `loadBundle` takes a name, not a URL; the catalog URL (`CHANNEL_CATALOG_URL`) and trust roots (`CHANNEL_TRUST_ROOTS`) are compile-time constants in `@lloyal-labs/rig/src/protocol.ts`. This way, every harness built on HDK loads Apps through the same verified channel by default — Apps interoperate across harnesses, consumers see one coherent ecosystem, and the App protocol does not fragment into incompatible sub-catalogs.
+The framework points at this verified registry by default. `loadBundle` takes a name, not a URL; the catalog URL (`CHANNEL_CATALOG_URL`) and trust roots (`CHANNEL_TRUST_ROOTS`) are compile-time constants in `@lloyal-labs/rig/src/protocol.ts`. This way, every harness built on HDK loads AgentApps through the same verified channel by default — AgentApps interoperate across harnesses, consumers see one coherent ecosystem, and the AgentApp protocol does not fragment into incompatible sub-catalogs.
 
 ```
                  ┌──────────────────────────────┐
@@ -60,7 +60,7 @@ Internally `loadBundle`:
 
 The harness sees one call. Every URL and every verification key is framework-vendored.
 
-### Publishing — the App author flow
+### Publishing — the AgentApp author flow
 
 ```bash
 harness.dev publish   # auth → build → submit to apps.lloyal.ai for review + signing
@@ -69,7 +69,7 @@ harness.dev publish   # auth → build → submit to apps.lloyal.ai for review +
 The CLI:
 
 1. Authenticates the publisher against `apps.lloyal.ai`. Two modes: an interactive OAuth flow when run from a developer terminal (short-lived session, no persistent credential on disk), or long-lived service credentials provisioned by Lloyal during publisher onboarding for use in CI environments (read from environment variables, not from disk).
-2. esbuilds the App into a single ESM bundle with `@lloyal-labs/*` as externals.
+2. esbuilds the AgentApp into a single ESM bundle with `@lloyal-labs/*` as externals.
 3. Submits the bundle bytes + an unsigned manifest stub (name, version, entry, sizeBytes, peerDependencies) to the apps.lloyal.ai publish endpoint.
 
 The platform side then:
@@ -90,7 +90,7 @@ The CLI is a thin ergonomics wrapper over `loadBundle`. It writes the resolved b
 
 ## First-party build-time inclusion
 
-A harness vendor MAY bundle Apps it owns at build time from a private source. This is an internal build mechanism, **not** a public distribution path. The reasoning.run reference harness uses this path for `@lloyal-labs/web-app` and `@lloyal-labs/corpus-app`:
+A harness vendor MAY bundle AgentApps it owns at build time from a private source. This is an internal build mechanism, **not** a public distribution path. The reasoning.run reference harness uses this path for `@lloyal-labs/web-app` and `@lloyal-labs/corpus-app`:
 
 ```ts
 import { createWebApp } from "@lloyal-labs/web-app";
@@ -105,10 +105,10 @@ const registry = yield* createAppRegistry({
 Constraints:
 
 - The vendor must own the source repos (private monorepo, private registry, git+ssh with auth).
-- Third-party Apps NEVER use this path. There is no "publish your App to npm" story — third-party distribution goes through `apps.lloyal.ai` exclusively.
-- Audience: a harness vendor shipping its own first-party Apps preinstalled.
+- Third-party AgentApps NEVER use this path. There is no "publish your AgentApp to npm" story — third-party distribution goes through `apps.lloyal.ai` exclusively.
+- Audience: a harness vendor shipping its own first-party AgentApps preinstalled.
 
-If you don't own the App, you go through the canonical channel.
+If you don't own the AgentApp, you go through the canonical channel.
 
 ## The `harness.dev` CLI
 
@@ -117,21 +117,21 @@ A separate dev tool, distinct from the framework runtime, wraps both sides of th
 | Command | What it does |
 | --- | --- |
 | `harness.dev <name>` | [Scaffold a harness](/cli/scaffolding) |
-| `harness.dev app <name>` | [Scaffold an app](/cli/scaffolding) |
+| `harness.dev app <name>` | [Scaffold an AgentApp](/cli/scaffolding) |
 | `harness.dev publishers register` | [Claim a publisher handle](/cli/publishing) |
-| `harness.dev publish` | [Submit an app for review + signing](/cli/publishing) |
-| `harness.dev install <publisher>/<short>[@<semver>]` | [Install a signed app](/cli/installing) |
+| `harness.dev publish` | [Submit an AgentApp for review + signing](/cli/publishing) |
+| `harness.dev install <publisher>/<short>[@<semver>]` | [Install a signed AgentApp](/cli/installing) |
 
 ## Where next
 
 <CardGroup cols={2}>
   <Card title="Lifecycle & registry" icon="circle-nodes" href="/build-an-app/lifecycle-and-registry">
-    The registry's per-app detached scope model — applies identically to channel-loaded and build-time-included Apps.
+    The registry's per-AgentApp detached scope model — applies identically to channel-loaded and build-time-included AgentApps.
   </Card>
-  <Card title="App security" icon="shield-halved" href="/build-an-app/app-security">
+  <Card title="AgentApp security" icon="shield-halved" href="/build-an-app/app-security">
     The signing model — what the framework verifies and what it cannot.
   </Card>
-  <Card title="What is an App" icon="puzzle-piece" href="/build-an-app/what-is-an-app">
-    Back to the App protocol anatomy.
+  <Card title="What is an AgentApp" icon="puzzle-piece" href="/build-an-app/what-is-an-app">
+    Back to the AgentApp protocol anatomy.
   </Card>
 </CardGroup>

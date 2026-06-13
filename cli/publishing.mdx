@@ -1,13 +1,13 @@
 ---
-title: "Publishing apps"
-description: "`harness.dev publish` — submit an HDK app to apps.lloyal.ai for review and signing."
+title: "Publishing AgentApps"
+description: "`harness.dev publish` — submit an AgentApp to apps.lloyal.ai for review and signing."
 ---
 
-When your app is ready to ship, `harness.dev publish` packages it via `npm pack` and submits the tarball to the channel for review. Every submission enters a quarantine queue; on reviewer approval, Lloyal Labs signs the tarball bytes with the platform Ed25519 key and writes the signed artifact + manifest + updated catalog to `apps.lloyal.ai`.
+When your AgentApp is ready to ship, `harness.dev publish` packages it via `npm pack` and submits the tarball to the channel for review. Every submission enters a quarantine queue; on reviewer approval, Lloyal Labs signs the tarball bytes with the platform Ed25519 key and writes the signed artifact + manifest + updated catalog to `apps.lloyal.ai`.
 
 ## Step 0 (once): register a publisher handle
 
-Your handle identifies your apps in the catalog as `<handle>/<app-name>`. Registration is one-time per identity, requires an interactive terminal (Service Tokens can't register), and attests the [Publisher ToS](/licensing/publisher-tos):
+Your handle identifies your AgentApps in the catalog as `<handle>/<app-name>`. Registration is one-time per identity, requires an interactive terminal (Service Tokens can't register), and attests the [Publisher ToS](/licensing/publisher-tos):
 
 ```bash
 npx harness.dev publishers register --handle acme [--yes]
@@ -29,10 +29,10 @@ npx harness.dev publishers register --handle acme [--yes]
 
 Inspect your record anytime with `npx harness.dev publishers me` — handle, `status` (`active`/`suspended`), approved-version count, and the `tosVersion` you attested (a `tos-version-stale` error on publish means re-attest via `publishers register --yes`). The ToS in one breath: you retain ownership and license Lloyal to inspect/sign/distribute approved tarballs; you submit only non-malicious, protocol-compliant code; every submission is reviewed, outcomes communicated, rejected artifacts kept 30 days for appeal; material ToS revisions require re-attestation.
 
-## Prerequisites per app
+## Prerequisites per AgentApp
 
-- Your app's `package.json` `name` is the npm import name (e.g., `@acme/jira-app`) — the symbol consumers `import` from once installed.
-- Your `package.json` `version` is the catalog version. The catalog publishes your app as `<your-handle>/<short-name>@<version>`.
+- Your AgentApp's `package.json` `name` is the npm import name (e.g., `@acme/jira-app`) — the symbol consumers `import` from once installed.
+- Your `package.json` `version` is the catalog version. The catalog publishes your AgentApp as `<your-handle>/<short-name>@<version>`.
 - Your `app.json` `name` is the short name (e.g., `jira`). If you prefix it with your handle (`acme/jira`), the prefix must match your account — otherwise the CLI auto-prefixes.
 
 ## Submit for review
@@ -46,7 +46,7 @@ Defaults to `process.cwd()`. The CLI:
 1. Looks up your publisher handle via `GET /v1/publishers/me`.
 2. Validates your `app.json` and `package.json` shape.
 3. Auto-prefixes the catalog `name` as `<your-handle>/<app.json.name>`.
-4. Runs `npm pack` in the app directory to produce a tarball.
+4. Runs `npm pack` in the AgentApp directory to produce a tarball.
 5. POSTs the tarball + a manifest stub to `https://api.lloyal.ai/v1/publish`.
 6. The server quarantines the submission (writes pending bytes to R2, records a `pending` submission in KV) and returns a `submissionId`.
 
@@ -141,7 +141,7 @@ On reviewer approval, the Worker:
 8. Updates the submission record to `approved`, bumps your publisher's `publishedCount`.
 9. Deletes the pending R2 artifacts.
 
-From the moment the catalog write completes, your app is publicly installable.
+From the moment the catalog write completes, your AgentApp is publicly installable.
 
 ## What does NOT change
 

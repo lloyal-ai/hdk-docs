@@ -1,12 +1,12 @@
 ---
 title: Lifecycle & registry
-description: createAppRegistry, the per-app detached scope model, AppFactory, AppState, and dynamic enable/disable.
+description: createAppRegistry, the per-AgentApp detached scope model, AppFactory, AppState, and dynamic enable/disable.
 ---
 
-The harness owns the registry; the registry owns each App's lifetime. The two key contracts:
+The harness owns the registry; the registry owns each AgentApp's lifetime. The two key contracts:
 
-- `createAppRegistry(opts)` — the harness-wide registry. Declarative `apps` set + dynamic `enable` / `disable`. Per-app **detached** Effection scopes, structured teardown on registry-scope exit.
-- `AppFactory` — the App's own constructor. An `() => Operation<App>` that reads its config + reranker, builds, and returns.
+- `createAppRegistry(opts)` — the harness-wide registry. Declarative `apps` set + dynamic `enable` / `disable`. Per-AgentApp **detached** Effection scopes, structured teardown on registry-scope exit.
+- `AppFactory` — the AgentApp's own constructor. An `() => Operation<App>` that reads its config + reranker, builds, and returns.
 
 No `install` / `uninstall` / `enable` / `disable` lifecycle hooks. Setup is the factory body; teardown is `ensure(...)`.
 
@@ -50,7 +50,7 @@ export interface CreateAppRegistryOpts {
 
 1. Sets `AppRegistryCtx` and `AppConfigStoreCtx` (and `GrantStoreCtx` if a `grantStore` was provided) on the **caller's** scope so the pool, the dispatch authGuard, and consumers can read them.
 2. Enables each factory in `apps` in declaration order. Each one runs in its own detached scope.
-3. Registers a scope-exit teardown that halts every enabled App's detached scope in **reverse register-order**, best-effort.
+3. Registers a scope-exit teardown that halts every enabled AgentApp's detached scope in **reverse register-order**, best-effort.
 
 ### The interface
 
@@ -64,11 +64,11 @@ export interface AppRegistry {
 }
 ```
 
-`installed()` returns Apps in **register-order** — the harness's planner / spine renderer can rely on a stable ordering (`installed()[0]` is the App that registered first).
+`installed()` returns AgentApps in **register-order** — the harness's planner / spine renderer can rely on a stable ordering (`installed()[0]` is the AgentApp that registered first).
 
 ## The factory model — no hooks, just scopes
 
-An `AppFactory` is `() => Operation<App>`. It runs once per `enable` and returns once — the registry holds the `App` for the rest of the App's enabled lifetime.
+An `AppFactory` is `() => Operation<App>`. It runs once per `enable` and returns once — the registry holds the `App` for the rest of the AgentApp's enabled lifetime.
 
 ```ts
 export function* createCorpusApp(): Operation<App> {
@@ -93,29 +93,29 @@ export function* createCorpusApp(): Operation<App> {
 The protocol:
 
 - **Setup is the body.** Read config, allocate resources, construct.
-- **Teardown is `ensure(...)`.** Anything that needs explicit cleanup — a connection pool, a file watcher, a periodic timer — gets an `ensure(() => …)` so it fires when the registry tears the App's scope down.
+- **Teardown is `ensure(...)`.** Anything that needs explicit cleanup — a connection pool, a file watcher, a periodic timer — gets an `ensure(() => …)` so it fires when the registry tears the AgentApp's scope down.
 - **No `install` / `uninstall` hooks.** They'd be redundant with the body + `ensure` and would invite teardown bugs (forgetting to fire one of them; firing them in the wrong order). Effection scope guarantees both happen, and in the right order, by construction.
-- **Validation throws synchronously.** If `defineApp` throws on a bad manifest or config validation fails, the partial scope tears down and the error propagates. The App never enters the registry. Sibling Apps are unaffected.
+- **Validation throws synchronously.** If `defineApp` throws on a bad manifest or config validation fails, the partial scope tears down and the error propagates. The AgentApp never enters the registry. Sibling AgentApps are unaffected.
 
-## Per-app detached scopes
+## Per-AgentApp detached scopes
 
 Each factory runs in its own **detached** Effection scope, not as a child of the registry's caller scope. Why this matters:
 
-- **Teardown isolation.** If `createWebApp`'s teardown throws, it can't propagate up to the harness's scope and crash the session. The detached scope swallows the throw; the error is logged; sibling Apps tear down normally. A throwing teardown in one App can never strand another or crash the harness.
-- **`disable(name)` is safe.** A mid-session `registry.disable("corpus")` halts the corpus App's scope — but a throwing teardown stays inside the scope. The session continues.
+- **Teardown isolation.** If `createWebApp`'s teardown throws, it can't propagate up to the harness's scope and crash the session. The detached scope swallows the throw; the error is logged; sibling AgentApps tear down normally. A throwing teardown in one AgentApp can never strand another or crash the harness.
+- **`disable(name)` is safe.** A mid-session `registry.disable("corpus")` halts the corpus AgentApp's scope — but a throwing teardown stays inside the scope. The session continues.
 - **`enable(factory)` failure is safe.** If the factory throws (or `defineApp` validation fails), the partial scope tears down before the error propagates. The registry never half-installs.
 
-The mechanism lives in `rig/src/registry.ts` using `createScope()` + `scope.run()` + a `suspend()` that holds the App alive between construction and `destroy()`. App authors don't manage any of this; the framework wires it.
+The mechanism lives in `rig/src/registry.ts` using `createScope()` + `scope.run()` + a `suspend()` that holds the AgentApp alive between construction and `destroy()`. AgentApp authors don't manage any of this; the framework wires it.
 
 ## Boot set vs dynamic enable
 
-Two ways an App enters the registry:
+Two ways an AgentApp enters the registry:
 
 **Build-time imports (the boot set).** The harness `import`s factories and hands them to `createAppRegistry({ apps: [...] })`. This is the path the reasoning.run harness uses today — `createWebApp` and `createCorpusApp` are build-time deps.
 
-**Dynamic enable.** `yield* registry.enable(factory)` mid-session. This is the path channel-distributed Apps use: `yield* loadBundle('jira', { semver: '^1.2.0' })` resolves against `apps.lloyal.ai` (URL and trust roots are framework-locked constants), verifies, and returns an `AppFactory`. `enable` then runs it in its own scope. See [Distribution](/build-an-app/distribution).
+**Dynamic enable.** `yield* registry.enable(factory)` mid-session. This is the path channel-distributed AgentApps use: `yield* loadBundle('jira', { semver: '^1.2.0' })` resolves against `apps.lloyal.ai` (URL and trust roots are framework-locked constants), verifies, and returns an `AppFactory`. `enable` then runs it in its own scope. See [Distribution](/build-an-app/distribution).
 
-Both paths converge on the same invariant: the App enters the registry only if (a) the factory body completes without throwing, (b) `defineApp` validation passes, (c) the App protocol version is supported, and (d) an existing entry with the same `name` doesn't already occupy the slot.
+Both paths converge on the same invariant: the AgentApp enters the registry only if (a) the factory body completes without throwing, (b) `defineApp` validation passes, (c) the AgentApp protocol version is supported, and (d) an existing entry with the same `name` doesn't already occupy the slot.
 
 ## `AppState`
 
@@ -123,22 +123,22 @@ Both paths converge on the same invariant: the App enters the registry only if (
 type AppState = "enabled" | "disabled";
 ```
 
-Two states, no half-life. `stateOf(name)` returns `'enabled'` if the App is currently in the registry, `'disabled'` otherwise. An App can move from `disabled` → `enabled` via `enable`, and from `enabled` → `disabled` via `disable` (which halts its detached scope and fires `ensure`s).
+Two states, no half-life. `stateOf(name)` returns `'enabled'` if the AgentApp is currently in the registry, `'disabled'` otherwise. An AgentApp can move from `disabled` → `enabled` via `enable`, and from `enabled` → `disabled` via `disable` (which halts its detached scope and fires `ensure`s).
 
-There's no `'installing'` or `'erroring'` state. If a factory throws, the App was never `enabled`. If a teardown throws, the App is already `disabled` — the throw is swallowed and logged.
+There's no `'installing'` or `'erroring'` state. If a factory throws, the AgentApp was never `enabled`. If a teardown throws, the AgentApp is already `disabled` — the throw is swallowed and logged.
 
 ## Framework contexts seeded by the registry
 
-When the registry runs a factory, it seeds these contexts into the App's detached scope so the factory can read them:
+When the registry runs a factory, it seeds these contexts into the AgentApp's detached scope so the factory can read them:
 
 | context | what it carries |
 | --- | --- |
-| `AppConfigStoreCtx` | The harness's per-app config store — call `cfgStore.get(manifest.name)` for this App's config. |
-| `AppRegistryCtx` | A reference back to the registry itself — useful for an App that needs to enumerate peers. |
-| `RerankerCtx` | The shared reranker, if any — for Apps whose Source needs cross-encoder scoring. |
-| `GrantStoreCtx` | The session's protected-tool grants — relevant if the App's tools need to query their own grant state (rare). |
+| `AppConfigStoreCtx` | The harness's per-AgentApp config store — call `cfgStore.get(manifest.name)` for this AgentApp's config. |
+| `AppRegistryCtx` | A reference back to the registry itself — useful for an AgentApp that needs to enumerate peers. |
+| `RerankerCtx` | The shared reranker, if any — for AgentApps whose Source needs cross-encoder scoring. |
+| `GrantStoreCtx` | The session's protected-tool grants — relevant if the AgentApp's tools need to query their own grant state (rare). |
 
-These are Effection contexts (from `agents/src/context.ts`). Set on the App's scope, accessible via `.expect()`. They don't leak across Apps — each factory's scope sees only what the registry seeded.
+These are Effection contexts (from `agents/src/context.ts`). Set on the AgentApp's scope, accessible via `.expect()`. They don't leak across AgentApps — each factory's scope sees only what the registry seeded.
 
 ## Idiomatic patterns
 
@@ -148,25 +148,25 @@ These are Effection contexts (from `agents/src/context.ts`). Set on the App's sc
 
 **Make `ensure` mirror allocation.** Every long-lived resource you open in the body gets a matching `ensure` for its close. Scope-halt guarantees they fire in reverse allocation order.
 
-**Don't leak context-set across Apps.** A factory may `yield* SomeCtx.set(...)` — but it only affects that App's detached scope, not siblings'. If you find yourself wanting cross-App state, that's a harness concern, not an App concern.
+**Don't leak context-set across AgentApps.** A factory may `yield* SomeCtx.set(...)` — but it only affects that AgentApp's detached scope, not siblings'. If you find yourself wanting cross-AgentApp state, that's a harness concern, not an AgentApp concern.
 
-**Versioning lives in `package.json`.** Bump `package.json` `version` for App-internal changes — that's the version the channel catalog publishes as `<publisher>/<short-name>@<version>`. `app.json` carries `appProtocolVersion` (which target App protocol the App was authored against; rarely changes — the framework's protocol is `'3.0'`); the registry refuses to enable an App that declares a `appProtocolVersion` outside `SUPPORTED_APP_PROTOCOL_VERSIONS`.
+**Versioning lives in `package.json`.** Bump `package.json` `version` for AgentApp-internal changes — that's the version the channel catalog publishes as `<publisher>/<short-name>@<version>`. `app.json` carries `appProtocolVersion` (which target AgentApp protocol the AgentApp was authored against; rarely changes — the framework's protocol is `'3.0'`); the registry refuses to enable an AgentApp that declares a `appProtocolVersion` outside `SUPPORTED_APP_PROTOCOL_VERSIONS`.
 
 ---
 
 ## Where next
 
 <CardGroup cols={2}>
-  <Card title="App security" icon="shield-halved" href="/build-an-app/app-security">
+  <Card title="AgentApp security" icon="shield-halved" href="/build-an-app/app-security">
     How the `GrantStoreCtx` the registry seeds drives authGuard at dispatch.
   </Card>
   <Card title="Distribution" icon="boxes-stacked" href="/build-an-app/distribution">
-    The canonical channel (apps.lloyal.ai) + harness.dev CLI for publishing and installing Apps.
+    The canonical channel (apps.lloyal.ai) + harness.dev CLI for publishing and installing AgentApps.
   </Card>
   <Card title="Thinking in Effection" icon="brain" href="/start-here/thinking-in-effection">
-    The structured-concurrency model the per-app detached scopes are built on.
+    The structured-concurrency model the per-AgentApp detached scopes are built on.
   </Card>
-  <Card title="What is an App" icon="puzzle-piece" href="/build-an-app/what-is-an-app">
-    Back to the App anatomy if you skipped here from the spine.
+  <Card title="What is an AgentApp" icon="puzzle-piece" href="/build-an-app/what-is-an-app">
+    Back to the AgentApp anatomy if you skipped here from the spine.
   </Card>
 </CardGroup>

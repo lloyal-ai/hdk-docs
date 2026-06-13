@@ -1,9 +1,9 @@
 ---
-title: Your first App
+title: Your first AgentApp
 description: Walk through createCorpusApp — manifest, factory, Source, Tools, skill — the full defineApp loop.
 ---
 
-The fastest way to learn the App protocol is to read `createCorpusApp` end-to-end. It's small, real, and every concept the [Build an App](/build-an-app/what-is-an-app) page introduced shows up exactly once.
+The fastest way to learn the AgentApp protocol is to read `createCorpusApp` end-to-end. It's small, real, and every concept the [Build an AgentApp](/build-an-app/what-is-an-app) page introduced shows up exactly once.
 
 This page walks through `packages/apps/corpus/` in the order the loader sees it.
 
@@ -26,7 +26,7 @@ packages/apps/corpus/
 Three things to keep in mind while reading:
 
 1. **The factory is an Effection generator.** It runs in a detached scope the registry provides. Everything is `yield*` and `Operation<T>`.
-2. **Config and reranker arrive via Context, not arguments.** The harness sets `AppConfigStoreCtx` and `RerankerCtx` before enabling the App; the factory pulls them with `.expect()`.
+2. **Config and reranker arrive via Context, not arguments.** The harness sets `AppConfigStoreCtx` and `RerankerCtx` before enabling the AgentApp; the factory pulls them with `.expect()`.
 3. **`defineApp` is called last,** after the source + tools are constructed. Validation runs synchronously and throws on a bad manifest.
 
 ---
@@ -54,11 +54,11 @@ Three things to keep in mind while reading:
 What each field does:
 
 - **`name`** — the package-level identifier the registry keys on. Matches `[a-z][a-z0-9_-]{1,63}`.
-- **`protocol.name`** — the model-facing identifier rendered into the spine's catalog. Different from `name` so the App's npm package name and the model-facing routing name can evolve independently. Same regex.
-- **`protocol.useWhen`** — one sentence the planner reads to decide whether to route a task to this App. Bounded length, no chat-role markers, no newlines, no code fences. Sanitized at `defineApp` time so app-supplied strings can't break out of the catalog block.
+- **`protocol.name`** — the model-facing identifier rendered into the spine's catalog. Different from `name` so the AgentApp's npm package name and the model-facing routing name can evolve independently. Same regex.
+- **`protocol.useWhen`** — one sentence the planner reads to decide whether to route a task to this AgentApp. Bounded length, no chat-role markers, no newlines, no code fences. Sanitized at `defineApp` time so AgentApp-supplied strings can't break out of the catalog block.
 - **`protocol.tools`** — the canonical list of tool names. The tool map passed to `defineApp` must cover exactly this set.
-- **`appProtocolVersion`** — `"3.0"` (current). The registry refuses Apps whose declared version isn't supported.
-- **`configSchema`** — JSON Schema for the App's stored config. The registry validates existing config against this on enable. `"x-secret": true` marks credentials (omitted here; the web App's `tavilyKey` uses it).
+- **`appProtocolVersion`** — `"3.0"` (current). The registry refuses AgentApps whose declared version isn't supported.
+- **`configSchema`** — JSON Schema for the AgentApp's stored config. The registry validates existing config against this on enable. `"x-secret": true` marks credentials (omitted here; the web AgentApp's `tavilyKey` uses it).
 
 ## 2. The skill — `skill.eta`
 
@@ -97,7 +97,7 @@ Notes worth flagging:
 - **`it.toc`** comes from `CorpusSource.promptData()`. The source decides what the agent sees about its content surface.
 - **Sibling-task awareness.** The `it.agentCount > 1` block teaches the agent it's one of N — preventing duplicate searches when a pool fans out.
 - **No `Apply the **`.** The framework prepends `BOUNDARY_MARKER(protocol.name)` to this template per spawn. `defineApp` rejects a `skill` that contains the literal `Apply the **` substring (it would emit twice).
-- **The `report()` tool** is a *harness-defined* terminal tool, not an App-defined tool. It's available because the harness threads it into the pool — Apps describe how their tools compose toward a report, but don't ship the report tool themselves.
+- **The `report()` tool** is a *harness-defined* terminal tool, not an AgentApp-defined tool. It's available because the harness threads it into the pool — AgentApps describe how their tools compose toward a report, but don't ship the report tool themselves.
 
 ## 3. The factory — `src/index.ts`
 
@@ -160,7 +160,7 @@ Five steps, each load-bearing:
 2. **Config via `AppConfigStoreCtx`.** The harness owns the store; the factory only reads. Missing `corpusPath` is also a hard error at construction.
 3. **Heavy setup once.** Loading the filesystem and tokenizing chunks for the reranker is the expensive part. It happens here, not on every search.
 4. **Source then tools.** The `CorpusSource` instance owns the chunks + reranker; `source.tools` gives back ready-to-use `Tool` instances. The factory just collects them into a `Record` keyed by `tool.name`.
-5. **`defineApp` last.** Validation runs synchronously. If `Object.keys(tools)` doesn't match `protocol.tools` exactly, or `useWhen` contains a forbidden pattern, or `skill` contains `Apply the **`, this throws before the App reaches the registry.
+5. **`defineApp` last.** Validation runs synchronously. If `Object.keys(tools)` doesn't match `protocol.tools` exactly, or `useWhen` contains a forbidden pattern, or `skill` contains `Apply the **`, this throws before the AgentApp reaches the registry.
 
 ## 4. The Source — `src/source.ts`
 
@@ -197,13 +197,13 @@ export class CorpusSource extends Source<unknown, Chunk> {
 }
 ```
 
-`promptData()` is what the skill template reads as `it.toc`. The corpus surfaces a TOC; the web App returns nothing here (its skill renders without an `it.toc` block).
+`promptData()` is what the skill template reads as `it.toc`. The corpus surfaces a TOC; the web AgentApp returns nothing here (its skill renders without an `it.toc` block).
 
 [Sources & retrieval](/build-an-app/sources-and-retrieval) covers the `Source` base, `EntailmentScorer`, and how the reranker scores during dispatch.
 
 ## 5. The tools — `src/tools/`
 
-Each tool is a `Tool<TArgs>` subclass. Three appear in this App; here's the `SearchTool` shape:
+Each tool is a `Tool<TArgs>` subclass. Three appear in this AgentApp; here's the `SearchTool` shape:
 
 ```ts
 export class SearchTool extends Tool<{ query: string }> {
@@ -226,12 +226,12 @@ export class SearchTool extends Tool<{ query: string }> {
 - **`name`** matches the manifest's `protocol.tools` entry.
 - **`description`** is what the model reads to choose between tools.
 - **`parameters`** is JSON Schema — the framework turns it into a GBNF grammar so the model can only emit valid arguments.
-- **`protected = false`** marks this as a read tool, open to any agent. Write/sensitive tools set `true`; `authGuard` gates them at dispatch. See [App security](/build-an-app/app-security).
+- **`protected = false`** marks this as a read tool, open to any agent. Write/sensitive tools set `true`; `authGuard` gates them at dispatch. See [AgentApp security](/build-an-app/app-security).
 - **`execute`** is the Effection generator the pool calls. The return value is JSON-serialized and prefilled back into the agent's KV at the call position.
 
 The full tool surface (Tool base, `protected`, `probe`, schema auto-generation) lives in [Tools](/build-an-app/tools).
 
-## 6. Using the App in a harness
+## 6. Using the AgentApp in a harness
 
 Once the factory exists, a harness enables it via `createAppRegistry`:
 
@@ -249,7 +249,7 @@ const registry = yield* createAppRegistry({
 // registry scope-exit tears them down (factory ensure()s fire).
 ```
 
-That's the entire boot wiring. The harness's pool reads the registry from `AppRegistryCtx` and composes every enabled App's tools + skill into its spine — see [Agents & pools](/build-a-harness/agents-and-pools).
+That's the entire boot wiring. The harness's pool reads the registry from `AppRegistryCtx` and composes every enabled AgentApp's tools + skill into its spine — see [Agents & pools](/build-a-harness/agents-and-pools).
 
 ---
 
@@ -262,10 +262,10 @@ That's the entire boot wiring. The harness's pool reads the registry from `AppRe
   <Card title="Tools" icon="screwdriver-wrench" href="/build-an-app/tools">
     The Tool base, the protected bit, and dispatch-time execution.
   </Card>
-  <Card title="App security" icon="shield-halved" href="/build-an-app/app-security">
+  <Card title="AgentApp security" icon="shield-halved" href="/build-an-app/app-security">
     What `protected` actually does. The injection threat model. Grants and authGuard.
   </Card>
   <Card title="Lifecycle & registry" icon="circle-nodes" href="/build-an-app/lifecycle-and-registry">
-    Per-app detached scopes, factory teardown via `ensure()`, dynamic enable/disable.
+    Per-AgentApp detached scopes, factory teardown via `ensure()`, dynamic enable/disable.
   </Card>
 </CardGroup>

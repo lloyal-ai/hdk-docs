@@ -301,7 +301,7 @@ interface ToolGuard {
 }
 ```
 
-Defaults: the framework-injected **authGuard** (denies `protected` tools without a session grant — see [App security](/build-an-app/app-security)), `fetch_page` URL dedup, and `web_search` query dedup — both checked against the agent's full lineage history. Sibling-level dedup is the tools' job via `ToolContext.peerHistory` ("Resource unavailable. Try a different query.").
+Defaults: the framework-injected **authGuard** (denies `protected` tools without a session grant — see [AgentApp security](/build-an-app/app-security)), `fetch_page` URL dedup, and `web_search` query dedup — both checked against the agent's full lineage history. Sibling-level dedup is the tools' job via `ToolContext.peerHistory` ("Resource unavailable. Try a different query.").
 
 Drift and echo scoring at delegation boundaries is the scorer's job — canonical treatment in [Sources & retrieval](/build-an-app/sources-and-retrieval).
 

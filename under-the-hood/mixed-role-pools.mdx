@@ -20,7 +20,7 @@ The framework knob that makes mixed-role pools work is called **shared mode**. I
 
 ## The convention
 
-**Catalog at root.** Pass the harness's `withSpine` a `systemPrompt` that lists the enabled Apps' protocols (their `protocol.name`, `tools`, `useWhen`), plus the tool-selection rule: *"Use only the tools for a given protocol when that protocol is requested explicitly."* Pass `tools` alongside so the chat template emits the tool schemas embedded in the same root system block. Tool schemas appear once in physical KV; every agent forking from the root inherits them via metadata-only KV prefix-share.
+**Catalog at root.** Pass the harness's `withSpine` a `systemPrompt` that lists the enabled AgentApps' protocols (their `protocol.name`, `tools`, `useWhen`), plus the tool-selection rule: *"Use only the tools for a given protocol when that protocol is requested explicitly."* Pass `tools` alongside so the chat template emits the tool schemas embedded in the same root system block. Tool schemas appear once in physical KV; every agent forking from the root inherits them via metadata-only KV prefix-share.
 
 **Protocol assignment per-agent.** Each agent's per-spec `systemPrompt` opens with `Apply the **<protocol>** protocol.` followed by its task-specific guidance. The model reads two systems in lineage — the catalog at the root, the role assignment in the agent's own suffix — and selects tools accordingly.
 
@@ -73,7 +73,7 @@ Agent A (forks querySpine):
 
 Two systems in lineage. The model sees the catalog (which tools belong to which protocol, when each is appropriate) at the root, and the role assignment (`Apply the web_research protocol`) in the agent's own suffix. Tool dispatch is grammar-restricted to whatever the catalog at root surfaced — same set across all agents — but the per-agent role channels the model toward the correct subset.
 
-The framework supplies the bytes-locked constants for `FRAMEWORK_INTRO`, `CATALOG_ENTRY`, `TOOL_SELECTION_RULE`, and `BOUNDARY_MARKER` (the `Apply the **<name>** protocol.` line). Apps contribute their grammar-sanitized `protocol.name` + `useWhen`; the renderer assembles the catalog. See [What is an App § the App protocol](/build-an-app/what-is-an-app) for the constants and `renderSpine` for the assembler.
+The framework supplies the bytes-locked constants for `FRAMEWORK_INTRO`, `CATALOG_ENTRY`, `TOOL_SELECTION_RULE`, and `BOUNDARY_MARKER` (the `Apply the **<name>** protocol.` line). AgentApps contribute their grammar-sanitized `protocol.name` + `useWhen`; the renderer assembles the catalog. See [What is an AgentApp § the AgentApp protocol](/build-an-app/what-is-an-app) for the constants and `renderSpine` for the assembler.
 
 ## The framework knob
 
@@ -122,11 +122,11 @@ When `SpineFmt` is set, agents inherit the parser/grammar/format/triggers from t
 ## When not to use
 
 - **Single-role pools where every spawn has the exact same role.** The protocol-catalog convention helps when roles differ; if they don't, just put the role in `agentPool({ systemPrompt })` without the catalog scoping (or skip the convention entirely — re-emitting tools per spawn is fine for small pools).
-- **Hard tool gating.** This is a soft enforcement — the model can ignore the rule. If you need to *prevent* certain tool calls per agent, you need either per-agent grammar restriction (a future evolution; not currently exposed) or the `protected` + `authGuard` gate for sensitive actions (see [App security](/build-an-app/app-security)).
+- **Hard tool gating.** This is a soft enforcement — the model can ignore the rule. If you need to *prevent* certain tool calls per agent, you need either per-agent grammar restriction (a future evolution; not currently exposed) or the `protected` + `authGuard` gate for sensitive actions (see [AgentApp security](/build-an-app/app-security)).
 
 ## Where to look
 
-- `packages/rig/src/spine-render.ts` — `renderSpine` assembles the catalog from enabled Apps' protocols.
+- `packages/rig/src/spine-render.ts` — `renderSpine` assembles the catalog from enabled AgentApps' protocols.
 - `packages/rig/src/protocol.ts` — the five bytes-locked constants (`FRAMEWORK_INTRO`, `CATALOG_ENTRY`, `TOOL_SELECTION_RULE`, `BOUNDARY_MARKER`, model fleet).
 - `packages/agents/src/spine.ts` — `SpineOptions.systemPrompt` / `tools` and the `SpineFmt` setting flow.
 - `packages/agents/src/context.ts` — `SpineFmt` context definition.
@@ -145,4 +145,4 @@ For pools whose synth runs as a *node inside the same `agentPool`* (a DAG with s
 - [Concurrency](/under-the-hood/concurrency) — how `setupAgent` reads `SpineFmt` and the five-phase tick loop
 - [Prefix sharing](/under-the-hood/continuous-context-spine) — the metadata-only KV share that makes the catalog amortization free
 - [Continuous-context spine](/under-the-hood/continuous-context-spine) — why catalog placement matters for spine-via-attention patterns
-- [What is an App](/build-an-app/what-is-an-app) — the App protocol whose `BOUNDARY_MARKER` + `CATALOG_ENTRY` constants are the bytes the catalog renders
+- [What is an AgentApp](/build-an-app/what-is-an-app) — the AgentApp protocol whose `BOUNDARY_MARKER` + `CATALOG_ENTRY` constants are the bytes the catalog renders

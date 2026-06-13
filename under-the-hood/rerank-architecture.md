@@ -5,7 +5,7 @@ description: "How the cross-encoder composes Branch + BranchStore over a warm tr
 
 **Every chunk that enters an agent's KV passed through this model first.** Rerank is the cross-encoder that admits task-relevant context into attention — every search result, every corpus probe, every coverage check goes through it. The architecture is the post-3.0 shape: composed in the SDK over the same `Branch` + `BranchStore` primitives that power agents. "Agents are branches of a live KV cache" extends literally to rerank.
 
-This page documents `sdk/src/Rerank.ts`, `rig/src/reranker.ts`, and the corpus app's `SearchTool` + `bm25.ts`. For the App-author contract — the `EntailmentScorer` interface, the four scoring roles, and the three queries they keep separate — see [Sources & retrieval](/build-an-app/sources-and-retrieval); this page is the internals beneath it.
+This page documents `sdk/src/Rerank.ts`, `rig/src/reranker.ts`, and the corpus AgentApp's `SearchTool` + `bm25.ts`. For the AgentApp-author contract — the `EntailmentScorer` interface, the four scoring roles, and the three queries they keep separate — see [Sources & retrieval](/build-an-app/sources-and-retrieval); this page is the internals beneath it.
 
 ## Three-segment template decomposition
 
@@ -76,7 +76,7 @@ Within one instance, concurrent `score()` / `scoreBatch()` calls serialize throu
 
 ## BM25 first stage
 
-The cross-encoder is O(N) in candidate count: 1,000 chunks = 1,000 forward passes. The corpus app's `SearchTool` bounds this with an Okapi-BM25 first stage:
+The cross-encoder is O(N) in candidate count: 1,000 chunks = 1,000 forward passes. The corpus AgentApp's `SearchTool` bounds this with an Okapi-BM25 first stage:
 
 1. **At first search** — lazily build a `BM25Index` from `chunk.tokens` (already tokenized by `Reranker.tokenizeChunks` at corpus boot — building earlier would race tokenization). No re-tokenization, no extra model.
 2. **At query time** — tokenize the query through `Reranker.tokenize` (same vocabulary as the chunks), score every chunk by BM25 (`k1=1.5`, `b=0.75`, Okapi-smoothed IDF), take top-K (default 100, `opts.firstStageK`).
@@ -112,15 +112,15 @@ When tuning for a new corpus:
 3. **Check** top-5 stddev per query > 1.0 — saturation should be visibly gone.
 4. **Threshold sweep** at floors 0 / 0.5 / 2.0 / 5.0 — pick the lowest floor that keeps the irrelevant pass-rate near zero.
 
-Floor changes propagate as a subclass override on `Source._entailmentFloor`, not a global flag — App authors who know their corpus tighten locally without moving framework defaults.
+Floor changes propagate as a subclass override on `Source._entailmentFloor`, not a global flag — AgentApp authors who know their corpus tighten locally without moving framework defaults.
 
 ## Lifetime and cleanup
 
-`Rerank.dispose()` is idempotent: CASCADE-prunes the trunk subtree (`RESTRICT` would throw on a leaked leaf and mask the original error), clears `__decodeOwner`, disposes the underlying context. The canonical consumer is rig's `createReranker` — an Effection `resource()` that disposes automatically on scope exit; the harness yields it once per process and publishes it on `RerankerCtx` for App factories.
+`Rerank.dispose()` is idempotent: CASCADE-prunes the trunk subtree (`RESTRICT` would throw on a leaked leaf and mask the original error), clears `__decodeOwner`, disposes the underlying context. The canonical consumer is rig's `createReranker` — an Effection `resource()` that disposes automatically on scope exit; the harness yields it once per process and publishes it on `RerankerCtx` for AgentApp factories.
 
 ## Related
 
-- [Sources & retrieval](/build-an-app/sources-and-retrieval) — the App-author contract: `EntailmentScorer`, four roles, three queries.
+- [Sources & retrieval](/build-an-app/sources-and-retrieval) — the AgentApp-author contract: `EntailmentScorer`, four roles, three queries.
 - [Continuous Context](/under-the-hood/continuous-context-spine) — the same `Branch` + `BranchStore` primitives, agent-side.
 - [Branch lifecycle](/under-the-hood/branch-lifecycle) — multi-tag KV survival, fork-prune topology.
 - [Pressure & policy](/under-the-hood/kv-pressure) — what flips exploit mode; how `nSeqMax` interacts with budgets.

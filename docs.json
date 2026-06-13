@@ -70,10 +70,10 @@
         ]
       },
       {
-        "tab": "Build an App",
+        "tab": "Build an AgentApp",
         "groups": [
           {
-            "group": "Build an App",
+            "group": "Build an AgentApp",
             "pages": [
               "build-an-app/what-is-an-app",
               "build-an-app/your-first-app",

@@ -1,6 +1,6 @@
 ---
 title: "Scaffolding"
-description: "`harness.dev <name>` and `harness.dev app <name>` — generate ready-to-edit harness and app skeletons."
+description: "`harness.dev <name>` and `harness.dev app <name>` — generate ready-to-edit harness and AgentApp skeletons."
 ---
 
 `harness.dev` ships two scaffolders that produce ready-to-edit project skeletons. Neither needs authentication — these are local generators that write files to disk.
@@ -21,7 +21,7 @@ npm install
 npm run dev "What was the Cuban missile crisis?"
 ```
 
-The generated harness ships with the `lloyal/wikipedia` reference app preinstalled (via signed-channel canonical URL) so it answers a research question on first run with no extra setup beyond a local model file.
+The generated harness ships with the `lloyal/wikipedia` reference AgentApp preinstalled (via signed-channel canonical URL) so it answers a research question on first run with no extra setup beyond a local model file.
 
 The generated harness includes:
 
@@ -30,22 +30,22 @@ The generated harness includes:
 | `package.json` | Standard npm metadata + scripts (`dev`, `build`, `start`). Depends on `@lloyal-labs/lloyal-agents`, `@lloyal-labs/sdk`, `@lloyal-labs/rig`, `@lloyal-labs/lloyal.node`, `effection`, and `@lloyal-labs/wikipedia-app` (pinned to the signed-channel canonical tarball URL). |
 | `harness.json` | Per-harness config — model path and context size. |
 | `bin/run.js` | Node shim that requires `dist/main.js`. |
-| `src/main.ts` | Boot — parses argv, loads the model, builds the `AppRegistry`, enables the Wikipedia app, runs the query. |
+| `src/main.ts` | Boot — parses argv, loads the model, builds the `AppRegistry`, enables the Wikipedia AgentApp, runs the query. |
 | `src/harness.ts` | The orchestrator — `runQuery` plans the query into tasks via `PlanTool`, fans them out as parallel agents via `agentPool` + `parallel`, then reduces the reports into an answer via a synth `useAgent` call. The harness IS the orchestrator. |
 | `prompts/plan.eta` | Planner prompt (Eta-templated). |
 | `prompts/synth.eta` | Synthesizer prompt. |
 | `LICENSE` | Apache 2.0. |
 | `tsconfig.json` | Standard TS config (CommonJS, ES2022). |
 
-The harness is yours — extend it freely. Add the corpus reference app with `npx harness.dev install lloyal/corpus`, or scaffold your own app with `npx harness.dev app`. When you're ready to ship a derivative harness, the same Apache 2.0 license applies.
+The harness is yours — extend it freely. Add the corpus reference AgentApp with `npx harness.dev install lloyal/corpus`, or scaffold your own AgentApp with `npx harness.dev app`. When you're ready to ship a derivative harness, the same Apache 2.0 license applies.
 
-## Create an app
+## Create an AgentApp
 
 ```bash
 npx harness.dev app <name> [--dir <path>] [--publisher <handle>]
 ```
 
-Generates a new HDK app in a directory named `<name>`. `<name>` must match `[a-z][a-z0-9_-]{1,63}`. The optional `--publisher` flag seeds the npm package name as `@<publisher>/<name>-app`; default is `your-handle`.
+Generates a new AgentApp in a directory named `<name>`. `<name>` must match `[a-z][a-z0-9_-]{1,63}`. The optional `--publisher` flag seeds the npm package name as `@<publisher>/<name>-app`; default is `your-handle`.
 
 ```bash
 npx harness.dev app jira --publisher acme
@@ -54,14 +54,14 @@ npm install
 npm run build
 ```
 
-The generated app's tools call Wikipedia's public REST API out of the box — a runnable demo backend that proves the wire-up works before you replace them with your real backend. Keep each tool's schema and return shape consistent with what your harness consumers expect.
+The generated AgentApp's tools call Wikipedia's public REST API out of the box — a runnable demo backend that proves the wire-up works before you replace them with your real backend. Keep each tool's schema and return shape consistent with what your harness consumers expect.
 
-The generated app includes:
+The generated AgentApp includes:
 
 | File | Purpose |
 |---|---|
 | `package.json` | npm metadata. `@lloyal-labs/lloyal-agents`, `@lloyal-labs/rig`, `effection` are listed as `peerDependencies` so consumers of the published tarball dedupe against their harness's installed copy. |
-| `app.json` | App protocol metadata — `name`, `appProtocolVersion`, `protocol` (model-facing name + `useWhen` + tool name list), optional `configSchema` and `hints`. The published catalog version comes from `package.json`'s `version`, not this file. |
+| `app.json` | AgentApp protocol metadata — `name`, `appProtocolVersion`, `protocol` (model-facing name + `useWhen` + tool name list), optional `configSchema` and `hints`. The published catalog version comes from `package.json`'s `version`, not this file. |
 | `skill.eta` | Per-spawn skill template. |
 | `src/index.ts` | The `createXxxApp` factory exported as the npm package's main entry. Reads `app.json` via `readFileSync` + `defineApp(...)`. |
 | `src/source.ts` | The `Source` implementation. |
@@ -69,11 +69,11 @@ The generated app includes:
 | `LICENSE` | FSL-1.1-Apache-2.0 template (per [Licensing](/licensing)). |
 | `tsconfig.json` | Standard TS config. |
 
-After scaffolding, see [Build an App](/build-an-app/your-first-app) for the contract you need to satisfy. When you're ready to ship, see [Publishing](/cli/publishing).
+After scaffolding, see [Build an AgentApp](/build-an-app/your-first-app) for the contract you need to satisfy. When you're ready to ship, see [Publishing](/cli/publishing).
 
 ## Identifier grammar
 
-App, harness, and publisher-handle identifiers must match `[a-z][a-z0-9_-]{1,63}`:
+AgentApp, harness, and publisher-handle identifiers must match `[a-z][a-z0-9_-]{1,63}`:
 
 - Lowercase ASCII start (no digits, no special chars)
 - Lowercase alphanumeric, underscore, or hyphen rest
@@ -88,4 +88,4 @@ Examples:
 | `my-app` | `my.app` (period) |
 | `agent_pool_v2` | `agent pool` (space) |
 
-This grammar appears in the app's published catalog name (`<publisher-handle>/<app-name>`) and in spine catalog rendering — characters outside it would break the boundary marker or allow injection at the catalog text layer.
+This grammar appears in the AgentApp's published catalog name (`<publisher-handle>/<app-name>`) and in spine catalog rendering — characters outside it would break the boundary marker or allow injection at the catalog text layer.

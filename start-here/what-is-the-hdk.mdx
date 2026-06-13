@@ -32,7 +32,7 @@ main(function* () {
 
 Three agents just ran concurrently on hardware that serves one. They shared a system prompt and tool schemas **physically** — decoded once into KV cache, inherited by every fork — not re-sent as strings on every step. Frameworks like LangChainJS pass *application state* between stateless model calls: variables, conclusions, scratchpads, while the model re-reads everything from scratch. The HDK shares *model state* — the attention over what has already been read.
 
-That difference is why this ships inside an Electron app, an `npm install -g` CLI, or a worker in an existing Node backend — and why every agent tick runs on the user's hardware at zero marginal cost to you. What you build splits in two: a **harness** is the orchestrated system of agents you ship — your UI, your pipeline, your persistence. An **App** is a packaged capability — a `Source` plus `Tool`s plus a prompted skill — that a harness loads at runtime. Same author can wear both hats on day one.
+That difference is why this ships inside an Electron app, an `npm install -g` CLI, or a worker in an existing Node backend — and why every agent tick runs on the user's hardware at zero marginal cost to you. What you build splits in two: a **harness** is the orchestrated system of agents you ship — your UI, your pipeline, your persistence. An **AgentApp** is a packaged capability — a `Source` plus `Tool`s plus a prompted skill — that a harness loads at runtime. Same author can wear both hats on day one.
 
 ## Continuous Context
 
@@ -50,8 +50,8 @@ At its core, **an agent is a branch with intent** — a forked KV slot, a system
 This is what breaks the "runs locally but is a toy" barrier. Re-encoding ~900 tokens of system prompt and tool schemas per agent step is prohibitive on consumer hardware — most local-LLM agent demos fall off a performance cliff at the second hop. With Continuous Context the prefix is decoded once and inherited by every fork: measured across a real pipeline, **4.4× fewer tokens processed** than prompt rebuilding. The same harness code runs on a 32K cloud GPU or a 16K laptop — depth adapts to the hardware.
 
 <CardGroup cols={2}>
-  <Card title="Apps as the catalog" icon="puzzle-piece" href="/build-an-app/what-is-an-app">
-    **Enabled Apps are decoded into the spine once.** Each App's protocol
+  <Card title="AgentApps as the catalog" icon="puzzle-piece" href="/build-an-app/what-is-an-app">
+    **Enabled AgentApps are decoded into the spine once.** Each AgentApp's protocol
     (name + `useWhen` + tools) lands in the shared prefix; every forked agent
     inherits the whole catalog at O(1).
   </Card>
@@ -77,7 +77,7 @@ Depth is unbounded — sub-agents can delegate further — and every subtree is 
 
 ## Retrieval Interleaved Generation
 
-Classical RAG retrieves before the model thinks: embed the query, fetch top-K by similarity, paste into the prompt, generate once. RIG retrieves *while* it thinks. The agent emits a tool call → the App's `Source` returns chunks → a cross-encoder reranker scores them against the original intent → results prefill into the agent's KV at the call position → the next decoded token attends over them and decides what to ask for next.
+Classical RAG retrieves before the model thinks: embed the query, fetch top-K by similarity, paste into the prompt, generate once. RIG retrieves *while* it thinks. The agent emits a tool call → the AgentApp's `Source` returns chunks → a cross-encoder reranker scores them against the original intent → results prefill into the agent's KV at the call position → the next decoded token attends over them and decides what to ask for next.
 
 The difference is observable in tool-call inputs. A RAG system constructs queries from the user's question; a RIG agent constructs queries from hypotheses formed during generation:
 
@@ -93,7 +93,7 @@ report(findings)
 
 The last search is the signature behavior: the agent discovered `drain()` existed but was never called on connection close, and constructed a query targeting exactly that interaction. Multi-hop reasoning, emergent from attention mechanics — not a prompted retry loop.
 
-Behind this sit the pieces the kit ships: two reference Apps (**`web_research`**, **`corpus_research`**) to read as worked examples; the reranker's scoring roles and pressure-aware explore/exploit ([Sources & retrieval](/build-an-app/sources-and-retrieval)); per-spawn prompt templating; and `protected` tools gated by `authGuard` at dispatch ([App security](/build-an-app/app-security)).
+Behind this sit the pieces the kit ships: two reference AgentApps (**`web_research`**, **`corpus_research`**) to read as worked examples; the reranker's scoring roles and pressure-aware explore/exploit ([Sources & retrieval](/build-an-app/sources-and-retrieval)); per-spawn prompt templating; and `protected` tools gated by `authGuard` at dispatch ([AgentApp security](/build-an-app/app-security)).
 
 ## The honest comparison
 
@@ -107,7 +107,7 @@ Full stack against full stack:
 | Retrieval          | `Source` + native cross-encoder reranker | langchain RAG + vector DB + embedder            |
 | Multi-agent shapes | `parallel` / `chain` / `fanout` / `dag` | langgraph / autogen / crewai                     |
 | Multi-turn state   | `Session.trunk` (KV-backed)             | conversation-memory class + persistence          |
-| Capability packaging | **Apps** (`defineApp`: Source + Tools + skill) | per-server MCP / bespoke integrations    |
+| Capability packaging | **AgentApps** (`defineApp`: Source + Tools + skill) | per-server MCP / bespoke integrations    |
 | Process model      | **one Node process**                    | **inference server + agent process + DB**        |
 | Distribution unit  | **npm package, ships with your app**    | **Docker compose / k8s for the back-end pieces** |
 

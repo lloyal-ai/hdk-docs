@@ -1,9 +1,9 @@
 ---
 title: Tools
-description: The Tool base class — schema, execute, the protected bit, ToolContext, probes, recursion — everything an App author writes.
+description: The Tool base class — schema, execute, the protected bit, ToolContext, probes, recursion — everything an AgentApp author writes.
 ---
 
-**A `Tool` is anything an agent can call** — a JSON-schema-described function with an Effection-generator body. Every App declares its tools in the manifest's `protocol.tools[]` and supplies matching `Tool` instances via `defineApp`.
+**A `Tool` is anything an agent can call** — a JSON-schema-described function with an Effection-generator body. Every AgentApp declares its tools in the manifest's `protocol.tools[]` and supplies matching `Tool` instances via `defineApp`.
 
 ## The base class
 
@@ -36,7 +36,7 @@ You never construct the schema manually — the getter derives it. Pass instance
 
 ## Walkthrough: a search tool
 
-The corpus App's `SearchTool` shows every concern:
+The corpus AgentApp's `SearchTool` shows every concern:
 
 ```ts
 import { call } from "effection";
@@ -87,7 +87,7 @@ The patterns to copy:
 - **`description` is what the model reads** to pick between tools and plan follow-ups. Be precise about what's returned (line ranges, score scales).
 - **JSON Schema → GBNF.** `parameters` compiles to a sampler-level grammar — the model can only emit tokens that produce structurally valid arguments. Invalid JSON is unreachable, not just rare.
 - **`*execute` is an Effection generator.** Async work goes through `yield* call(() => promise)` — never `await` inside the generator. Inside you have `Trace`, `Ctx`, `Store`, and you can spawn sub-agents.
-- **Constructor = dependency injection.** Tools are instantiated before the pool runs (typically in the App factory) — corpora, rerankers, API clients arrive via the constructor, never via globals.
+- **Constructor = dependency injection.** Tools are instantiated before the pool runs (typically in the AgentApp factory) — corpora, rerankers, API clients arrive via the constructor, never via globals.
 - **Return value is JSON-serialized** and prefilled into the agent's KV at the call position; the next PRODUCE attends over it.
 
 ## Errors: return, don't throw
@@ -134,10 +134,10 @@ export class SendEmailTool extends Tool<{ to: string; subject: string; body: str
 }
 ```
 
-The credential never enters the model's context: the session holds the grant, the tool body holds the secret, the model only triggers. If unsure whether to protect, protect — a harness can grant freely; an open write tool is much harder to recall. [App security](/build-an-app/app-security) covers the threat model and grant flows.
+The credential never enters the model's context: the session holds the grant, the tool body holds the secret, the model only triggers. If unsure whether to protect, protect — a harness can grant freely; an open write tool is much harder to recall. [AgentApp security](/build-an-app/app-security) covers the threat model and grant flows.
 
 <Note>
-Open-by-default isn't a permission downgrade — routing is already gated at the spine layer (the catalog lists only enabled Apps' tools, and every spawn is prefixed with `Apply the **<protocol>** protocol.`). `protected` is the orthogonal gate for *consequential* actions.
+Open-by-default isn't a permission downgrade — routing is already gated at the spine layer (the catalog lists only enabled AgentApps' tools, and every spawn is prefixed with `Apply the **<protocol>** protocol.`). `protected` is the orthogonal gate for *consequential* actions.
 </Note>
 
 ## `ToolContext`
@@ -156,7 +156,7 @@ interface ToolContext {
 }
 ```
 
-**Cross-agent dedup via `peerHistory`.** The web App's `web_search` and `fetch_page` reject calls a sibling already made:
+**Cross-agent dedup via `peerHistory`.** The web AgentApp's `web_search` and `fetch_page` reject calls a sibling already made:
 
 ```ts
 *execute(args: { query: string }, context?: ToolContext): Operation<unknown> {
@@ -176,7 +176,7 @@ The agent reads "Resource unavailable" like any failed call and diversifies — 
 
 **Progress** surfaces as `agent:tool_progress` events for TUI display — call `ctx.onProgress({ filled, total })` inside long operations.
 
-## Recursive tools — the App author's deep-agents surface
+## Recursive tools — the AgentApp author's deep-agents surface
 
 `execute()` returns an `Operation`, so a tool can spawn an entire sub-pool. Pass `context.branch` as `parent` and the sub-agents fork the **calling agent's live attention** — system prompt, tool schemas, every prior result — for the cost of a turn separator:
 
@@ -250,7 +250,7 @@ The whole loop is in-process — no IPC, no HTTP boundary. Tool order in the arr
 
 - **Type the args** (`Tool<{ query: string }>`), and validate edges in `execute` — return structured errors, don't throw.
 - **Make `description` actionable** — the model plans multi-step sequences from it.
-- **Inject dependencies via the constructor**; in production the App factory owns construction and the registry owns lifecycle ([What is an App](/build-an-app/what-is-an-app)).
+- **Inject dependencies via the constructor**; in production the AgentApp factory owns construction and the registry owns lifecycle ([What is an AgentApp](/build-an-app/what-is-an-app)).
 - **Set `protected: true` on anything that mutates external state.**
 - **Return small, structured payloads.** A 50 KB result is 50 KB the agent attends over for the rest of its life — trim at the tool boundary, not in synth.
 - **Throw `ToolRetryError` for transient failures only**; return error objects for everything else.
@@ -261,7 +261,7 @@ The whole loop is in-process — no IPC, no HTTP boundary. Tool order in the arr
 ## Where next
 
 <CardGroup cols={2}>
-  <Card title="App security" icon="shield-halved" href="/build-an-app/app-security">
+  <Card title="AgentApp security" icon="shield-halved" href="/build-an-app/app-security">
     The full `protected` + `authGuard` story. Grant acquisition. The injection threat model.
   </Card>
   <Card title="Sources & retrieval" icon="database" href="/build-an-app/sources-and-retrieval">

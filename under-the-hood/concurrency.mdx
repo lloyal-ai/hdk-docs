@@ -5,15 +5,15 @@ description: "Five-phase tick loop, decision boundary, shared resources, and rec
 
 The agent pool runs multiple agents on shared GPU compute through a single `llama_context`. This document covers the execution model, how it enables multi-hop reasoning, how resources are shared across nested pools, and how tools can spawn sub-agents recursively.
 
-## Under the App protocol
+## Under the AgentApp protocol
 
-The tick loop is the substrate every App's tools execute on. Two App-protocol interactions to know up front:
+The tick loop is the substrate every AgentApp's tools execute on. Two AgentApp-protocol interactions to know up front:
 
-- **The spine is rendered from the App registry.** Pool setup calls `renderSpine({ apps: registry.enabled() })` and the resulting catalog + tool schemas decode into the spine branch once. The enabled-App set at the moment of pool creation is what every spawned agent inherits via prefix-share; mid-pool registry changes don't propagate.
-- **DISPATCH gates protected tools via `authGuard` before `Tool.execute`.** Phase 4 looks up the tool by name, checks `tool.protected` against the session's `GrantStoreCtx`, denies if no grant exists (emits `tool:authReject` with agent lineage), and only then calls `execute`. Open tools (the default) bypass the check. See [App security](/build-an-app/app-security).
-- **Per-app scope lifecycles are independent of the pool.** The registry runs each App's `AppFactory` in a detached Effection scope. App teardown via `ensure(...)` fires on registry scope exit, not on pool exit — so an App's external allocations survive across many pool invocations within a single session.
+- **The spine is rendered from the AgentApp registry.** Pool setup calls `renderSpine({ apps: registry.enabled() })` and the resulting catalog + tool schemas decode into the spine branch once. The enabled-AgentApp set at the moment of pool creation is what every spawned agent inherits via prefix-share; mid-pool registry changes don't propagate.
+- **DISPATCH gates protected tools via `authGuard` before `Tool.execute`.** Phase 4 looks up the tool by name, checks `tool.protected` against the session's `GrantStoreCtx`, denies if no grant exists (emits `tool:authReject` with agent lineage), and only then calls `execute`. Open tools (the default) bypass the check. See [AgentApp security](/build-an-app/app-security).
+- **Per-AgentApp scope lifecycles are independent of the pool.** The registry runs each AgentApp's `AppFactory` in a detached Effection scope. AgentApp teardown via `ensure(...)` fires on registry scope exit, not on pool exit — so an AgentApp's external allocations survive across many pool invocations within a single session.
 
-The five-phase tick mechanics below describe the per-pool execution loop. The App protocol sits on top of it; it doesn't change the phase ordering, but it gates one of the dispatch checks and supplies the spine content.
+The five-phase tick mechanics below describe the per-pool execution loop. The AgentApp protocol sits on top of it; it doesn't change the phase ordering, but it gates one of the dispatch checks and supplies the spine content.
 
 ## Tick Loop
 

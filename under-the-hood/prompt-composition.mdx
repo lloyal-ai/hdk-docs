@@ -5,13 +5,13 @@ description: "Dynamic prompt assembly with Eta templates — templates own text,
 
 Prompts in production pipelines are rarely static. The synthesis prompt needs different instructions depending on whether source passages are available, whether agents disagreed, and what tools the synthesizer has. A fixed template with `(none)` placeholders wastes the model's attention on capabilities it doesn't have.
 
-## Under the App protocol
+## Under the AgentApp protocol
 
-In the HDK 3.0 era each **App ships its own per-spawn template** as `skill.eta` (and an optional `examples.eta` for discipline/few-shot rendered alongside). The framework's `renderAgentPreamble(app, ctx)` (in `@lloyal-labs/rig/spine-render.ts`) prepends `BOUNDARY_MARKER(app.protocol.name)` then renders the App's skill via Eta, with the `AgentRenderCtx` *plus* `app.source.promptData()` spread into the render context. So a corpus App's `skill.eta` can reference `it.toc` because `CorpusSource.promptData()` supplies it; a web App's skill renders without that key because `WebSource` returns `{}`.
+In the HDK 3.0 era each **AgentApp ships its own per-spawn template** as `skill.eta` (and an optional `examples.eta` for discipline/few-shot rendered alongside). The framework's `renderAgentPreamble(app, ctx)` (in `@lloyal-labs/rig/spine-render.ts`) prepends `BOUNDARY_MARKER(app.protocol.name)` then renders the AgentApp's skill via Eta, with the `AgentRenderCtx` *plus* `app.source.promptData()` spread into the render context. So a corpus AgentApp's `skill.eta` can reference `it.toc` because `CorpusSource.promptData()` supplies it; a web AgentApp's skill renders without that key because `WebSource` returns `{}`.
 
-Harness-side prompts (planner, synth, recovery) still use `renderTemplate` directly — they aren't bound to any App and don't go through `renderAgentPreamble`. The two primitives below — `renderTemplate` and `composePrompt` — are what `renderAgentPreamble` is built on, and what harnesses use for their own prompts.
+Harness-side prompts (planner, synth, recovery) still use `renderTemplate` directly — they aren't bound to any AgentApp and don't go through `renderAgentPreamble`. The two primitives below — `renderTemplate` and `composePrompt` — are what `renderAgentPreamble` is built on, and what harnesses use for their own prompts.
 
-See [Your first App](/build-an-app/your-first-app) for the canonical `skill.eta` (the corpus App's) and [Sources & retrieval](/build-an-app/sources-and-retrieval) for what each Source's `promptData()` contributes.
+See [Your first AgentApp](/build-an-app/your-first-app) for the canonical `skill.eta` (the corpus AgentApp's) and [Sources & retrieval](/build-an-app/sources-and-retrieval) for what each Source's `promptData()` contributes.
 
 Prompt composition solves this. The framework provides two complementary primitives:
 
@@ -135,10 +135,10 @@ A prompt engineer can restructure the synthesis prompt — reorder sections, cha
 
 Both live alongside the harness in the `tasks/` directory. Templates are loaded as raw strings at startup and rendered at call time.
 
-## App reference data — `Source.promptData()`
+## AgentApp reference data — `Source.promptData()`
 
-Some apps carry prompt data that is identical for every agent in a pool — a corpus app's table of contents, an index of available entities. Per-spawn placement multiplies it by the agent count in physical KV (six TOC-bearing 4.8k-token suffixes once overran a 32k context); shared data belongs in shared KV.
+Some AgentApps carry prompt data that is identical for every agent in a pool — a corpus AgentApp's table of contents, an index of available entities. Per-spawn placement multiplies it by the agent count in physical KV (six TOC-bearing 4.8k-token suffixes once overran a 32k context); shared data belongs in shared KV.
 
-The contract: `Source.promptData()` (base default `{}`) returns the app's reference data. The **harness** renders it once as an appendix to the spine prompt, after `renderSpine(...)` — decoded once, prefix-shared by every fork, with per-spawn suffixes staying lean (preamble + task only).
+The contract: `Source.promptData()` (base default `{}`) returns the AgentApp's reference data. The **harness** renders it once as an appendix to the spine prompt, after `renderSpine(...)` — decoded once, prefix-shared by every fork, with per-spawn suffixes staying lean (preamble + task only).
 
-Placement is deliberately the harness's call, not the framework's: this is free prose derived from source *content*, and the shared spine prefix is read by every agent regardless of app routing. `renderSpine` itself stays prose-free as the cross-app injection defense — a harness should append `promptData` only from apps it trusts (its own first-party corpora), never blanket-append from third-party bundles.
+Placement is deliberately the harness's call, not the framework's: this is free prose derived from source *content*, and the shared spine prefix is read by every agent regardless of AgentApp routing. `renderSpine` itself stays prose-free as the cross-AgentApp injection defense — a harness should append `promptData` only from AgentApps it trusts (its own first-party corpora), never blanket-append from third-party bundles.

@@ -129,7 +129,7 @@ withSpine({ systemPrompt, tools })
         └── setupAgent                 ← same
 ```
 
-In shared mode (`systemPrompt` + `tools` on `withSpine` / `agentPool`), the chat header — system prompt plus every tool's JSON schema — is decoded once into the spine. Tool schemas are the largest contributor: a 5-tool toolkit formats to ~800–900 tokens. Each App's tools cost roughly schema-size × 1, not × N agents; per-spawn suffixes shrink to the task itself.
+In shared mode (`systemPrompt` + `tools` on `withSpine` / `agentPool`), the chat header — system prompt plus every tool's JSON schema — is decoded once into the spine. Tool schemas are the largest contributor: a 5-tool toolkit formats to ~800–900 tokens. Each AgentApp's tools cost roughly schema-size × 1, not × N agents; per-spawn suffixes shrink to the task itself.
 
 **Why `setupAgent` still formats the full message array.** Each agent calls `formatChatSync` with its own `[system, user]` messages even though the spine carries the header. This is intentional, not duplication: format detection requires the complete message context (the returned `fmt.format` / `grammar` / `grammarTriggers` / `parser` drive output parsing and tool-call constraint, and differ per system prompt and tool set), and agents in one pool can carry different roles. The CPU cost of tokenizing ~866 tokens per agent is milliseconds; the GPU cost is zero, because prefill starts at the fork position. In shared mode, `setupAgent` detects the spine's pre-computed `SpineFmt` and skips re-emitting the header bytes entirely — the agent inherits the spine's parser/grammar configuration and contributes only its user turn.
 
@@ -265,10 +265,10 @@ Two compounding effects: the 866-token shared prefix is decoded once instead of 
 ## Anti-patterns
 
 - **Cold inner spines.** If a delegation's inner pool re-prefills the system prompt when it could fork warm, ~700–900 tokens are wasted per recursive level. `DelegateTool` passes `parent: context.branch`; custom recursive tools must too.
-- **Spine bloat from large tool results.** Every settled result permanently extends the branch's KV — a 2,000-token `fetch_page` result costs 2,000 cells, and deeper delegation levels inherit it. Tools should compress before returning into the spine (the web app's `fetch_page` reranks chunks and returns top-K verbatim instead of the full page).
+- **Spine bloat from large tool results.** Every settled result permanently extends the branch's KV — a 2,000-token `fetch_page` result costs 2,000 cells, and deeper delegation levels inherit it. Tools should compress before returning into the spine (the web AgentApp's `fetch_page` reranks chunks and returns top-K verbatim instead of the full page).
 
 ---
 
-**What fills the spine** is governed by the App protocol: `renderSpine({ apps })` produces the framework intro, one sanitized `CATALOG_ENTRY` per enabled App, the tool-selection rule, and the tool schemas — see [What is an App](/build-an-app/what-is-an-app#the-app-protocol--what-the-model-actually-sees). The mechanics on this page are the substrate; the protocol decides the bytes.
+**What fills the spine** is governed by the AgentApp protocol: `renderSpine({ apps })` produces the framework intro, one sanitized `CATALOG_ENTRY` per enabled AgentApp, the tool-selection rule, and the tool schemas — see [What is an AgentApp](/build-an-app/what-is-an-app#the-agentapp-protocol--what-the-model-actually-sees). The mechanics on this page are the substrate; the protocol decides the bytes.
 
 **Same physics, different consumer:** the cross-encoder reranker composes the same `Branch` + `BranchStore` primitives over a permanent warm trunk — see [Rerank architecture](/under-the-hood/rerank-architecture).

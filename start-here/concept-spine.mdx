@@ -3,14 +3,14 @@ title: Concept spine
 description: The seven nouns of the HDK — names you need to hold to read everything else.
 ---
 
-If you read nothing else, read these. Everything in **Build a harness**, **Build an App**, and **Under the hood** is defined in these terms. Mechanics — KV pressure, tick phases, grammar ordering, prefix sharing — are deliberately deferred. They live one click away.
+If you read nothing else, read these. Everything in **Build a harness**, **Build an AgentApp**, and **Under the hood** is defined in these terms. Mechanics — KV pressure, tick phases, grammar ordering, prefix sharing — are deliberately deferred. They live one click away.
 
-## App
+## AgentApp
 
-A packaged capability — what a third party builds. An **App** bundles a `Source` (how to read a live system), one or more `Tool`s (what an agent can call), and a `skill.eta` (how an agent should use them), declared via a manifest and assembled with `defineApp`. The two reference apps that ship with the HDK are `corpus_research` (local docs) and `web_research` (web search + page fetch).
+A packaged capability — what a third party builds. An **AgentApp** bundles a `Source` (how to read a live system), one or more `Tool`s (what an agent can call), and a `skill.eta` (how an agent should use them), declared via a manifest and assembled with `defineApp`. The two reference AgentApps that ship with the HDK are `corpus_research` (local docs) and `web_research` (web search + page fetch).
 
 - **Owns:** its Source, its Tools, its prompted skill, its config schema, its lifecycle scope.
-- **Go deeper:** [What is an App](/build-an-app/what-is-an-app) · [Your first App](/build-an-app/your-first-app)
+- **Go deeper:** [What is an AgentApp](/build-an-app/what-is-an-app) · [Your first AgentApp](/build-an-app/your-first-app)
 
 ## Source
 
@@ -24,7 +24,7 @@ A data-access abstraction over a live system — a corpus, the web, a vector sto
 Anything an agent can call. A `Tool` declares a JSON-schema `parameters`, an `execute()` generator, and a `protected` flag — read tools are open, **protected tools** (writes, sensitive actions) are gated at dispatch by `authGuard` against a per-session grant store.
 
 - **Owns:** its name, its schema, its execute body, its protection bit.
-- **Go deeper:** [Tools](/build-an-app/tools) · [App security](/build-an-app/app-security)
+- **Go deeper:** [Tools](/build-an-app/tools) · [AgentApp security](/build-an-app/app-security)
 
 ## Agent
 
@@ -42,7 +42,7 @@ The unit of parallel agent execution. An `agentPool` decodes N agents in one bat
 
 ## Spine
 
-The shared KV-cache prefix every Pool's agents fork from. The **Spine** holds the framework intro, the catalog of enabled Apps (their protocol names + `useWhen` + tools), and the tool-selection rule — decoded **once** and inherited by every forked agent via metadata-only fork. This is what makes N parallel agents cost roughly the wall-time of one.
+The shared KV-cache prefix every Pool's agents fork from. The **Spine** holds the framework intro, the catalog of enabled AgentApps (their protocol names + `useWhen` + tools), and the tool-selection rule — decoded **once** and inherited by every forked agent via metadata-only fork. This is what makes N parallel agents cost roughly the wall-time of one.
 
 - **Owns:** the system prompt, the tool schemas, the per-tick batched decode.
 - **Go deeper:** [Continuous-context spine](/under-the-hood/continuous-context-spine) · [Prefix sharing](/under-the-hood/continuous-context-spine)
@@ -73,10 +73,10 @@ Harness                                       ← what you ship
             └─ Agent
 ```
 
-Read top-down: a **Harness** runs Apps (via the Registry), holds a Session, and spawns Pools. Each Pool runs Agents on a Spine. Apps contribute Sources + Tools + a skill into the runtime. The Session's trunk is the KV that survives across turns.
+Read top-down: a **Harness** runs AgentApps (via the Registry), holds a Session, and spawns Pools. Each Pool runs Agents on a Spine. AgentApps contribute Sources + Tools + a skill into the runtime. The Session's trunk is the KV that survives across turns.
 
 <Note>
-Two of the seven concepts cover *who builds what*. A **Harness** is what you ship to users — orchestration, UI, persistence. An **App** is a packaged capability a harness loads. Same person can wear both hats on day one; the protocol scales when third parties start shipping Apps for harnesses they didn't write.
+Two of the seven concepts cover *who builds what*. A **Harness** is what you ship to users — orchestration, UI, persistence. An **AgentApp** is a packaged capability a harness loads. Same person can wear both hats on day one; the protocol scales when third parties start shipping AgentApps for harnesses they didn't write.
 </Note>
 
 ---
@@ -93,8 +93,8 @@ The concept spine deliberately stops at *names and relationships*. Everything be
 | How the Spine is rendered (catalog, boundary marker, tool-selection rule) | [Continuous-context spine](/under-the-hood/continuous-context-spine) |
 | GBNF grammar, tool ordering, eager vs lazy | [Grammar & ordering](/under-the-hood/grammar-and-ordering) |
 | Reranker scoring (logit-diff, floor) | [Sources & retrieval](/build-an-app/sources-and-retrieval) |
-| App registry scope model, factory/teardown | [Lifecycle & registry](/build-an-app/lifecycle-and-registry) |
-| The App protocol (boundary marker, intro, catalog format) | [What is an App](/build-an-app/what-is-an-app#the-app-protocol) |
+| AgentApp registry scope model, factory/teardown | [Lifecycle & registry](/build-an-app/lifecycle-and-registry) |
+| The AgentApp protocol (boundary marker, intro, catalog format) | [What is an AgentApp](/build-an-app/what-is-an-app#the-agentapp-protocol--what-the-model-actually-sees) |
 
 ## Two reading paths from here
 
@@ -103,6 +103,6 @@ The concept spine deliberately stops at *names and relationships*. Everything be
     Build a harness. Run agents, drive pools, persist sessions.
   </Card>
   <Card title="Extend the HDK" icon="puzzle-piece" href="/build-an-app/what-is-an-app">
-    Author an App. Wrap a live system as a Source + Tools + skill.
+    Author an AgentApp. Wrap a live system as a Source + Tools + skill.
   </Card>
 </CardGroup>

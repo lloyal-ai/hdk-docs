@@ -1,30 +1,30 @@
 ---
-title: App security
+title: AgentApp security
 description: The protected + authGuard + grants model, the in-process trust boundary, and the prompt-injection threat surface.
 ---
 
-Apps run **in-process** with the model. That's the perf story — no IPC, no serialization on the hot tool path, shared spine across hundreds of agents — and it's also the security story: when there's no process boundary, the trust boundary becomes *the prompt itself*. Everything on this page exists to keep that boundary load-bearing.
+AgentApps run **in-process** with the model. That's the perf story — no IPC, no serialization on the hot tool path, shared spine across hundreds of agents — and it's also the security story: when there's no process boundary, the trust boundary becomes *the prompt itself*. Everything on this page exists to keep that boundary load-bearing.
 
 ## The threat model
 
-Three concrete attacks the App protocol is designed against:
+Three concrete attacks the AgentApp protocol is designed against:
 
-1. **Catalog-block escape.** An app-supplied string (manifest `name`, `useWhen`, etc.) interpolated into the shared spine could include a newline, a fake chat-role marker (`SYSTEM:`), or a markdown code fence — convincing the model that the catalog is over and the prompt is now somewhere else.
-2. **Cross-app prompt injection.** Apps share one prompt surface. A web page fetched by `web_research` could contain text instructing the model to call a `corpus_research` tool or a sensitive write tool, riding the shared spine into a different App's discipline.
+1. **Catalog-block escape.** An AgentApp-supplied string (manifest `name`, `useWhen`, etc.) interpolated into the shared spine could include a newline, a fake chat-role marker (`SYSTEM:`), or a markdown code fence — convincing the model that the catalog is over and the prompt is now somewhere else.
+2. **Cross-AgentApp prompt injection.** AgentApps share one prompt surface. A web page fetched by `web_research` could contain text instructing the model to call a `corpus_research` tool or a sensitive write tool, riding the shared spine into a different AgentApp's discipline.
 3. **Unauthorized writes.** A model that decides to call a write tool — because of a planner mistake, a prompt-injected page, or a confused recovery prompt — must not be able to actually perform the write without the *session* (not the model) having consented.
 
-The defense stack mitigates all three with primitives the App protocol makes structural.
+The defense stack mitigates all three with primitives the AgentApp protocol makes structural.
 
 ## Defense 1 — metadata sanitization at `defineApp`
 
-App-supplied strings that enter the shared prompt are grammar-constrained at `defineApp` time. The checks fire synchronously, throw on failure, and the App can't enter the registry:
+AgentApp-supplied strings that enter the shared prompt are grammar-constrained at `defineApp` time. The checks fire synchronously, throw on failure, and the AgentApp can't enter the registry:
 
 - **`name` / `protocol.name`** match `[a-z][a-z0-9_-]{1,63}`. Lowercase ASCII start, alphanumeric + `_` / `-`, 2-64 chars. No `*` (would break the markdown bold in the boundary marker), no whitespace, no control chars.
 - **`protocol.useWhen`** is bounded length (max 280 chars), no chat-role markers (`SYSTEM:`, `USER:`, `ASSISTANT:`), no markdown code fences (` ``` `), no `\n` or `\r`.
 - **`skill`** (when string-typed) MUST NOT contain the literal `Apply the **` substring — the framework prepends `BOUNDARY_MARKER(protocol.name)`, so an `skill.eta` carrying that line would emit the boundary marker twice.
 - **`protocol.tools[]`** is a non-empty unique array of name-regex strings, and the tool map's keys must equal it as a set.
 
-These rules close the catalog-escape vector. An attacker who controls an App's manifest can't break out of the catalog block; the worst case is a rejected App that never reaches the spine. The constants and validations live in `@lloyal-labs/rig/src/protocol.ts` and `define-app.ts`.
+These rules close the catalog-escape vector. An attacker who controls an AgentApp's manifest can't break out of the catalog block; the worst case is a rejected AgentApp that never reaches the spine. The constants and validations live in `@lloyal-labs/rig/src/protocol.ts` and `define-app.ts`.
 
 ## Defense 2 — per-spawn prose isolation
 
@@ -36,9 +36,9 @@ Apply the **corpus_research** protocol.
 <the rendered skill template for this spawn>
 ```
 
-This tells the model *which App's discipline applies to this turn*. A spawn for `corpus_research` reads its task under the corpus protocol's discipline; a spawn for `web_research` under the web protocol's. Combined with the `TOOL_SELECTION_RULE` at the spine root (*"use only that protocol's tools"*), the model has both a global routing rule and a per-turn assignment.
+This tells the model *which AgentApp's discipline applies to this turn*. A spawn for `corpus_research` reads its task under the corpus protocol's discipline; a spawn for `web_research` under the web protocol's. Combined with the `TOOL_SELECTION_RULE` at the spine root (*"use only that protocol's tools"*), the model has both a global routing rule and a per-turn assignment.
 
-This isn't a hard isolation — the model could still call any tool the catalog lists (the grammar permits the full set, for KV-amortization reasons). What it provides is **routing discipline** that any tool dispatch outside the assigned App becomes a candidate for refusal.
+This isn't a hard isolation — the model could still call any tool the catalog lists (the grammar permits the full set, for KV-amortization reasons). What it provides is **routing discipline** that any tool dispatch outside the assigned AgentApp becomes a candidate for refusal.
 
 ## Defense 3 — `protected` + `authGuard` + grants
 
@@ -89,43 +89,43 @@ The model never executes the action. The session never produces the side effect.
 Two mechanisms ship:
 
 - **Harness consent prompts.** The harness asks the user before calling `grantStore.grant("send_email")`. The trivial case — a CLI tool prompts the user to confirm; a desktop app shows a system dialog.
-- **App `ConfigFlow`.** An App that owns an OAuth-style flow (`web_research` connecting to a paid search backend, a Gmail App handing off through Google's OAuth) exposes a `configFlow` on its spec. The harness drives the flow, captures the credential into a secret store, and grants the relevant tools.
+- **AgentApp `ConfigFlow`.** An AgentApp that owns an OAuth-style flow (`web_research` connecting to a paid search backend, a Gmail AgentApp handing off through Google's OAuth) exposes a `configFlow` on its spec. The harness drives the flow, captures the credential into a secret store, and grants the relevant tools.
 
 Both paths share the protocol: **consent moves from user → grant store; credential moves from user → secret store**. The model triggers; the runtime executes.
 
 ## Why this works in-process
 
-In an out-of-process model (MCP-style), the trust boundary is the process — a compromised server is sandboxed by the OS. In-process Apps can't rely on that, so the App protocol trades isolation for:
+In an out-of-process model (MCP-style), the trust boundary is the process — a compromised server is sandboxed by the OS. In-process AgentApps can't rely on that, so the AgentApp protocol trades isolation for:
 
-- **Structural sanitization** of every app-supplied string that hits the prompt (Defense 1).
-- **Bytes-locked App protocol** that the model is trained-on/aware-of, narrowing what the model treats as authoritative (Defense 2 — the `BOUNDARY_MARKER` + `TOOL_SELECTION_RULE` + per-spawn discipline).
+- **Structural sanitization** of every AgentApp-supplied string that hits the prompt (Defense 1).
+- **Bytes-locked AgentApp protocol** that the model is trained-on/aware-of, narrowing what the model treats as authoritative (Defense 2 — the `BOUNDARY_MARKER` + `TOOL_SELECTION_RULE` + per-spawn discipline).
 - **Hard dispatch-time gating** for any tool that takes a consequential action (Defense 3 — `protected` + `authGuard` + grants).
 
-The net is: an attacker who controls an App's metadata can't escape the catalog; a prompt-injected page can't trigger an unauthorized write; a confused recovery prompt can't either. The residual risk is that an attacker convinces *the user* to grant a protected tool — same residual as any consent-driven system.
+The net is: an attacker who controls an AgentApp's metadata can't escape the catalog; a prompt-injected page can't trigger an unauthorized write; a confused recovery prompt can't either. The residual risk is that an attacker convinces *the user* to grant a protected tool — same residual as any consent-driven system.
 
 ## Residual risk: findings as trusted text
 
-There is one important residual that App authors and harness authors should both know:
+There is one important residual that AgentApp authors and harness authors should both know:
 
 **Tool results that pass through synth are currently treated as trusted prose.** A `fetch_page` retrieves a web page; the agent reports a finding; synth reads the finding and writes a report. The page's text can ride the finding into synth and influence the report. If synth has tools (some harnesses give it search/fetch for verification), a malicious finding could steer those calls.
 
 Mitigations available today:
 
 - **Synth without tools.** Pass no tools to the synth `useAgent`; it can only synthesize prose, not execute actions. (Trivial fix; the reasoning.run harness does this.)
-- **Per-spawn prose isolation extends to findings.** Each finding renders inside its boundary marker, so synth knows it came from a specific App's protocol.
+- **Per-spawn prose isolation extends to findings.** Each finding renders inside its boundary marker, so synth knows it came from a specific AgentApp's protocol.
 
-Mitigations on the roadmap (work the App protocol is moving toward):
+Mitigations on the roadmap (work the AgentApp protocol is moving toward):
 
 - A **typed trust-boundary finding format** (source_app / claims / evidence / confidence / untrusted_text) so untrusted page text is structurally separated from the agent's own claims.
 - Dispatch-level rejection of out-of-playbook tool calls (if a `corpus_research`-assigned agent calls a `web_research` tool, that's a candidate for refusal even when the tool isn't `protected`).
 
-These aren't shipped end-to-end; track them in the RFC (`docs-tmp/hdk-app-protocol.md` §3). If you're building an App with write capabilities, do **not** rely on findings-prose-as-trusted; gate every consequential action behind `protected`.
+These aren't shipped end-to-end; track them in the RFC (`docs-tmp/hdk-app-protocol.md` §3). If you're building an AgentApp with write capabilities, do **not** rely on findings-prose-as-trusted; gate every consequential action behind `protected`.
 
 ---
 
 ## Author checklist
 
-When you author an App that exposes writes or sensitive reads:
+When you author an AgentApp that exposes writes or sensitive reads:
 
 - **Mark protected anything that mutates external state or could exfiltrate.** Writes, deletes, sends, transfers — and also fetches of arbitrary URLs the user didn't supply (an exfiltration surface even if it looks like a read).
 - **Keep credentials out of the model's prompt.** Configure them via `AppConfigStoreCtx` or `configFlow`; access them in the tool's `execute` body. The model only triggers.
@@ -140,7 +140,7 @@ When you author an App that exposes writes or sensitive reads:
     The Tool base class, the protected bit's surface, the probe hook.
   </Card>
   <Card title="Lifecycle & registry" icon="circle-nodes" href="/build-an-app/lifecycle-and-registry">
-    Per-app detached scopes, the GrantStoreCtx wiring, fail-closed defaults.
+    Per-AgentApp detached scopes, the GrantStoreCtx wiring, fail-closed defaults.
   </Card>
   <Card title="Continuous-context spine" icon="diagram-project" href="/under-the-hood/continuous-context-spine">
     The physical layout of the shared prompt that the sanitization rules are protecting.

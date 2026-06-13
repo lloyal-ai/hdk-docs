@@ -6,7 +6,7 @@ description: "A 6-node DAG harness — multi-parent dependencies. The smallest e
 > **See also.** [Pipelines](/build-a-harness/orchestrators) explains the orchestrator spectrum (parallel / chain / fanout / dag / reduce). The **Fork it** section below walks through reshaping this harness.
 
 <Note>
-Compare is a **pre-App-protocol mechanism primer** — it wires sources and a shared catalog inline rather than via `defineApp` + the registry. The DAG mechanics on this page port directly into a 3.0 App-protocol harness; the source-and-tool plumbing is what changes. For the production reference that uses the App protocol, see [reasoning.run](https://github.com/lloyal-ai/reasoning.run) and the [Build an App](/build-an-app/what-is-an-app) track.
+Compare is a **pre-AgentApp-protocol mechanism primer** — it wires sources and a shared catalog inline rather than via `defineApp` + the registry. The DAG mechanics on this page port directly into a 3.0 AgentApp-protocol harness; the source-and-tool plumbing is what changes. For the production reference that uses the AgentApp protocol, see [reasoning.run](https://github.com/lloyal-ai/reasoning.run) and the [Build an AgentApp](/build-an-app/what-is-an-app) track.
 </Note>
 
 A 6-node DAG that researches two subjects on different sources, compares them across three axes simultaneously, and synthesizes the result. The smallest topology that genuinely needs `dag()` instead of `chain` or `fanout` — three sibling nodes each depend on **both** research roots, and the synthesizer depends on all three siblings.
@@ -55,7 +55,7 @@ Required flags: `--x`, `--y`, `--corpus`, `--reranker`, `TAVILY_API_KEY`. Option
 - **Sibling parallelism with shared deps** — the three compare nodes fire the moment both research nodes complete, then run concurrently.
 - **Multi-child convergence** — `synthesize` waits on all three siblings before spawning.
 - **Spine extension is causal, not just sequential** — each node's `userContent` is prefilled onto the spine via `ctx.extendSpine`. The compare nodes don't merely *follow* the research nodes — they *attend to* them. The edge in the diagram is the spine.
-- **Shared catalog, mixed roles** — researcher, comparer, synthesizer all draw from one tool catalog amortized at the root. Per-spec system prompts say which subset to use. (Under the App protocol, this collapses into per-App `skill.eta` — see [What is an App](/build-an-app/what-is-an-app#skill).)
+- **Shared catalog, mixed roles** — researcher, comparer, synthesizer all draw from one tool catalog amortized at the root. Per-spec system prompts say which subset to use. (Under the AgentApp protocol, this collapses into per-AgentApp `skill.eta` — see [What is an AgentApp](/build-an-app/what-is-an-app#skill).)
 
 ## Code walkthrough
 
@@ -117,7 +117,7 @@ const pool = yield* withSpine(
 );
 ```
 
-Per-spec system prompts inside the eta templates select which tool subset that role should use — the model still sees the full catalog at the spine but is steered by its role prompt. Under the App protocol, this convention moves up a level: the shared catalog becomes the registered Apps' catalogs, and per-spec prompts collapse to "use App X". See [What is an App](/build-an-app/what-is-an-app).
+Per-spec system prompts inside the eta templates select which tool subset that role should use — the model still sees the full catalog at the spine but is steered by its role prompt. Under the AgentApp protocol, this convention moves up a level: the shared catalog becomes the registered AgentApps' catalogs, and per-spec prompts collapse to "use AgentApp X". See [What is an AgentApp](/build-an-app/what-is-an-app).
 
 ### `dagWithEvents` — orchestrator with TUI hooks
 
@@ -154,9 +154,9 @@ A 25-line illustration of the canonical Effection DAG pattern: each node runs as
 
 ### `prompts/`
 
-The pre-App-protocol source ships these eta templates verbatim:
+The pre-AgentApp-protocol source ships these eta templates verbatim:
 
-- `playbooks.eta` — the shared-catalog body rendered onto `querySpine`. (This is the pre-3.0 name for what would now be a registered App's catalog block.)
+- `playbooks.eta` — the shared-catalog body rendered onto `querySpine`. (This is the pre-3.0 name for what would now be a registered AgentApp's catalog block.)
 - `research-web.eta`, `research-corpus.eta` — per-role researcher prompts.
 - `compare.eta` — per-axis comparison prompt.
 - `synthesize.eta` — final synthesis prompt.
@@ -217,7 +217,7 @@ cp -r examples/compare/ examples/my-harness/
 
 Add a `FACTCHECK` template under `prompts/`; if the new role needs extra tools, include them in the harness's `tools` array.
 
-**Swap to Apps.** Production harnesses wire sources via the registry instead of inline construction — uniform across `lloyal/web`, `lloyal/corpus`, or anything you build with `harness.dev app`:
+**Swap to AgentApps.** Production harnesses wire sources via the registry instead of inline construction — uniform across `lloyal/web`, `lloyal/corpus`, or anything you build with `harness.dev app`:
 
 ```typescript
 yield* RerankerCtx.set(reranker);
@@ -232,7 +232,7 @@ yield* registry.enable(createWebApp);
 const tools = registry.enabled().flatMap((app) => [...app.tools]);
 ```
 
-Installed apps (`harness.dev install <publisher>/<name>`) register the same way, and the per-role prompts collapse into each App's `skill.eta` — see [Lifecycle & registry](/build-an-app/lifecycle-and-registry).
+Installed AgentApps (`harness.dev install <publisher>/<name>`) register the same way, and the per-role prompts collapse into each AgentApp's `skill.eta` — see [Lifecycle & registry](/build-an-app/lifecycle-and-registry).
 
 **Pick the orchestrator for the shape.** If your pipeline isn't a DAG: `chain(items, toStep)` for sequential stages with spine extension, `parallel(specs)` for independent agents, `fanout(landscape, domains)` for a survey pass that informs N domain agents. Replace `dagWithEvents` with the stock `dag(nodes)` if you don't need the TUI hooks.
 
@@ -256,4 +256,4 @@ Higher `softLimit` nudges agents earlier and preserves KV for downstream stages;
 
 - [Continuous Context](/under-the-hood/continuous-context-spine) — what `extendSpine` writes and how forks attend to it
 - [Concurrency](/under-the-hood/concurrency) — `dag()` orchestrator and the Task-as-Future pattern
-- [What is an App](/build-an-app/what-is-an-app) — how the catalog + skill convention works under the 3.0 App protocol
+- [What is an AgentApp](/build-an-app/what-is-an-app) — how the catalog + skill convention works under the 3.0 AgentApp protocol

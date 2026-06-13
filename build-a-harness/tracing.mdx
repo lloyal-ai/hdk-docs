@@ -28,7 +28,7 @@ Every event has a `traceId`, `parentTraceId` (for building the tree), and `ts`. 
 | `agent:turn` | Raw model output + parsed content + parsed tool calls per turn |
 | `tool:dispatch` | Tool name, parsed args, **toolkit position** (`toolIndex/toolkitSize`), explore flag, pressure |
 | `tool:result` / `tool:error` / `tool:retry` | Result + prefill token count + duration; errors; transient-failure parking |
-| `tool:authReject` | Protected-tool denial — attempted tool, app label, full lineage history |
+| `tool:authReject` | Protected-tool denial — attempted tool, AgentApp label, full lineage history |
 | `pool:open/close` | Agent count, pressure snapshot, per-agent findings |
 | `pool:agentDrop` | Why an agent was killed — the [drop-reason enum](/under-the-hood/kv-pressure#drop-reasons) |
 | `pool:recoveryProduce` → `pool:recoveryReturn` / `pool:recoveryFailed` | Recovery extraction diagnostics — every attempt ends in exactly one of the pair |

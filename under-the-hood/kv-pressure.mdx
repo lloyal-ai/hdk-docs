@@ -38,7 +38,7 @@ Agent pools share a single KV cache. `ContextPressure` reads `SessionContext._st
 - **headroom ≤ 0** — over budget. SETTLE defers tool results. PRODUCE nudges the model to wrap up.
 - **critical** — `remaining` has dropped below `hardLimit`. Agents are killed before `produceSync()` to prevent `llama_decode` crashes. The `hardLimit` reserve is the recovery extraction budget.
 
-Pressure is *per-context* (one `llama_context`, one `nCtx` budget), not per-App — every enabled App's tools draw from the same budget once their results prefill into agent branches. App lifecycle teardown is a separate system: the registry's per-app scopes free *external* allocations (corpus chunks, watchers) on scope halt; pressure frees *KV cells* on the tick-loop's schedule.
+Pressure is *per-context* (one `llama_context`, one `nCtx` budget), not per-AgentApp — every enabled AgentApp's tools draw from the same budget once their results prefill into agent branches. AgentApp lifecycle teardown is a separate system: the registry's per-AgentApp scopes free *external* allocations (corpus chunks, watchers) on scope halt; pressure frees *KV cells* on the tick-loop's schedule.
 
 ## The `hardLimit >= nBatch` invariant
 
@@ -198,7 +198,7 @@ interface ToolGuard {
 
 `defaultToolGuards`, in order:
 
-1. **authGuard** (`'*'`, framework-injected, runs first) — denies a `protected` tool the session holds no grant for. Fail-closed; emits `tool:authReject` with the agent's full lineage history for injection forensics. Open tools never consult it. See [App security](/build-an-app/app-security).
+1. **authGuard** (`'*'`, framework-injected, runs first) — denies a `protected` tool the session holds no grant for. Fail-closed; emits `tool:authReject` with the agent's full lineage history for injection forensics. Open tools never consult it. See [AgentApp security](/build-an-app/app-security).
 2. **Fetch dedup** — rejects `fetch_page` for a URL already fetched anywhere in the agent's *lineage* (self + ancestors, via `walkAncestors`).
 3. **Search dedup** — rejects `web_search` for a query (case-insensitive) already searched in the lineage.
 

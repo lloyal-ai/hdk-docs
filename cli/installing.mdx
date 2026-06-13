@@ -1,13 +1,13 @@
 ---
-title: "Installing apps"
-description: "`harness.dev install` — fetch, signature-verify, and install signed HDK apps from apps.lloyal.ai into your harness."
+title: "Installing AgentApps"
+description: "`harness.dev install` — fetch, signature-verify, and install signed AgentApps from apps.lloyal.ai into your harness."
 ---
 
-`harness.dev install` is how a harness consumer adds a signed app to their project. It fetches the catalog and the requested tarball from `apps.lloyal.ai`, signature-verifies every step against the framework-vendored trust root, and runs `npm install` against the canonical channel URL so the consumer's `package-lock.json` records the canonical URL + sha512 integrity.
+`harness.dev install` is how a harness consumer adds a signed AgentApp to their project. It fetches the catalog and the requested tarball from `apps.lloyal.ai`, signature-verifies every step against the framework-vendored trust root, and runs `npm install` against the canonical channel URL so the consumer's `package-lock.json` records the canonical URL + sha512 integrity.
 
 After the initial install, plain `npm ci` reproduces the deps with **no `harness.dev` involvement** — CI doesn't need to know about the channel.
 
-## Install a signed app
+## Install a signed AgentApp
 
 ```bash
 npx harness.dev install <publisher>/<short>[@<semver>] [--allow-scripts]
@@ -130,13 +130,13 @@ If you trust the specific publisher's install scripts (e.g., a native-build step
 npx harness.dev install --allow-scripts <publisher>/<short>
 ```
 
-Most apps don't need install scripts. The default is safe-by-default.
+Most AgentApps don't need install scripts. The default is safe-by-default.
 
 ## Error cases
 
 | Error | Cause |
 |---|---|
-| `AppNotFoundError: App "..." is not listed in the catalog` | The publisher hasn't shipped this app yet, or the name is wrong. |
+| `AppNotFoundError: App "..." is not listed in the catalog` | The publisher hasn't shipped this AgentApp yet, or the name is wrong. |
 | `AppNotFoundError: App "..." has no version matching "^X.Y.Z"` | The semver range matches none of the published versions. The error lists what versions exist. |
 | `BundleVerificationError: Catalog at ... failed Ed25519 signature verification` | Either the catalog is corrupted (rare — file an issue) or the framework-vendored trust root is outdated (update `@lloyal-labs/rig`). |
 | `BundleVerificationError: Tarball size N does not match manifest.sizeBytes M` | The catalog and tarball are out of sync. File an issue. |
