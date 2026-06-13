@@ -587,6 +587,14 @@ body:not(.dark-mode) .hero-svg {
   border-bottom-color: var(--primary);
 }
 
+.demo-license {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
 /* Distribution / shipping section */
 .distribution {
   padding: 6rem 0;

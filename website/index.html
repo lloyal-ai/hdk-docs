@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Primary meta -->
-    <title>HDK &mdash; Full-stack agentic AI framework for llama.cpp</title>
+    <title>HDK &mdash; Full-stack agent runtime, llama.cpp inside</title>
     <meta
       name="description"
-      content="Full-stack agentic AI framework for llama.cpp. Agents are part of your application logic — no API keys, no servers, no parallel knowledge layer."
+      content="Full-stack agent runtime, llama.cpp inside. Agents are part of your application logic — no API keys, no servers, no parallel knowledge layer."
     />
     <meta name="author" content="lloyal AI" />
     <link rel="canonical" href="https://hdk.lloyal.ai/" />
@@ -30,7 +30,7 @@
     <meta property="og:url" content="https://hdk.lloyal.ai/" />
     <meta
       property="og:title"
-      content="HDK — Full-stack agentic AI framework for llama.cpp"
+      content="HDK — Full-stack agent runtime, llama.cpp inside"
     />
     <meta
       property="og:description"
@@ -49,7 +49,7 @@
     <meta name="twitter:creator" content="@lloyal_ai" />
     <meta
       name="twitter:title"
-      content="HDK — Full-stack agentic AI framework for llama.cpp"
+      content="HDK — Full-stack agent runtime, llama.cpp inside"
     />
     <meta
       name="twitter:description"
@@ -78,7 +78,7 @@
         "@type": "SoftwareApplication",
         "name": "HDK (Harness Development Kit)",
         "alternateName": "Harness Development Kit",
-        "description": "Full-stack agentic AI framework for llama.cpp. Build agents that run inside your application's process — same memory, same code, same data structures as the rest of your code. No API keys, no inference servers, no parallel knowledge layer.",
+        "description": "Full-stack agent runtime, llama.cpp inside. Build agents that run inside your application's process — same memory, same code, same data structures as the rest of your code. No API keys, no inference servers, no parallel knowledge layer.",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows, iOS, Android",
         "programmingLanguage": ["TypeScript", "JavaScript", "C++"],
@@ -151,9 +151,9 @@
         </svg>
       </button>
       <nav id="nav-links" class="nav-links">
-        <a href="https://docs.lloyal.ai/learn/introduction">Learn</a>
-        <a href="https://docs.lloyal.ai/reference/concurrency">Reference</a>
-        <a href="https://docs.lloyal.ai/examples/react-agent">Examples</a>
+        <a href="https://docs.lloyal.ai/start-here/what-is-the-hdk">Learn</a>
+        <a href="https://docs.lloyal.ai/under-the-hood/concurrency">Reference</a>
+        <a href="https://docs.lloyal.ai/examples/compare">Examples</a>
         <span class="nav-star-wrapper">
           <a
             class="github-button"
@@ -220,16 +220,17 @@
             Intelligence.
           </h1>
           <p class="caption">
-            HDK agents are part of your application logic &mdash; same process,
-            same memory, same data structures as the rest of your code. They
-            don&rsquo;t need context shipped to them across a network seam
-            &mdash; no vector DBs, embedding pipelines, permission proxies,
-            context assemblers. Agents are already where the context lives.
+            Your agents run where your code runs &mdash; same process, same
+            memory, same data structures. No model server, no network seam, no
+            vector DBs or retrieval plumbing: they share the model&rsquo;s live
+            attention, not strings shipped between services. The intelligence is
+            part of your application &mdash; and stays yours: not on someone
+            else&rsquo;s server to be throttled, rebilled, or revoked.
           </p>
 
           <div class="cta-group">
             <a
-              href="https://docs.lloyal.ai/learn/quick-start"
+              href="https://docs.lloyal.ai/start-here/quick-start"
               class="btn btn-primary"
               >Get Started</a
             >
@@ -440,7 +441,7 @@
             </g>
             <text x="498" y="218" text-anchor="middle" font-size="9" letter-spacing="1.2" fill="#9CA3AF" fill-opacity=".75" transform="rotate(90 498 218)">O(1) BRANCHES</text>
           </svg>
-          <p class="hero-figcaption">Full-stack agentic AI framework for <a href="https://github.com/ggml-org/llama.cpp" class="hero-figcaption-link">llama.cpp &nearr;</a></p>
+          <p class="hero-figcaption">Full-stack agent runtime, <a href="https://github.com/ggml-org/llama.cpp" class="hero-figcaption-link">llama.cpp &nearr;</a> inside.</p>
         </div>
 
       </section>
@@ -499,14 +500,89 @@
         <div class="demo-info">
           <h2 class="headline demo-headline">Experience it on your machine.</h2>
           <p class="demo-caption">
-            A harness we built with HDK. A private deep research assistant which
-            runs in your terminal. Use <code>/scan PATH</code> to ground against
-            files on your disk OR <code>/web</code> if you want to research
-            online (you&rsquo;ll need a Tavily search API key).
+            A private deep-research harness we built with HDK &mdash; open
+            source, MIT &mdash; running entirely in your terminal.
+            <code>/scan PATH</code> grounds it against files on your disk;
+            <code>/web</code> researches online, keyless by default. The runtime
+            makes no outbound calls and needs no keys; capabilities arrive as
+            AgentApps that run in-process.
           </p>
           <a href="https://reasoning.run/" class="demo-cta"
             >reasoning.run &nearr;</a
           >
+        </div>
+      </section>
+
+      <section class="demo cli-demo">
+        <div class="demo-info">
+          <h2 class="headline demo-headline">From zero to a running agent in one command.</h2>
+          <p class="demo-caption">
+            <code>harness.dev</code> is the on-ramp.
+            <code>npx harness.dev my-research</code> scaffolds a complete,
+            runnable harness &mdash; model, agent pool, retrieval, terminal UI,
+            wired and ready to <code>npm run dev</code>. No account, no keys, no
+            config.
+          </p>
+          <p class="demo-caption">
+            Then grow it: <code>harness.dev install lloyal/corpus</code> pulls a
+            signed capability from the channel; <code>harness.dev publish</code>
+            ships your own back to it. Scaffold, extend, contribute &mdash; the
+            same CLI for all three.
+          </p>
+          <p class="demo-license">Apache-2.0.</p>
+          <a href="https://docs.lloyal.ai/cli" class="demo-cta"
+            >harness.dev docs &nearr;</a
+          >
+        </div>
+        <div class="code-window demo-window">
+          <div class="window-header">
+            <div class="code-tabs">
+              <span class="tab-btn active">terminal</span>
+            </div>
+          </div>
+          <div class="demo-command">
+            <div class="demo-command-text">
+              <span class="demo-prompt">$</span> npx harness.dev my-research
+            </div>
+            <button
+              class="demo-copy"
+              data-copy="npx harness.dev my-research"
+              aria-label="Copy command"
+              title="Copy"
+            >
+              <svg
+                class="demo-copy-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path
+                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                ></path>
+              </svg>
+              <svg
+                class="demo-copy-check"
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -515,440 +591,103 @@
           AI as a feature, not an API call.
         </h2>
         <p class="features-caption">
-          The framework&rsquo;s whole surface area, in five tabs. No elaborate
-          infrastructure, no complex plumbing.
+          Boot the runtime, enable a capability, ship your own. No model
+          server, no vector DBs, no plumbing.
         </p>
 
         <div class="features-code">
           <div class="code-window">
-            <div class="window-header">
-              <div class="code-tabs">
-                <button class="tab-btn active" onclick="switchTab('agent')">
-                  agent
-                </button>
-                <button class="tab-btn" onclick="switchTab('pool')">
-                  pool
-                </button>
-                <button class="tab-btn" onclick="switchTab('spine')">
-                  spine
-                </button>
-                <button class="tab-btn" onclick="switchTab('sources')">
-                  sources
-                </button>
-                <button class="tab-btn" onclick="switchTab('prompts')">
-                  prompts
-                </button>
+            <div class="accordion">
+              <!-- Beat 1 — boot the runtime -->
+            <div class="accordion-item active">
+              <button class="accordion-header" onclick="toggleAccordion(this)">
+                <span class="icon">[-]</span> 1 &middot; boot the runtime &mdash; a model file becomes an agent team
+              </button>
+              <div class="accordion-body">
+                <pre><code><span class="keyword">import</span> { main, call } <span class="keyword">from</span> <span class="string">'effection'</span>;
+<span class="keyword">import</span> { createContext } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal.node'</span>;
+<span class="keyword">import</span> { initAgents, agentPool, parallel } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+
+<span class="function">main</span>(<span class="keyword">function*</span> () {
+  <span class="comment">// The model is a file on disk. No server, no API key.</span>
+  <span class="keyword">const</span> ctx = <span class="keyword">yield*</span> <span class="function">call</span>(() => <span class="function">createContext</span>({ modelPath: <span class="string">'model.gguf'</span>, nCtx: <span class="number">32768</span>, nSeqMax: <span class="number">8</span> }));
+  <span class="keyword">yield*</span> <span class="function">initAgents</span>(ctx);
+
+  <span class="comment">// Five agents, one GPU batch, one shared context.</span>
+  <span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
+    orchestrate: <span class="function">parallel</span>(questions.<span class="function">map</span>(q => ({ content: q, systemPrompt: RESEARCH }))),
+    tools: [reportTool],
+    terminal: reportTool,
+  });
+});</code></pre>
               </div>
             </div>
 
-            <!-- agent — the atomic unit -->
-            <div id="tab-agent" class="code-content active">
-              <pre><code><span class="keyword">import</span> { useAgent } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
-<span class="keyword">import</span> { feedback } <span class="keyword">from</span> <span class="string">'./sources'</span>;
-
-<span class="comment">// The atomic unit. Owns a KV branch, calls tools to extend that</span>
-<span class="comment">// branch with evidence, returns a result via the terminal tool.</span>
-<span class="comment">// Its branch is pruned automatically on return — KV stays continuous.</span>
-<span class="keyword">const</span> agent = <span class="keyword">yield*</span> <span class="function">useAgent</span>({
-  systemPrompt: <span class="string">"Customer-feedback analyst. Extract themes with evidence."</span>,
-  task: <span class="string">"Summarize this week's feedback into 3 themes with citations."</span>,
-  tools: [...feedback.tools, reportTool],
-  terminalToolName: <span class="string">'report'</span>,
-});
-
-<span class="function">console.log</span>(agent.result);</code></pre>
-            </div>
-
-            <!-- agentPool — composes agents (parallel | chain | dag) -->
-            <div id="tab-pool" class="code-content">
-              <div class="accordion">
-                <!-- Parallel -->
-                <div class="accordion-item active">
-                  <button
-                    class="accordion-header"
-                    onclick="toggleAccordion(this)"
-                  >
-                    <span class="icon">[-]</span> parallel &mdash; agents fan
-                    out, share parent KV in O(1)
-                  </button>
-                  <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { agentPool, parallel } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
-<span class="keyword">import</span> { subjects, sources, workerPrompt, today } <span class="keyword">from</span> <span class="string">'./harness'</span>;
-
-<span class="comment">// N agents fan out at once. Each forks from the parent KV in O(1)</span>
-<span class="comment">// (metadata-only, zero tensor copy). They share the parent prefix;</span>
-<span class="comment">// only their suffixes live in unique cells. Completed agents prune</span>
-<span class="comment">// the moment they return — KV stays continuous through the run.</span>
-<span class="comment">//</span>
-<span class="comment">// systemPrompt is a render call, not a static string — each agent's</span>
-<span class="comment">// prompt is parameterized with its peers' subjects so it stays focused.</span>
-<span class="comment">// See the prompts tab for what workerPrompt() actually renders.</span>
-<span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
-  orchestrate: <span class="function">parallel</span>(
-    subjects.<span class="function">map</span>(s => ({
-      content: <span class="string">`Investigate: ${s}`</span>,
-      systemPrompt: <span class="function">workerPrompt</span>({
-        subject: s,
-        siblings: subjects.<span class="function">filter</span>(o => o !== s),
-        maxTurns: <span class="number">12</span>,
-        date: <span class="function">today</span>(),
-      }),
-    }))
-  ),
-  tools: [...sources.tools, reportTool],
-  terminalToolName: <span class="string">'report'</span>,
-});</code></pre>
-                  </div>
-                </div>
-
-                <!-- Chain -->
-                <div class="accordion-item">
-                  <button
-                    class="accordion-header"
-                    onclick="toggleAccordion(this)"
-                  >
-                    <span class="icon">[+]</span> chain &mdash; each agent
-                    inherits prior findings via attention, not prompts
-                  </button>
-                  <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { agentPool, chain } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
-<span class="keyword">import</span> { sources, workerPrompt } <span class="keyword">from</span> <span class="string">'./harness'</span>;
-
-<span class="comment">// Sequential agents. Each one's findings extend the spine; the</span>
-<span class="comment">// next agent forks from the extended spine and sees prior findings</span>
-<span class="comment">// in attention &mdash; not via re-prompting. KV grows; no re-encoding.</span>
-<span class="comment">//</span>
-<span class="comment">// workerPrompt gets the taskIndex, so step 0 establishes vocabulary</span>
-<span class="comment">// and steps 1+ get a "build on prior research" preamble. See prompts.</span>
-<span class="keyword">const</span> steps = [<span class="string">'discover'</span>, <span class="string">'verify'</span>, <span class="string">'distill'</span>];
-<span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
-  orchestrate: <span class="function">chain</span>(steps, (step, i) => ({
-    task: {
-      content: <span class="string">`Step: ${step}`</span>,
-      systemPrompt: <span class="function">workerPrompt</span>({ subject: step, taskIndex: i, maxTurns: <span class="number">8</span> }),
-    },
-    userContent: <span class="string">`${step} findings:`</span>,
-  })),
-  tools: [...sources.tools, reportTool],
-  terminalToolName: <span class="string">'report'</span>,
-});</code></pre>
-                  </div>
-                </div>
-
-                <!-- DAG -->
-                <div class="accordion-item">
-                  <button
-                    class="accordion-header"
-                    onclick="toggleAccordion(this)"
-                  >
-                    <span class="icon">[+]</span> dag &mdash; declared topology;
-                    parallel where independent, serial where dependent
-                  </button>
-                  <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { agentPool, dag } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
-<span class="keyword">import</span> { sources, investigatePrompt, comparePrompt, synthPrompt } <span class="keyword">from</span> <span class="string">'./harness'</span>;
-
-<span class="comment">// Declared dependency topology. Independent nodes run in parallel;</span>
-<span class="comment">// dependent nodes wait, then fork from a spine that carries their</span>
-<span class="comment">// dependencies' findings in attention. Each role gets its own prompt</span>
-<span class="comment">// renderer — investigator, analyst, editor are all functions of the</span>
-<span class="comment">// node's per-spawn data. See the prompts tab.</span>
-<span class="keyword">const</span> pool = <span class="keyword">yield*</span> <span class="function">agentPool</span>({
-  orchestrate: <span class="function">dag</span>([
-    { id: <span class="string">"research_x"</span>, task: { content: <span class="string">"Research subject X"</span>, systemPrompt: <span class="function">investigatePrompt</span>({ subject: <span class="string">'X'</span> }) } },
-    { id: <span class="string">"research_y"</span>, task: { content: <span class="string">"Research subject Y"</span>, systemPrompt: <span class="function">investigatePrompt</span>({ subject: <span class="string">'Y'</span> }) } },
-    { id: <span class="string">"compare"</span>,    task: { content: <span class="string">"Compare X vs Y"</span>,     systemPrompt: <span class="function">comparePrompt</span>({ x: <span class="string">'X'</span>, y: <span class="string">'Y'</span>, axis: <span class="string">'cost'</span> }) },
-      dependsOn: [<span class="string">"research_x"</span>, <span class="string">"research_y"</span>] },
-    { id: <span class="string">"synthesize"</span>, task: { content: <span class="string">"Write the report"</span>,    systemPrompt: <span class="function">synthPrompt</span>({ subjects: [<span class="string">'X'</span>, <span class="string">'Y'</span>] }) },
-      dependsOn: [<span class="string">"compare"</span>] },
-  ]),
-  tools: [...sources.tools, reportTool],
-  terminalToolName: <span class="string">'report'</span>,
-});</code></pre>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- spine — composes agentPools (the magic) -->
-            <div id="tab-spine" class="code-content">
-              <pre><code><span class="keyword">import</span> { withSpine, agentPool, useAgent, parallel } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
-<span class="keyword">import</span> { query, researchTasks, sources, installedApps, playbooks, synthPrompt } <span class="keyword">from</span> <span class="string">'./harness'</span>;
-
-<span class="comment">// The spine is a KV trunk that persists across multiple pools and agents.</span>
-<span class="comment">// Findings accumulate on the spine; every fork from the spine inherits the</span>
-<span class="comment">// full trajectory via metadata-only KV sharing. This is Continuous Context</span>
-<span class="comment">// &mdash; downstream agents see what upstream agents found in attention,</span>
-<span class="comment">// not via re-prompting or a passed-around findings array.</span>
-<span class="keyword">yield*</span> <span class="function">withSpine</span>(
-  {
-    parent: session.trunk ?? <span class="keyword">undefined</span>,
-    systemPrompt: <span class="function">playbooks</span>({                <span class="comment">// catalog reshapes per enabled apps</span>
-      hasWeb: installedApps.<span class="function">has</span>(<span class="string">'web'</span>),
-      hasCorpus: installedApps.<span class="function">has</span>(<span class="string">'corpus'</span>),
-    }),
-    tools: [...sources.tools, reportTool],
-  },
-  <span class="keyword">function*</span> (spine) {
-    <span class="comment">// Research phase: N parallel agents extend the spine with findings.</span>
-    <span class="keyword">yield*</span> <span class="function">agentPool</span>({
-      parent: spine,
-      orchestrate: <span class="function">parallel</span>(researchTasks),
-      tools: [...sources.tools, reportTool],
-      terminalToolName: <span class="string">'report'</span>,
-      pruneOnReturn: <span class="keyword">true</span>,            <span class="comment">// free KV the moment each agent returns</span>
-    });
-
-    <span class="comment">// Synth phase: forks from the same spine. Sees every research</span>
-    <span class="comment">// finding in attention &mdash; no re-prompting, no findings array.</span>
-    <span class="keyword">const</span> synth = <span class="keyword">yield*</span> <span class="function">useAgent</span>({
-      parent: spine,
-      systemPrompt: <span class="function">synthPrompt</span>({ query, agentCount: researchTasks.length }),
-      task: <span class="string">"Synthesize the findings above into a final report."</span>,
-      tools: [reportTool],
-      terminalToolName: <span class="string">'report'</span>,
-    });
-
-    <span class="keyword">return</span> synth.result;
-  },
-);</code></pre>
-            </div>
-
-            <!-- sources — Retrieval-Interleaved Generation primitives -->
-            <div id="tab-sources" class="code-content">
-              <div class="accordion">
-                <!-- built-in -->
-                <div class="accordion-item active">
-                  <button
-                    class="accordion-header"
-                    onclick="toggleAccordion(this)"
-                  >
-                    <span class="icon">[-]</span> built-in &mdash; web + corpus
-                    Apps share one reranker
-                  </button>
-                  <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { useAgent, RerankerCtx } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { createAppRegistry, createInMemoryConfigStore, reportTool } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+            <!-- Beat 2 — add a capability in one line -->
+            <div class="accordion-item">
+              <button class="accordion-header" onclick="toggleAccordion(this)">
+                <span class="icon">[+]</span> 2 &middot; add a capability &mdash; one line per AgentApp
+              </button>
+              <div class="accordion-body">
+                <pre><code><span class="keyword">import</span> { RerankerCtx } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { createAppRegistry, createInMemoryConfigStore } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
 <span class="keyword">import</span> { createReranker } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig/node'</span>;
 <span class="keyword">import</span> { createWebApp } <span class="keyword">from</span> <span class="string">'@lloyal-labs/web-app'</span>;
 <span class="keyword">import</span> { createCorpusApp } <span class="keyword">from</span> <span class="string">'@lloyal-labs/corpus-app'</span>;
-<span class="keyword">import</span> { workerPrompt, today } <span class="keyword">from</span> <span class="string">'./harness'</span>;
 
-<span class="comment">// The Reranker is the cross-encoder focal lens. One instance feeds</span>
-<span class="comment">// every App's retrieval pipeline. At each tool call it scores</span>
-<span class="comment">// candidate chunks against the agent's current task and admits only</span>
-<span class="comment">// verbatim top-K within a token budget. Never paraphrased, never</span>
-<span class="comment">// summarized &mdash; context grows by exactly what the model needs.</span>
-<span class="keyword">const</span> reranker = <span class="keyword">yield*</span> <span class="function">createReranker</span>(rerankerPath);
+<span class="comment">// One cross-encoder reranker feeds every AgentApp's in-the-loop retrieval.</span>
+<span class="keyword">const</span> reranker = <span class="keyword">yield*</span> <span class="function">createReranker</span>(<span class="string">'reranker.gguf'</span>);
 <span class="keyword">yield*</span> RerankerCtx.<span class="function">set</span>(reranker);
 
-<span class="comment">// Apps are the unit of capability. Each App ships a Source +</span>
-<span class="comment">// Tools + skill template + manifest. The registry hands every App</span>
-<span class="comment">// its own scope, feeds it config + the shared reranker, and tears</span>
-<span class="comment">// it down with the harness.</span>
-<span class="keyword">const</span> configStore = <span class="function">createInMemoryConfigStore</span>();
-<span class="keyword">yield*</span> configStore.<span class="function">set</span>(<span class="string">'web'</span>, { tavilyKey });
-<span class="keyword">yield*</span> configStore.<span class="function">set</span>(<span class="string">'corpus'</span>, { corpusPath });
-<span class="keyword">const</span> registry = <span class="keyword">yield*</span> <span class="function">createAppRegistry</span>({ configStore });
-<span class="keyword">const</span> web = <span class="keyword">yield*</span> registry.<span class="function">enable</span>(createWebApp);
-<span class="keyword">const</span> corpus = <span class="keyword">yield*</span> registry.<span class="function">enable</span>(createCorpusApp);
+<span class="comment">// A capability = Source + Tools + skill + reranker, bundled. Enable it in one line.</span>
+<span class="keyword">const</span> registry = <span class="keyword">yield*</span> <span class="function">createAppRegistry</span>({ configStore: <span class="function">createInMemoryConfigStore</span>() });
+<span class="keyword">yield*</span> registry.<span class="function">enable</span>(createWebApp);     <span class="comment">// keyless web research, reranked in the loop</span>
+<span class="keyword">yield*</span> registry.<span class="function">enable</span>(createCorpusApp);  <span class="comment">// your local docs</span>
 
-<span class="comment">// Retrieval happens mid-generation, not upfront. The agent decides</span>
-<span class="comment">// what to look up based on what it's discovered so far; results</span>
-<span class="comment">// land in its KV as conversation turns and inform the next decision.</span>
-<span class="keyword">const</span> agent = <span class="keyword">yield*</span> <span class="function">useAgent</span>({
-  systemPrompt: <span class="function">workerPrompt</span>({ subject: <span class="string">'X'</span>, siblings: [], maxTurns: <span class="number">12</span>, date: <span class="function">today</span>() }),
-  task: <span class="string">"Compare X and Y across recent benchmarks."</span>,
-  tools: [...web.tools, ...corpus.tools, reportTool],
-  terminalToolName: <span class="string">'report'</span>,
-});</code></pre>
-                  </div>
-                </div>
+<span class="comment">// …or install a signed one from the channel first:</span>
+<span class="comment">//   npx harness.dev install lloyal/wikipedia</span>
 
-                <!-- custom -->
-                <div class="accordion-item">
-                  <button
-                    class="accordion-header"
-                    onclick="toggleAccordion(this)"
-                  >
-                    <span class="icon">[+]</span> custom &mdash; bridge your own
-                    data; same pipeline, same focal lens
-                  </button>
-                  <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { Source, <span class="keyword">type</span> Tool, RerankerCtx } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-<span class="keyword">import</span> { defineApp } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
-<span class="keyword">import</span> { <span class="keyword">type</span> Operation } <span class="keyword">from</span> <span class="string">'effection'</span>;
-<span class="keyword">import</span> { readFileSync } <span class="keyword">from</span> <span class="string">'node:fs'</span>;
-<span class="keyword">import</span> { join } <span class="keyword">from</span> <span class="string">'node:path'</span>;
-<span class="keyword">import</span> { SearchCustomersTool, ReadCustomerTool } <span class="keyword">from</span> <span class="string">'./tools'</span>;
-<span class="keyword">import</span> { db } <span class="keyword">from</span> <span class="string">'./app'</span>;
-
-<span class="comment">// Your own data slots into the same App protocol as the built-ins.</span>
-<span class="comment">// Implement Source, define your tools, render a skill template, and</span>
-<span class="comment">// defineApp(...) returns a validated App ready to enable on any</span>
-<span class="comment">// registry. Same reranker, same focal-lens admission, same KV-</span>
-<span class="comment">// resident results &mdash; no vector DB, no embedding ETL.</span>
-<span class="keyword">class</span> <span class="class">CustomerSource</span> <span class="keyword">extends</span> <span class="class">Source</span> {
-  <span class="keyword">readonly</span> name = <span class="string">'customers'</span>;
-  <span class="keyword">private</span> _tools: <span class="class">Tool</span>[];
-
-  <span class="keyword">constructor</span>(reranker: <span class="class">Reranker</span>) {
-    <span class="keyword">super</span>();
-    <span class="keyword">this</span>._reranker = reranker;
-    <span class="keyword">this</span>._tools = [<span class="keyword">new</span> <span class="class">SearchCustomersTool</span>(db, reranker), <span class="keyword">new</span> <span class="class">ReadCustomerTool</span>(db)];
-  }
-
-  <span class="keyword">get</span> <span class="function">tools</span>() { <span class="keyword">return</span> <span class="keyword">this</span>._tools; }
-}
-
-<span class="keyword">export</span> <span class="keyword">function</span>* <span class="function">createCustomerApp</span>(): <span class="class">Operation</span>&lt;App&gt; {
-  <span class="keyword">const</span> dir = <span class="function">join</span>(__dirname, <span class="string">'..'</span>);
-  <span class="keyword">const</span> manifest = <span class="class">JSON</span>.<span class="function">parse</span>(<span class="function">readFileSync</span>(<span class="function">join</span>(dir, <span class="string">'app.json'</span>), <span class="string">'utf8'</span>));
-  <span class="keyword">const</span> skill = <span class="function">readFileSync</span>(<span class="function">join</span>(dir, <span class="string">'skill.eta'</span>), <span class="string">'utf8'</span>);
-  <span class="keyword">const</span> reranker = <span class="keyword">yield*</span> RerankerCtx.<span class="function">expect</span>();
-  <span class="keyword">const</span> source = <span class="keyword">new</span> <span class="class">CustomerSource</span>(reranker);
-  <span class="keyword">const</span> tools = <span class="class">Object</span>.<span class="function">fromEntries</span>(source.tools.<span class="function">map</span>(t => [t.name, t]));
-  <span class="keyword">return</span> <span class="function">defineApp</span>({ manifest, source, tools, skill });
-}</code></pre>
-                  </div>
-                </div>
+<span class="comment">// The pool reads the enabled AgentApps from context — their catalog decodes</span>
+<span class="comment">// once into the shared spine; every forked agent inherits the toolset at O(1).</span>
+<span class="comment">// No vector DB, no embedding pipeline, no retrieval service to run.</span></code></pre>
               </div>
             </div>
 
-            <!-- prompts — system prompts are runtime functions of harness state -->
-            <div id="tab-prompts" class="code-content">
-              <div class="accordion">
-                <!-- topology-aware -->
-                <div class="accordion-item active">
-                  <button
-                    class="accordion-header"
-                    onclick="toggleAccordion(this)"
-                  >
-                    <span class="icon">[-]</span> topology-aware &mdash; agents
-                    are told who their siblings are
-                  </button>
-                  <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { renderTemplate } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+            <!-- Beat 3 — author your own -->
+            <div class="accordion-item">
+              <button class="accordion-header" onclick="toggleAccordion(this)">
+                <span class="icon">[+]</span> 3 &middot; author your own &mdash; defineApp, enable anywhere
+              </button>
+              <div class="accordion-body">
+                <pre><code><span class="keyword">import</span> { Source, RerankerCtx } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
+<span class="keyword">import</span> { defineApp } <span class="keyword">from</span> <span class="string">'@lloyal-labs/rig'</span>;
+<span class="keyword">import</span> { readFileSync } <span class="keyword">from</span> <span class="string">'node:fs'</span>;
 
-<span class="comment">// The worker prompt is a function of pool topology. Each parallel</span>
-<span class="comment">// agent is told who its peers are and what they're covering — so</span>
-<span class="comment">// it stays focused on its own subject instead of drifting into</span>
-<span class="comment">// "I'll also cover the others" territory. The model sees its</span>
-<span class="comment">// peer list at the start of every turn; it can't forget the boundary.</span>
-<span class="keyword">const</span> WORKER = `
-You are investigating: &lt;%= it.subject %&gt;
-
-PROCESS: broad search &rarr; fetch top results &rarr; report with evidence.
-&lt;% if (it.siblings.length &gt; 0) { -%&gt;
-
-You are one of &lt;%= it.siblings.length + 1 %&gt; parallel agents. The others:
-&lt;%= it.siblings.map(function(s) { return '- ' + s }).join('\\n') %&gt;
-
-Stay focused on your own subject. The others handle the rest.
-&lt;% } -%&gt;
-
-You have &lt;%= it.maxTurns %&gt; tool calls. Today is &lt;%= it.date %&gt;.
-`;
-
-<span class="keyword">export const</span> workerPrompt = (data) => <span class="function">renderTemplate</span>(WORKER, data);
-
-<span class="comment">// Used in agentPool — each spawn passes its subject + the rest:</span>
-<span class="comment">//   systemPrompt: workerPrompt({ subject: 'X', siblings: ['Y','Z'], ... })</span></code></pre>
-                  </div>
-                </div>
-
-                <!-- config-aware -->
-                <div class="accordion-item">
-                  <button
-                    class="accordion-header"
-                    onclick="toggleAccordion(this)"
-                  >
-                    <span class="icon">[+]</span> config-aware &mdash; the spine
-                    restructures by enabled apps
-                  </button>
-                  <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { renderTemplate } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-
-<span class="comment">// The spine playbook block reshapes based on which apps the user</span>
-<span class="comment">// has wired in. /web with no /scan = web-only catalog. /scan only</span>
-<span class="comment">// = corpus-only. Both wired = both catalogs plus a cross-source</span>
-<span class="comment">// boundary rule that's only relevant when the model has access</span>
-<span class="comment">// to both palettes. The spine literally changes shape at runtime.</span>
-<span class="keyword">const</span> PLAYBOOKS = `
-# Playbooks
-&lt;% if (it.hasWeb) { -%&gt;
-
-## web_research
-Tools: web_search, fetch_page
-Use when: gathering evidence from the open web.
-&lt;% } -%&gt;
-&lt;% if (it.hasCorpus) { -%&gt;
-
-## corpus_research
-Tools: grep, read_file, search
-Use when: investigating a local document corpus.
-&lt;% } -%&gt;
-&lt;% if (it.hasWeb &amp;&amp; it.hasCorpus) { -%&gt;
-
-# Cross-source rule
-Apply only the playbook the agent system message names.
-Do not mix tools across playbooks.
-&lt;% } -%&gt;
-`;
-
-<span class="keyword">export const</span> playbooks = (data) => <span class="function">renderTemplate</span>(PLAYBOOKS, data);
-
-<span class="comment">// Used in withSpine — what's in the spine depends on what's installed:</span>
-<span class="comment">//   systemPrompt: playbooks({ hasWeb: apps.has('web'), hasCorpus: apps.has('corpus') })</span></code></pre>
-                  </div>
-                </div>
-
-                <!-- position-aware -->
-                <div class="accordion-item">
-                  <button
-                    class="accordion-header"
-                    onclick="toggleAccordion(this)"
-                  >
-                    <span class="icon">[+]</span> position-aware &mdash; chain
-                    step N gets a different prompt than step 0
-                  </button>
-                  <div class="accordion-body">
-                    <pre><code><span class="keyword">import</span> { renderTemplate } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
-
-<span class="comment">// In a chain, the first task establishes vocabulary; later tasks</span>
-<span class="comment">// build on what prior tasks surfaced. Task 0 gets a clean prompt.</span>
-<span class="comment">// Tasks 1+ get an additional BUILD ON PRIOR RESEARCH preamble that</span>
-<span class="comment">// points the model at conversation history it inherits via the spine</span>
-<span class="comment">// — so it deepens or fills gaps instead of re-investigating.</span>
-<span class="keyword">const</span> WORKER = `
-You are investigating: &lt;%= it.subject %&gt;
-&lt;% if (it.taskIndex &gt; 0) { -%&gt;
-
-BUILD ON PRIOR RESEARCH:
-Prior tasks' findings are in your conversation history above —
-inherited via the spine, not re-prompted. Read them first.
-Identify named entities and open questions your task should
-follow up on. Do not re-investigate covered ground; deepen
-or fill gaps.
-&lt;% } -%&gt;
-
-You have &lt;%= it.maxTurns %&gt; tool calls.
-`;
-
-<span class="keyword">export const</span> workerPrompt = (data) => <span class="function">renderTemplate</span>(WORKER, data);
-
-<span class="comment">// Used in agentPool chain — the orchestrator passes the step index:</span>
-<span class="comment">//   chain(steps, (step, i) =&gt; ({</span>
-<span class="comment">//     task: { systemPrompt: workerPrompt({ subject: step, taskIndex: i, ... }) },</span>
-<span class="comment">//   }))</span></code></pre>
-                  </div>
-                </div>
+<span class="comment">// Implement a Source (your data + tools), point at a skill + manifest,</span>
+<span class="comment">// and defineApp returns a validated AgentApp anyone can registry.enable.</span>
+<span class="comment">// Same reranker, same in-the-loop admission — no vector DB, no embedding ETL.</span>
+<span class="keyword">export</span> <span class="keyword">function*</span> <span class="function">createCustomerApp</span>() {
+  <span class="keyword">const</span> manifest = <span class="class">JSON</span>.<span class="function">parse</span>(<span class="function">readFileSync</span>(<span class="string">'app.json'</span>, <span class="string">'utf8'</span>));
+  <span class="keyword">const</span> skill = <span class="function">readFileSync</span>(<span class="string">'skill.eta'</span>, <span class="string">'utf8'</span>);
+  <span class="keyword">const</span> source = <span class="keyword">new</span> <span class="class">CustomerSource</span>(<span class="keyword">yield*</span> RerankerCtx.<span class="function">expect</span>());
+  <span class="keyword">return</span> <span class="function">defineApp</span>({ manifest, source, tools: source.tools, skill });
+}</code></pre>
               </div>
+            </div>
+
+            <!-- topology — swap one combinator -->
+            <div class="accordion-item">
+              <button class="accordion-header" onclick="toggleAccordion(this)">
+                <span class="icon">[+]</span> same pool &mdash; swap one combinator
+              </button>
+              <div class="accordion-body">
+                <pre><code><span class="comment">// The topology is a single argument. Pool, tools, terminal stay identical.</span>
+orchestrate: <span class="function">parallel</span>(tasks)        <span class="comment">// fan out — agents share the parent KV at O(1)</span>
+orchestrate: <span class="function">chain</span>(steps, toStep)   <span class="comment">// sequential — each inherits prior findings in attention</span>
+orchestrate: <span class="function">dag</span>(nodes)             <span class="comment">// declared — parallel where independent, serial where dependent</span></code></pre>
+              </div>
+            </div>
             </div>
           </div>
         </div>
@@ -975,9 +714,12 @@ You have &lt;%= it.maxTurns %&gt; tool calls.
               &mdash; O(1), zero tensor copy. Child branches reuse the
               parent&rsquo;s attention state rather than re-encoding lossy
               summaries. The result is 4.4&times; fewer tokens processed than a
-              prompt-rebuilding approach, freeing compute for concurrent agent
-              execution and longer retrieval loops. Active pruning keeps the
-              context continuous.
+              prompt-rebuilding approach &mdash; observed across our production
+              traces &mdash; freeing compute for concurrent agent execution and
+              longer retrieval loops. Active pruning keeps the context
+              continuous. HDK gives local models what an operating system gave
+              the CPU: processes, a scheduler, and memory management &mdash;
+              applied to attention state.
             </p>
           </div>
 
@@ -1003,10 +745,11 @@ You have &lt;%= it.maxTurns %&gt; tool calls.
           <p class="caption">
             Parallel agents running tools <code>web_search</code> and
             <code>fetch_page</code> on iPhone &mdash; no API calls, no streaming
-            server, no cloud round-trip. The Node SDK is open source and ships
-            anywhere Node runs &mdash; server, CLI, or desktop via Electron or
-            Tauri. The native iOS &amp; Android runtime is currently in
-            commercial preview.
+            server, no cloud round-trip. The Node SDK is Fair Source
+            (FSL-1.1-Apache-2.0) with a full commercial grant, converting to
+            Apache 2.0 on a fixed schedule, and ships anywhere Node runs
+            &mdash; server, CLI, or desktop via Electron or Tauri. The native
+            iOS &amp; Android runtime is currently in commercial preview.
           </p>
           <div class="mobile-cta">
             <a
@@ -1048,14 +791,14 @@ You have &lt;%= it.maxTurns %&gt; tool calls.
           </div>
 
           <div class="card">
-            <h3 class="card-title">Ships with your release.</h3>
+            <h3 class="card-title">The intelligence can&rsquo;t change underneath you.</h3>
             <p class="card-desc">
-              The AI ships with your app&rsquo;s release &mdash; same version,
-              same binary, same QA. The agent you tested is the agent running on
-              every user&rsquo;s device: laptop, iPhone, behind a firewall, on a
-              plane. The model doesn&rsquo;t silently update; deterministic
-              replay reproduces production runs in dev with identical reasoning,
-              not just identical outputs.
+              The model ships in your binary &mdash; it can&rsquo;t be silently
+              retuned, throttled, or revoked, because no one else holds it. Pin
+              the weights by hash, gate every change behind your own evals, and
+              behaviour changes when <em>you</em> decide. Deterministic replay
+              reproduces a production run with identical reasoning &mdash; the
+              audit property a rented model can&rsquo;t offer.
             </p>
           </div>
 
@@ -1135,10 +878,10 @@ You have &lt;%= it.maxTurns %&gt; tool calls.
         <div class="footer-links">
           <div class="link-column">
             <h4>Resources</h4>
-            <a href="https://docs.lloyal.ai/learn/introduction"
+            <a href="https://docs.lloyal.ai/start-here/what-is-the-hdk"
               >Documentation</a
             >
-            <a href="https://github.com/lloyal-ai/lloyal-hdk">GitHub</a>
+            <a href="https://github.com/lloyal-ai/hdk">GitHub</a>
           </div>
           <div class="link-column">
             <h4>Company</h4>
