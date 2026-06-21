@@ -34,6 +34,7 @@ Inspect your record anytime with `npx harness.dev publishers me` — handle, `st
 - Your AgentApp's `package.json` `name` is the npm import name (e.g., `@acme/jira-app`) — the symbol consumers `import` from once installed.
 - Your `package.json` `version` is the catalog version. The catalog publishes your AgentApp as `<your-handle>/<short-name>@<version>`.
 - Your `app.json` `name` is the short name (e.g., `jira`). If you prefix it with your handle (`acme/jira`), the prefix must match your account — otherwise the CLI auto-prefixes.
+- **Run it live once.** Unit tests with a mocked `fetch` encode your *assumptions* about the upstream response — they can't catch the real shape. Any AgentApp that wraps an external API must pass a **live harness smoke test** before publishing: wire the app into a minimal harness, point it at a real model, and make one real end-to-end call, watching the actual payloads on the [`Events` channel](/build-a-harness/agents-and-pools) (`agent:tool_call` / `agent:tool_result` / `agent:produce`). This is what catches envelope surprises — a double-encoded `body`, unexpected nesting, a field that's a string where you assumed an array — that mocked tests pass right over.
 
 ## Submit for review
 

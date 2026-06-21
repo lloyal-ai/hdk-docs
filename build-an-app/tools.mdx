@@ -112,7 +112,15 @@ if (matches.length === 0) {
 }
 ```
 
-The one deliberate throw: `ToolRetryError` for **transient** backend failures (rate limits). The pool parks the agent at zero KV cost and re-executes the same call after the delay — the model never sees infrastructure weather. See [Pressure & policy](/under-the-hood/kv-pressure#6-dispatch--exploreexploit-and-retry-parking).
+The one deliberate throw: `ToolRetryError` for **transient** backend failures (rate limits). The pool parks the agent at zero KV cost and re-executes the same call after the delay — the model never sees infrastructure weather. The constructor takes the message and a delay hint, `(message: string, retryAfterMs: number)`:
+
+```typescript
+import { ToolRetryError } from "@lloyal-labs/lloyal-agents";
+
+throw new ToolRetryError("upstream rate-limited", 2000); // retry this same call in ~2s
+```
+
+See [Pressure & policy](/under-the-hood/kv-pressure#6-dispatch--exploreexploit-and-retry-parking).
 
 ## The `protected` bit
 
