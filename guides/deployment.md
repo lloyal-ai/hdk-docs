@@ -23,7 +23,7 @@ Confirmed compatible model families:
 | Llama 3.x | Works well with instruction-tuned variants |
 | Mistral | Tool-calling variants supported |
 
-The reference pipeline uses `Qwen3-4B-Instruct-2507` quantized to Q4_K_M. Larger models improve reasoning depth (more hypothesis-driven tool calls, better synthesis) but require proportionally more KV memory.
+The reference pipeline uses `Qwen3.5-4B` quantized to Q4_K_M. Larger models improve reasoning depth (more hypothesis-driven tool calls, better synthesis) but require proportionally more KV memory.
 
 ## Context size (nCtx)
 
@@ -224,7 +224,7 @@ const VERIFY_COUNT = 3;
 
 const ctx = yield* call(() =>
   createContext({
-    modelPath: '/path/to/Qwen3-4B-Instruct-Q4_K_M.gguf',
+    modelPath: '/path/to/Qwen3.5-4B-Q4_K_M.gguf',
     nCtx,
     nSeqMax: Math.max(AGENT_COUNT, VERIFY_COUNT) * 4 + 3,
     typeK: 'q4_0',

@@ -166,7 +166,11 @@ See [Mixed-role pools](/under-the-hood/mixed-role-pools) for the full convention
 
 ### "I'm running a thinking-mode model" — `enableThinking`
 
-Default `false`. Set `true` for Qwen3-family thinking models: the chat template emits `<think>` delimiters and the parser separates reasoning from content. The flag is captured per-agent and threaded through every tool-result prefill — mismatched values corrupt the parse.
+Default `true` — correct for Qwen3-family thinking models (Qwen3.5 and similar), where the chat template emits `<think>` delimiters and the parser separates reasoning from content. The flag is captured per-agent and threaded through every tool-result prefill, so it stays consistent across a multi-turn agent.
+
+Set `false` only for a **non-thinking** model (a `-Instruct` variant), or for agent-side formatting where the orchestration is the reasoning and individual agents shouldn't think (the shared spine, the session trunk, and reranker formatting all pass `false` explicitly for this reason).
+
+**Symptom if you get it wrong:** a thinking model run with `enableThinking: false` emits its tool calls as plain prose instead of structured calls — nothing dispatches, the model often narrates a fake `report()`, and the turn loops to `maxTurns`. It reads like a weak model; it's the flag.
 
 ### RIG knobs
 

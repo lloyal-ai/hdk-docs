@@ -38,9 +38,9 @@ AgentApps appear in code as `App` — `defineApp`, `AppManifest`, `app.json`. Th
 | --- | --- | --- |
 | **manifest** | `AppManifest` (from `app.json`) | Declarative identity + the **protocol**: `name`, `protocol.name`, `protocol.useWhen`, `protocol.tools[]`, `appProtocolVersion`. |
 | **source** | `Source` | Data access to a live system + retrieval intelligence: tools getter, `promptData()` (TOC/contents advert), `createScorer()` (reranker-backed `EntailmentScorer`). |
-| **tools** | `Record<name, Tool>` | The actual actions. Each `Tool` has a JSON-schema `parameters`, an `execute()` generator, and a **`protected` flag** marking sensitive (write) ops. Keys must equal `protocol.tools[]` as a set — no missing, no extras. |
+| **tools** | `Record<name, Tool>` | The actual actions. Each `Tool` has a JSON-schema `parameters`, an `execute()` generator, and a **`protected` flag** marking sensitive (write) ops. Keys must equal `protocol.tools[]` as a set — no missing, no extras. `defineApp` takes this **map**; the runtime exposes the resolved app's `tools` as an ordered **`readonly Tool[]`** (ordered by `protocol.tools`). |
 | **skill** | `string \| SkillTemplateFn` | The per-spawn agent preamble — *how* an agent should investigate/act with this AgentApp. Rendered via Eta with the agent-render context. |
-| **examples?** / **hints?** / **configFlow?** | optional | `examples` is discipline/few-shot rendered per-spawn (never enters the shared spine). `hints` are UX/marketplace metadata. `configFlow` is an optional interactive credential/config flow. |
+| **examples?** / **hints?** | optional | `examples` is discipline/few-shot rendered per-spawn (never enters the shared spine). `hints` are UX/marketplace metadata. |
 
 Notice what the anatomy implies: **an AgentApp ships with its placement in the model's memory hierarchy.** Its protocol is encoded once onto the shared spine, where every agent inherits it at zero re-encoding cost; its reference content stays corpus-resident, retrieved into live attention only when a task needs it; its tools cost nothing until invoked. Orchestration frameworks can't express this distinction — without a memory hierarchy, an integration's knowledge gets exactly one residency: re-sent with every call.
 

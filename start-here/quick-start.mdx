@@ -11,7 +11,7 @@ You wrote ~100 lines of TypeScript on Monday. Now it runs on a cron, on a local 
 
 Four things you'll need on hand:
 
-1. **Inference model** — any instruction-tuned GGUF with native tool calling. [Qwen3-4B-Instruct](https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF) (~2.5 GB at Q4_K_M) is the reference choice.
+1. **Inference model** — a GGUF with native tool calling. [Qwen3.5-4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF) (~2.5 GB at Q4_K_M) is the reference choice — a thinking model, so `enableThinking` defaults to `true`.
 2. **Reranker** — a small cross-encoder (`Qwen3-Reranker-0.6B`, ~600 MB at Q8_0). Required for any RIG-based harness — it powers chunk reranking on `fetch_page`, semantic echo guards on delegation, entailment scoring against the original query, and explore/exploit decisions at tool-dispatch time. Treat it as standard RIG infrastructure, like the inference model itself.
 3. **Tavily API key** — free tier with 1k searches/month at [tavily.com](https://tavily.com).
 4. **Mailgun API key + domain** — free sandbox at [mailgun.com](https://www.mailgun.com); the sandbox domain works for emailing yourself.
@@ -101,7 +101,7 @@ const DIGEST_PROMPT = `Read the research turn above. Draft a daily digest in HTM
   <p><i>Watching:</i> one-line forward look.</p>
 Once the digest HTML is ready, call send_email() with subject "Daily Digest — ${TODAY}", html=<your draft>, to="${RECIPIENT}". Then call report() with "sent: <message_id>".`;
 
-await main(function* () {
+main(function* () {
   // 1. Load model + reranker
   const ctx = yield* call(() => createContext({
     modelPath: process.argv[2] || "model.gguf",
@@ -152,10 +152,14 @@ await main(function* () {
 ```
 
 ```bash
-npx tsx daily-digest.ts ./models/Qwen3-4B-Instruct-Q4_K_M.gguf "AI safety news this week"
+npx tsx daily-digest.ts ./models/Qwen3.5-4B-Q4_K_M.gguf "AI safety news this week"
 ```
 
 Open your inbox. The digest's there.
+
+<Note>
+`agentPool` runs with `enableThinking: true` by default — correct for Qwen3.5 and other thinking models, which the example uses. Only set `enableThinking: false` if you swap in a non-thinking `-Instruct` model; on a thinking model with the flag off, tool calls emit as plain text and never dispatch. See [enableThinking](/build-a-harness/agents-and-pools#im-running-a-thinking-mode-model--enablethinking).
+</Note>
 
 ## What just happened
 
