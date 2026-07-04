@@ -94,9 +94,9 @@ AgentApps run in-process with the model, so the trust boundary is **the prompt i
 
 ## Distribution
 
-First-party AgentApps that ship inside the HDK reference harness (`reasoning.run`) are loaded as build-time imports (the harness `import { createWebApp } from '@lloyal-labs/web-app'` and hands the factory to `createAppRegistry`). Third-party AgentApps — and any AgentApp reaching a harness it doesn't own — flow through the canonical **signed-bundle channel** at `apps.lloyal.ai`. The harness resolves AgentApps by name; the catalog URL and the trust roots used to verify signatures are **compile-time constants in `@lloyal-labs/rig`** — the harness does not configure them.
+An AgentApp is a **signed npm tarball**. First-party AgentApps that ship inside the HDK reference harness (`reasoning.run`) are ordinary build-time deps — the harness `import { createWebApp } from '@lloyal-labs/web-app'` and enables the factory with `registry.enable`. Third-party AgentApps — and any AgentApp reaching a harness it doesn't own — flow through the canonical **signed-tarball channel** at `apps.lloyal.ai`: `harness.dev install <publisher>/<app>` signature-verifies and `npm install`s the tarball into `node_modules`, and the harness imports its factory the same way. The catalog URL and the trust roots used to verify signatures are **compile-time constants in `@lloyal-labs/rig`** — the harness does not configure them.
 
-The runtime primitives live in `@lloyal-labs/rig` (`resolveAppEntry`, `verifyBundle`, `CHANNEL_CATALOG_URL`, `CHANNEL_TRUST_ROOTS`). The `harness.dev` CLI wraps them for scaffolding, publishing, and installing AgentApps. [Distribution](/build-an-app/distribution) covers the full flow.
+The runtime primitives live in `@lloyal-labs/rig` (`resolveAppEntry`, `verifyBundle`, `CHANNEL_CATALOG_URL`, `CHANNEL_TRUST_ROOTS`) and back the install CLI's verify path; there is no runtime "load app by name" verb. The `harness.dev` CLI wraps them for scaffolding, publishing, and installing AgentApps. [Distribution](/build-an-app/distribution) covers the full flow.
 
 ---
 
