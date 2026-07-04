@@ -56,7 +56,7 @@ main(function* () {
 });
 ```
 
-Three agents just ran concurrently on hardware that serves one. They shared a system prompt and tool schemas **physically** — decoded once into KV, inherited by every fork — not re-sent as strings each step. The same code ships inside an Electron app, an `npm install -g` CLI, or a worker in an existing Node backend, and every tick runs on the user's hardware at zero marginal cost to you.
+Three agents just ran concurrently on hardware that serves one. They shared a system prompt and tool schemas **physically** — decoded once into KV, inherited by every fork — not re-sent as strings each step. The same code ships inside an Electron app, an `npm install -g` CLI, or a worker in an existing Node backend, and every tick runs on the user's hardware at zero marginal cost to you. (Comparing against your current stack? [The honest comparison](#the-honest-comparison) below sets full stack against full stack.)
 
 Everything else falls out of the one move — and each thing that falls out is something you've probably wanted and assumed you couldn't have:
 
@@ -89,7 +89,7 @@ That last search is the signature move: the agent discovered `drain()` existed b
 
 **Your exhaust becomes an asset.** One process, one clock, one causal record: every fork, tool call, retrieval decision, and outcome — replayable, deterministically, under pinned settings. That's your audit log and your debugger. It's also something more: forked siblings share exact state *by construction*, which makes your traces training data in precisely the shape post-training methods want. The harness improves the model that runs it. Keep your exhaust.
 
-**Your transparency stops being decorative.** Capabilities are declared entitlements, enforced at the tool gate, and emitted as runtime events your UI can only relay — never author. When your harness shows the user that an app touched the network or read their files, that indicator was generated *below* any code that could have lied about it. Your privacy story becomes a property you can prove, not a promise you have to make.
+**Your transparency stops being decorative.** Capabilities are declared entitlements, enforced at the tool gate, and emitted as runtime events your UI can only relay — never author. When your harness shows the user that an app touched the network or read their files, that indicator was generated *below* any code that could have lied about it. Your privacy story becomes [a property you can prove](/start-here/privacy-and-zero-egress), not a promise you have to make.
 
 ## What we're not telling you
 
@@ -155,10 +155,14 @@ Artifact is the existence proof — multi-agent, source-grounded research with a
 
 The HDK gives local models what an operating system gave the CPU: processes, a scheduler, and memory management — applied to attention state.
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
+  <Card title="Quick start" icon="rocket" href="/start-here/quick-start">
+    Scaffold → run → play. `npx harness.dev my-harness`, point it at a local
+    model, and get a planned, multi-agent answer. No API keys, no accounts.
+  </Card>
   <Card title="Concept spine" icon="diagram-project" href="/start-here/concept-spine">
-    The seven nouns of the HDK. Read this first — five minutes, and the rest of
-    the docs reads cleanly.
+    The seven nouns of the HDK. Five minutes, and the rest of the docs reads
+    cleanly.
   </Card>
   <Card title="Thinking in Lloyal" icon="brain" href="/start-here/thinking-in-lloyal">
     The concurrency model — generators, structured concurrency, and the reaping
@@ -167,6 +171,10 @@ The HDK gives local models what an operating system gave the CPU: processes, a s
   <Card title="Agents and pools" icon="layer-group" href="/build-a-harness/agents-and-pools">
     The runtime: one `agentPool` call, N agents in one GPU batch. Then the
     [App Protocol](/build-an-app/what-is-an-app) for extending a harness safely.
+  </Card>
+  <Card title="Privacy & zero egress" icon="lock" href="/start-here/privacy-and-zero-egress">
+    On-device inference, offline operation, dispatch-gated writes, a provable
+    audit trail — the whole egress story on one page.
   </Card>
 </CardGroup>
 

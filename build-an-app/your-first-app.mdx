@@ -29,6 +29,10 @@ Three things to keep in mind while reading:
 2. **Config and reranker arrive via Context, not arguments.** The harness sets `AppConfigStoreCtx` and `RerankerCtx` before enabling the AgentApp; the factory pulls them with `.expect()`.
 3. **`defineApp` is called last,** after the source + tools are constructed. Validation runs synchronously and throws on a bad manifest.
 
+<Tip>
+If `function*` and `yield*` are new to you, read [Thinking in Lloyal](/start-here/thinking-in-lloyal) before continuing — 10 minutes, five primitives, and every code block on this page reads like sequential code with automatic cleanup.
+</Tip>
+
 ---
 
 ## 1. The manifest — `app.json`

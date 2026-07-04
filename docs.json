@@ -48,6 +48,7 @@
               "start-here/what-is-the-hdk",
               "start-here/concept-spine",
               "start-here/quick-start",
+              "start-here/privacy-and-zero-egress",
               "start-here/thinking-in-lloyal"
             ]
           }
@@ -124,6 +125,7 @@
           {
             "group": "Examples",
             "pages": [
+              "examples/daily-digest",
               "examples/compare"
             ]
           }

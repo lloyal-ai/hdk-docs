@@ -115,12 +115,7 @@ Mitigations available today:
 - **Synth without tools.** Pass no tools to the synth `useAgent`; it can only synthesize prose, not execute actions. (Trivial fix; the reasoning.run harness does this.)
 - **Per-spawn prose isolation extends to findings.** Each finding renders inside its boundary marker, so synth knows it came from a specific AgentApp's protocol.
 
-Mitigations on the roadmap (work the AgentApp protocol is moving toward):
-
-- A **typed trust-boundary finding format** (source_app / claims / evidence / confidence / untrusted_text) so untrusted page text is structurally separated from the agent's own claims.
-- Dispatch-level rejection of out-of-playbook tool calls (if a `corpus_research`-assigned agent calls a `web_research` tool, that's a candidate for refusal even when the tool isn't `protected`).
-
-These aren't shipped end-to-end; track them in the RFC (`docs-tmp/hdk-app-protocol.md` §3). If you're building an AgentApp with write capabilities, do **not** rely on findings-prose-as-trusted; gate every consequential action behind `protected`.
+The rule that follows: if you're building an AgentApp with write capabilities, do **not** rely on findings-prose-as-trusted; gate every consequential action behind `protected`.
 
 ---
 
