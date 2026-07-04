@@ -124,6 +124,7 @@
           {
             "group": "Examples",
             "pages": [
+              "examples/daily-digest",
               "examples/compare"
             ]
           }
