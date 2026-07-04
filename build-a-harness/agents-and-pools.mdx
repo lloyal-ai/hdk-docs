@@ -5,6 +5,10 @@ description: The Agent class and the pool that schedules agents — one agentPoo
 
 **One `agentPool` call runs N agents in the same GPU batch.**
 
+<Tip>
+Every code block on this page (and the rest of the build tracks) is written in Effection generators — `function*` and `yield*` where you'd expect `async`/`await`. If that's new to you, read [Thinking in Lloyal](/start-here/thinking-in-lloyal) first: 10 minutes, five primitives, and everything below reads like sequential code with automatic cleanup.
+</Tip>
+
 ```typescript
 import { agentPool, parallel } from "@lloyal-labs/lloyal-agents";
 

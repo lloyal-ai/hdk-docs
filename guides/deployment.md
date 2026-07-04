@@ -5,7 +5,7 @@ description: "Production tuning checklist — model choice, nCtx, KV quantizatio
 
 This guide covers model selection, context sizing, KV quantization, and runtime configuration for deploying a lloyal-agents pipeline.
 
-> **See also.** This guide is the *tuning checklist*. For the policy interface (the hooks you're tuning), see [Agent Policy](/under-the-hood/kv-pressure). For why the pressure thresholds matter (the budget model), see [KV Pressure](/under-the-hood/kv-pressure).
+> **See also.** This guide is the *tuning checklist*. For the policy interface and the budget model behind the thresholds, see [Pressure & policy](/under-the-hood/kv-pressure).
 
 ## Model selection
 
@@ -77,7 +77,7 @@ If unset, defaults to 16384.
 
 ## Sequence count (nSeqMax)
 
-`nSeqMax` is the maximum number of concurrent branches (sequences) in the KV cache. Each active agent, spine, scratchpad fork, and diverge attempt needs its own sequence.
+`nSeqMax` is the maximum number of concurrent branches (sequences) in the KV cache. Each active agent, spine, sub-agent branch, and diverge attempt needs its own sequence.
 
 ```typescript
 const ctx = yield* call(() =>
@@ -100,13 +100,12 @@ Count the peak concurrent branches:
 |-----------|-----------------|
 | Research spine | 1 |
 | Research agents | AGENT_COUNT |
-| Sub-agent spine (research tool) | 1 per active research call |
-| Sub-agents | Up to AGENT_COUNT per research call |
-| Scratchpad forks (BufferingFetchPage, BufferingWebSearch) | 1 per active extraction |
-| Bridge spine + agent | 2 |
+| Delegate sub-spine (`DelegateTool`) | 1 per active delegation |
+| Sub-agents | Up to AGENT_COUNT per delegation |
 | Synthesis spine + agent | 2 |
 | Verify/diverge attempts | VERIFY_COUNT |
-| Reporter sub-agents (hard-cut recovery) | Up to AGENT_COUNT |
+
+Recovery extraction needs **no extra sequences** — it decodes in place on the dying agent's own branch.
 
 The formula `max(AGENT_COUNT, VERIFY_COUNT) * 4 + 3` provides margin for nested pools. With `AGENT_COUNT=3` and `VERIFY_COUNT=3`:
 
@@ -114,7 +113,7 @@ The formula `max(AGENT_COUNT, VERIFY_COUNT) * 4 + 3` provides margin for nested 
 3 * 4 + 3 = 15 sequences (minimum)
 ```
 
-This covers: 3 research agents + 1 root + up to 3 sub-agents + 1 sub-root + scratchpad forks + margin.
+This covers: 3 research agents + 1 root + up to 3 sub-agents + 1 sub-root + synth + margin.
 
 Setting `nSeqMax` below the peak concurrent branch count causes "no memory slot for batch" errors at runtime. Setting it higher than needed wastes a small amount of memory on per-sequence metadata (recurrent state for GDN models, KV cell tags for attention models). Err on the side of higher — the cost per unused slot is minimal compared to the cost of running out mid-pipeline.
 
@@ -139,10 +138,10 @@ const ctx = yield* call(() =>
 );
 ```
 
-The reference pipeline uses `q4_0` for both K and V. At `nCtx=32768` with a 4B parameter model:
+The reference pipeline uses `q4_0` for both K and V. At `nCtx=32768` with a 4B-class model, roughly:
 
-- **q8_0**: ~64MB KV cache
-- **q4_0**: ~32MB KV cache
+- **q8_0**: ~2–4 GB KV cache
+- **q4_0**: ~1–2 GB KV cache (half of q8_0; a quarter of FP16)
 
 The quality difference is negligible for research pipelines where the primary bottleneck is tool-call quality, not raw generation precision. Use `q8_0` if you observe degraded output quality with long contexts.
 
@@ -162,14 +161,14 @@ const reranker = yield* call(() =>
 
 | Parameter | Default | Notes |
 |-----------|---------|-------|
-| `nSeqMax` | 8 | Parallel scoring slots. Higher = faster scoring of many chunks |
+| `nSeqMax` | 10 | Parallel scoring slots. Higher = faster scoring of many chunks |
 | `nCtx` | 4096 | Max tokens per chunk+query pair. 4096 is sufficient for most passages |
 
-The reference pipeline uses `qwen3-reranker-0.6b` at Q4_K_M quantization (~400MB). The reranker is called at two points:
+The reference pipeline uses `qwen3-reranker-0.6b` at Q8_0 quantization (~600MB). The reranker is called at two points:
 1. After each source's research phase (score source chunks against query)
 2. Between sources (bridge reranking for discovery extraction)
 
-Reranker memory is separate from the main model's KV cache. On a system with 16GB, the typical budget: ~4GB main model weights + ~2GB KV cache + ~400MB reranker weights + ~200MB reranker KV.
+Reranker memory is separate from the main model's KV cache. On a system with 16GB, the typical budget: ~4GB main model weights + ~2GB KV cache + ~600MB reranker weights + ~200MB reranker KV.
 
 ## Agent count and turn limits
 
@@ -191,21 +190,21 @@ Context pressure controls when agents are shut down as KV fills. Two thresholds:
 
 ```typescript
 const researchPolicy = new DefaultAgentPolicy({
-  budget: { context: { softLimit: 1024, hardLimit: 128 } },
+  budget: { context: { softLimit: 1024, hardLimit: 1024 } }, // hardLimit ≥ nBatch (512); 1024 gives recovery room for verbose reports
   recovery: { prompt: REPORT },
 });
 ```
 
 **softLimit** (default 1024) -- remaining KV floor for new work. When remaining tokens drop below this:
-- SETTLE rejects tool results (primary enforcement point)
+- SETTLE defers tool results (primary enforcement point)
 - PRODUCE nudges agents to report (terminal tools like `report` still pass)
-- INIT drops agents that don't fit during setup
+- The spawn prefill gate drops agents that don't fit during setup
 
 Set this to account for downstream work. If synthesis needs ~1000 tokens of headroom, set research pool softLimit to at least 1024.
 
-**hardLimit** (default 128) -- crash-prevention floor. When remaining drops below this, `shouldExit` kills agents immediately before `produceSync()`. This is a safety net, not a tuning knob.
+**hardLimit** (default 512) -- kill floor AND recovery reserve. When remaining drops below this, `shouldExit` kills agents immediately before `produceSync()`, and recovery extraction decodes inside the reserved cells. It **must be ≥ the context's `nBatch` (512)** — the pool validates at startup and throws an `Invariant Violation` otherwise. Bump to 1024+ if you expect long recovery extractions.
 
-For reporter sub-pools that only make one terminal tool call, use the default policy (softLimit 1024, hardLimit 128).
+For pools that only make one terminal tool call, the defaults (softLimit 1024, hardLimit 512) are fine.
 
 ## Putting it together
 

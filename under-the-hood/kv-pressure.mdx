@@ -546,22 +546,6 @@ The decision to kill or nudge happens at multiple phases, each with its own inpu
 - **Terminal-tool protection** is only checked in `DefaultAgentPolicy.shouldExit`. Stall-break drops and pool-close cleanups do NOT check `currentTool`.
 - **PRODUCE `isStop` drops (`maxTurns`, `pressure_softcut`) do NOT run inline recovery.** Those agents stay idle with live branches; the pool-close pass extracts them.
 
-### Locked by tests
-
-These cells have dedicated scenario tests in `packages/agents/test/invariants/scenarios/`:
-
-| Cell | Scenario |
-|---|---|
-| PRODUCE top: critical + narrowed protection yields | `critical-kill-despite-protection` |
-| PRODUCE `isStop`: nudge path | `nudge-message-includes-budget` |
-| SETTLE stall-break: nudge fits → no drop | `pressure-exit-via-settle-policy-nudge` |
-| SETTLE stall-break: nudge infeasible → drop | `pressure-exit-via-stall-break` |
-| Parallel staggered-exit defers across ticks | `parallel-staggered-exit` |
-| Recovery diagnostic events fire | `recovery-fails` |
-| Recovery template rendering | `recovery-prompt-budget-substitution` |
-| `hardLimit >= nBatch` invariant throw | `hardLimit-nBatch-invariant` |
-| End-to-end decision matrix | `decision-matrix` |
-
 ## Drop reasons
 
 | Reason | Origin | Meaning |
