@@ -97,7 +97,7 @@ The reranker's `score(query, doc)` returns a **logit-diff**: `logit(yes) − log
 The default `_entailmentFloor` on `Source` is `0`: a hit passes the gate when the cross-encoder leans toward "yes." Subclasses can tighten (`2` for "confident yes" in noise-heavy corpora) or loosen (negative floors for sparse data where leaning-no hits are still worth investigating).
 
 <Note>
-The prior softmax form returned `P(yes | yes_or_no) ∈ (0,1)` with a `0.25` default floor — small logit gaps got compressed to extreme probabilities (a gap of 5 → 0.993; 10 → 0.99995) which saturated top-K ordering and erased confidence differences in dense result sets. Logit-diff preserves the dynamic range. See the calibration probe at `reasoning.run/scripts/inspect-rerank.mjs` and [Rerank architecture](/under-the-hood/rerank-architecture) for the empirical evidence.
+Why logit-diff and not a probability: softmax compresses small logit gaps into extreme values, saturating top-K ordering. [Rerank architecture](/under-the-hood/rerank-architecture) has the calibration story and the empirical evidence.
 </Note>
 
 ## Where scoring happens
@@ -108,7 +108,7 @@ Scoring fires at three points in a pool's lifecycle, all inside the dispatch fib
 2. **Boundary entailment at SETTLE.** When a tool result is prefilled back into the agent's KV, the framework optionally re-scores it against the *original query* via `scoreEntailmentBatch` — a content boundary check that catches off-topic drift after the per-tool scoring already passed.
 3. **Echo detection at delegation.** When an agent forks a sub-agent, the parent's task is the `reference` and the candidate sub-task is compared via `scoreSimilarityBatch` — preventing the recursion from spinning on paraphrases of the same intent.
 
-The single reranker context handles all three concurrently via its `_drain` + `_fillGroup` multiplexing — multiple requests in the pending queue get packed into shared GPU batches of `nSeqMax` slots.
+One reranker context serves all three roles concurrently — requests are packed into shared GPU batches, so scoring parallelism comes for free.
 
 ---
 
