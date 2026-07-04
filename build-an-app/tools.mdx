@@ -252,7 +252,11 @@ The contract you write to:
 3. **You return a value**; it's JSON-stringified and prefilled into the agent's KV at the call position.
 4. **The next PRODUCE attends over the prefill** (plus your probe, if any), and sampling continues.
 
-The whole loop is in-process — no IPC, no HTTP boundary. Tool order in the array matters: terminal tools should not be last, particularly next to a name-prefix sibling — [Grammar & ordering](/under-the-hood/grammar-and-ordering) has the recency-bias rule and the failure case.
+The whole loop is in-process — no IPC, no HTTP boundary.
+
+<Warning>
+**Tool order in the array is behavior, not style.** The terminal tool (`report`) must **not** be last in the toolkit, and must not sit next to a name-prefix sibling. Put it last and recency bias makes agents terminate after 3–4 tool calls instead of the expected 6–8 — it reads like a weak model, but it's the ordering. A safe shape: `[search, read_file, grep, report, research]`. [Grammar & ordering](/under-the-hood/grammar-and-ordering#tool-ordering-sensitivity) has the mechanism and the measured failure case.
+</Warning>
 
 ## Authoring checklist
 

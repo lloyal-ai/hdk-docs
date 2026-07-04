@@ -269,49 +269,22 @@ Most code never touches these — `agent` and `agentPool` handle the toolkit, th
 
 ## Agent Policy
 
-The pool consults an **AgentPolicy** at every decision boundary. The interface, from `AgentPolicy.ts`:
-
-```typescript
-interface AgentPolicy {
-  onProduced(agent, parsed, pressure, config): ProduceAction;   // stop token: return / nudge / tool_call / idle
-  onSettleReject(agent, resultTokens, pressure, config): SettleAction; // oversized result, no siblings to free KV
-  shouldExit?(agent, pressure): boolean;     // pre-produce kill gate
-  shouldExplore?(agent, pressure): boolean;  // explore vs exploit per dispatch
-  onRecovery?(agent, pressure): RecoveryAction;
-  onToolRetry?(agent, tool, error, attempt): ToolRetryAction;   // park-and-retry transient failures
-  resetTick?(): void;
-  readonly pressureThresholds?: PressureThresholds;
-}
-```
-
-`DefaultAgentPolicy` ships the standard behavior: terminal-tool interception, budget nudges ("report your findings now within N words"), confabulation prevention (a return before `minToolCallsBeforeReturn` non-terminal calls is nudged back to work), declarative tool guards, explore/exploit switching, and transient-failure parking (a tool that throws `ToolRetryError` — a rate-limited provider — parks the agent at zero KV cost and re-executes the same call after the delay; the model never sees infrastructure weather).
+The pool consults an **AgentPolicy** at every decision boundary — when to kill, nudge, recover, explore vs exploit, retry a failed tool. `DefaultAgentPolicy` ships the standard behavior; you configure it rather than reimplement it:
 
 ```typescript
 const policy = new DefaultAgentPolicy({
-  minToolCallsBeforeReturn: 3,
-  extraGuards: [myCustomGuard],
-  shouldExplore: { context: 0.4 }, // exploit below 40% KV available
+  minToolCallsBeforeReturn: 3,             // confabulation gate on early returns
+  extraGuards: [myCustomGuard],            // declarative rejection rules ("URL already fetched")
+  shouldExplore: { context: 0.4 },         // exploit below 40% KV available
   budget: { context: { softLimit: 2048 }, time: { softLimit: 600_000 } },
-  recovery: { prompt: RECOVERY_PROMPT },
-  maxToolRetries: 1,
+  recovery: { prompt: RECOVERY_PROMPT },   // extract findings from killed agents
+  maxToolRetries: 1,                       // park-and-retry on ToolRetryError
 });
 ```
 
-### Tool Guards
+Guards run before budget nudges, so a stuck agent gets the specific message, not a generic turn-limit nudge. The framework injects **authGuard** first (denies `protected` tools without a session grant — [AgentApp security](/build-an-app/app-security)), then URL/query dedup against the agent's lineage.
 
-Guards are declarative rejection rules checked **before** budget nudges and before dispatch — a stuck agent gets the specific message ("this URL was already fetched"), not a generic turn-limit nudge:
-
-```typescript
-interface ToolGuard {
-  tools: string[] | '*';   // '*' sees every call (the framework's authGuard uses this)
-  reject: (args, lineageHistory, agent, toolName, config) => boolean;
-  message: string;
-}
-```
-
-Defaults: the framework-injected **authGuard** (denies `protected` tools without a session grant — see [AgentApp security](/build-an-app/app-security)), `fetch_page` URL dedup, and `web_search` query dedup — both checked against the agent's full lineage history. Sibling-level dedup is the tools' job via `ToolContext.peerHistory` ("Resource unavailable. Try a different query.").
-
-Drift and echo scoring at delegation boundaries is the scorer's job — canonical treatment in [Sources & retrieval](/build-an-app/sources-and-retrieval).
+The full decision surface — the `AgentPolicy` interface, every enforcement point in tick order, the guard contract, nudge messages, recovery mechanics, and the kill/nudge decision matrix — is documented once, in [Pressure & policy](/under-the-hood/kv-pressure). Drift and echo scoring at delegation boundaries is the scorer's job — [Sources & retrieval](/build-an-app/sources-and-retrieval).
 
 ## Context pressure
 
