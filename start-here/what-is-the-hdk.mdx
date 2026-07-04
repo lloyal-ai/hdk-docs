@@ -1,11 +1,37 @@
 ---
-title: Harness Development Kit
-description: An in-app intelligence runtime for Node — ship a team of agents and the model they run on in one process.
+title: What is a harness?
+description: The model is maybe a fifth of the product. The harness is the other four-fifths — and it should hold the model, not call it across a wire.
 ---
 
-**A team of agents and the model they run on, in one Node process.**
+A harness is everything built around a model to turn it into working software: the agent loop, the tools, the context management, the prompts and policies, the surface that shows a person what's happening. The model provides raw capability; the harness makes it do a job. Agentic coding tools are harnesses around frontier models. Eval rigs are harnesses. Artifact, our deep-research app, is a harness. The industry converged on the word because every serious team discovers the same thing: the model is maybe a fifth of the product, and the other four-fifths needed a name.
 
-The HDK is an in-app intelligence runtime, not an orchestration framework. There's no model server and no text seam — the model's KV cache and your application's state share one process, and agents are branches of the model's live attention. `npm i`, point at a GGUF on disk, and this runs:
+If you've shipped anything real on a model, you've built one — whether or not you called it that.
+
+So this page could end here. That's the definition, it's the standard one, and it's the one we use. But before you move on, there's a question worth sitting with — the one this entire kit is built on. Take the harness you've built, or the one you're planning, and ask:
+
+## Where's the model?
+
+Not which model — *where*. Sketch your architecture and put your finger on it.
+
+For nearly every harness ever shipped, your finger just landed on the far side of an HTTP boundary. The harness lives in one process, the model in another, and between them runs a completions interface: everything your harness will ever know about its model arrives as text through that slot. This holds even when the model sits on your own machine. A llama-server on localhost is a hosted API with a three-millisecond commute — the wire got shorter; the architecture never moved.
+
+Nobody chose this. Models first became useful behind hosted endpoints, so the whole craft of harness-building grew up on the far side of that seam — and the seam, quietly, decided what a harness is allowed to be. It has been there so long it reads as physics. It isn't. It's an architecture, and architectures decide things. This one has made four decisions on your behalf:
+
+**Your agents cannot share a working memory.** The most valuable object in the system — the attention state built up over a context — lives below the seam, and your harness can only manage it by remote control, through text. So every agent is a stranger to every other agent: shared context gets re-sent and re-computed, turn after turn. (The cost shadow of this isolation is measurable — seam-style orchestration processes 4.4× more tokens than the same pipeline run below it — but the cost is the symptom. The isolation is the condition.)
+
+**You cannot see or steer below the string.** Down there are logits, entropy, grammar state, sampler chains — the signals that would tell you your model is uncertain, the levers that would let you constrain it token by token. The completions interface launders all of it into prose. You're flying the plane through a mail slot.
+
+**You cannot answer "why."** Someone asks why the agent did that. What have you got? Request logs from four programs with four clocks. Causal structure dies at a network boundary; you can't replay what was never one process.
+
+**Your agents don't exist between requests.** Try to point at one — not its prompt template, the running thing. You can't, because it isn't anywhere: its state is smeared across a client, a server, and a transcript. It can't be paused, moved, or resumed, because there is no *it*.
+
+None of this is a defect in your framework. These are properties of the seam itself — which is why switching frameworks has never once given any of it back.
+
+## So strip the ceremony
+
+Put the model *inside* the harness. Model, agents, tools, policy — one process, and your orchestration operates on attention state directly instead of on text across a boundary. That's the entire move.
+
+Here it is as code. `npm i`, point at a GGUF on disk, and this runs:
 
 ```typescript
 import { main, call } from "effection";
@@ -30,11 +56,11 @@ main(function* () {
 });
 ```
 
-Three agents just ran concurrently on hardware that serves one. They shared a system prompt and tool schemas **physically** — decoded once into KV cache, inherited by every fork — not re-sent as strings on every step. Frameworks like LangChainJS pass *application state* between stateless model calls: variables, conclusions, scratchpads, while the model re-reads everything from scratch. The HDK shares *model state* — the attention over what has already been read.
+Three agents just ran concurrently on hardware that serves one. They shared a system prompt and tool schemas **physically** — decoded once into KV, inherited by every fork — not re-sent as strings each step. The same code ships inside an Electron app, an `npm install -g` CLI, or a worker in an existing Node backend, and every tick runs on the user's hardware at zero marginal cost to you.
 
-That difference is why this ships inside an Electron app, an `npm install -g` CLI, or a worker in an existing Node backend — and why every agent tick runs on the user's hardware at zero marginal cost to you. What you build splits in two: a **harness** is the orchestrated system of agents you ship — your UI, your pipeline, your persistence. An **AgentApp** is a packaged capability — a `Source` plus `Tool`s plus a prompted skill — that a harness loads at runtime. Same author can wear both hats on day one.
+Everything else falls out of the one move — and each thing that falls out is something you've probably wanted and assumed you couldn't have:
 
-## Continuous Context
+**Agents become cheap enough to spend.** In-process, spawning an agent is a copy-on-write fork over shared KV — a metadata write, not a re-computation. A whole cohort decodes at one GPU dispatch per tick regardless of how many agents you're running; you pay for concurrency in memory cells, not compute. So go ahead: fan out six hypotheses. Probe your sources in parallel. Run a landscape survey and let every later agent inherit its findings for free, because they fork from the spine it extended. On a laptop.
 
 <Frame>
   <img
@@ -43,59 +69,58 @@ That difference is why this ships inside an Electron app, an `npm install -g` CL
   />
 </Frame>
 
-Most agent frameworks pass strings between stages: a transcript of what one agent generated becomes a prompt for the next, and the model's prior attention state is discarded and rebuilt each call. lloyal agents fork instead. A fork is metadata-only — O(1), zero tensor copy — and when stage 2 starts decoding, stage 1's findings are already in its KV at their original positions; its first generated token attends over them directly. ([Continuous Context](/under-the-hood/continuous-context-spine) has the physics.)
+**Context becomes a governed resource.** With the KV addressable, your harness gets to do what an operating system does for memory: admission control, pressure floors, recovery reserves. Agents spawn only when there's room to feed them, get nudged to wrap up as pressure rises, and are reaped — findings salvaged, not lost — before the cache can overflow. Structured concurrency extends the guarantee to the GPU itself: when a scope closes, its branches are pruned and their state is reclaimed. You will never leak attention.
 
-At its core, **an agent is a branch with intent** — a forked KV slot, a system prompt, a tool set, a terminal condition. Pools are sets of agents on a shared spine; harnesses orchestrate pools. The whole stack is branches all the way down.
-
-This is what breaks the "runs locally but is a toy" barrier. Re-encoding ~900 tokens of system prompt and tool schemas per agent step is prohibitive on consumer hardware — most local-LLM agent demos fall off a performance cliff at the second hop. With Continuous Context the prefix is decoded once and inherited by every fork: measured across a real pipeline, **4.4× fewer tokens processed** than prompt rebuilding. The same harness code runs on a 32K cloud GPU or a 16K laptop — depth adapts to the hardware.
-
-<CardGroup cols={2}>
-  <Card title="AgentApps as the catalog" icon="puzzle-piece" href="/build-an-app/what-is-an-app">
-    **Enabled AgentApps are decoded into the spine once.** Each AgentApp's protocol
-    (name + `useWhen` + tools) lands in the shared prefix; every forked agent
-    inherits the whole catalog at O(1).
-  </Card>
-  <Card title="Multi-turn sessions" icon="clock-rotate-left" href="/build-a-harness/sessions">
-    **Tomorrow's pool reads yesterday's conversation through attention.**
-    `Session.trunk` is a long-lived KV branch; `commitTurn` extends it, and
-    the next pool forks from the trunk — no prompt-history injection.
-  </Card>
-</CardGroup>
-
-## Deep agents, native
-
-Elsewhere, a sub-agent is a fresh conversation handed a task brief — everything the parent knew gets squeezed through a prompt and re-paid for. The pattern is valuable enough that LangChain productized it separately as DeepAgents. Here it isn't a product; it falls out of the architecture. A sub-agent is a fork of the parent's live attention: it inherits every search result, page read, and reasoning step — instantly, for the cost of a turn separator. Or it forks from the clean shared spine when you *want* quarantine. Isolation is a fork-point choice, not a mandate.
-
-Recursion is structural, at two levels:
-
-- **Model level** — a tool's `execute()` returns an Effection `Operation`, so it can `yield*` straight into `agentPool`. An agent that calls such a tool spawns sub-agents mid-generation, inside its own scope. `DelegateTool` is the canonical implementation.
-- **Harness level** — a completed pool's branches stay alive; follow-up pools fork from any agent's frontier.
-
-And because delegation happens against live attention, the boundary can be *judged*: `DelegateTool` scores proposed sub-tasks against the original query (entailment gating) and against the delegating agent's own task (echo detection — "your sub-questions paraphrase your own task; report instead of re-delegating"). An orchestration framework can't run that check; it has no attention state to score against.
-
-Depth is unbounded — sub-agents can delegate further — and every subtree is a structured-concurrency scope: halt it and its KV is reclaimed, guaranteed. The deeper an investigation goes, the richer the attention state at depth. **Depth adds context, not cost.**
-
-## Retrieval Interleaved Generation
-
-Classical RAG retrieves before the model thinks: embed the query, fetch top-K by similarity, paste into the prompt, generate once. RIG retrieves *while* it thinks. The agent emits a tool call → the AgentApp's `Source` returns chunks → a cross-encoder reranker scores them against the original intent → results prefill into the agent's KV at the call position → the next decoded token attends over them and decides what to ask for next.
-
-The difference is observable in tool-call inputs. A RAG system constructs queries from the user's question; a RIG agent constructs queries from hypotheses formed during generation:
+**Reasoning moves inside the token loop.** Your model can stop mid-thought, retrieve, and continue — retrieval and entailment scoring interleaved with decoding itself, not staged between prompts. We call it retrieval-interleaved generation, and it's only expressible when the token loop is yours. It shows up in the tool-call inputs: a RIG agent constructs queries from hypotheses formed *during* generation, not from the user's original question.
 
 ```
 grep(/memory leak/)            → 3 matches in 2 files
 read_file(pool.ts L40-80)      → reads allocation logic, spots missing cleanup
 search("resource cleanup on connection close")  → finds teardown handler
-read_file(server.ts L120-155)  → discovers close handler never calls pool.drain()
-grep(/drain|dispose|cleanup/)  → 8 matches, confirms drain exists but is unused
+read_file(server.ts L120-155)  → close handler never calls pool.drain()
+grep(/drain|dispose|cleanup/)  → drain exists but is unused
 search("pool drain connection lifecycle interaction")  → targets the gap
 report(findings)
 ```
 
-The last search is the signature behavior: the agent discovered `drain()` existed but was never called on connection close, and constructed a query targeting exactly that interaction. Multi-hop reasoning, emergent from attention mechanics — not a prompted retry loop.
+That last search is the signature move: the agent discovered `drain()` existed but was never called on connection close, and built a query aimed at exactly that interaction. Multi-hop reasoning, emergent from attention mechanics — not a prompted retry loop.
 
-Behind this sit the pieces the kit ships: two reference AgentApps (**`web_research`**, **`corpus_research`**) to read as worked examples; the reranker's scoring roles and pressure-aware explore/exploit ([Sources & retrieval](/build-an-app/sources-and-retrieval)); per-spawn prompt templating; and `protected` tools gated by `authGuard` at dispatch ([AgentApp security](/build-an-app/app-security)).
+**Your agents get an address.** In-process, an agent's state is fully described by tokens plus fork topology plus seeds — all recorded. Which means you can suspend one, serialize it to a few kilobytes of *readable text*, and resume it somewhere else. Another process. Another machine. Another GPU backend. Your user starts a research run on their phone and finishes it on their workstation, and it's the same agent — not a new one that read the old one's diary.
 
-## The honest comparison
+**Your exhaust becomes an asset.** One process, one clock, one causal record: every fork, tool call, retrieval decision, and outcome — replayable, deterministically, under pinned settings. That's your audit log and your debugger. It's also something more: forked siblings share exact state *by construction*, which makes your traces training data in precisely the shape post-training methods want. The harness improves the model that runs it. Keep your exhaust.
+
+**Your transparency stops being decorative.** Capabilities are declared entitlements, enforced at the tool gate, and emitted as runtime events your UI can only relay — never author. When your harness shows the user that an app touched the network or read their files, that indicator was generated *below* any code that could have lied about it. Your privacy story becomes a property you can prove, not a promise you have to make.
+
+## What we're not telling you
+
+We're not telling you the seam-built harness is wrong for every job. If you're serving a thousand concurrent chat users, that's a batching and capacity problem, the platforms built for it are genuinely good at it, and an in-process harness — single-tenant by design, because determinism and multi-tenant batching cannot coexist — shouldn't pretend otherwise. A harness serves *sessions and outcomes*: one user's research run, one team's pipeline, one workflow's agents finishing a job.
+
+And we're not telling you to give up deployment flexibility. "The model lives inside the harness" is a claim about software topology, not about where the silicon sits. The same harness runs on a phone, a laptop, a perimeter server, or in a VPC. When something does cross a machine boundary, it's tasks in and telemetry out. Your agent turns never touch a wire.
+
+## What "development kit" means
+
+Everything above is built and shipping. HDK — the Harness Development Kit — is that toolchain: the C++ inference kernel and its Node bindings (on npm today, prebuilt for thirteen platform and GPU targets), the structured-concurrency runtime with its reaping guarantees, the agent pool and orchestrators, the fork mechanics and pressure governance, the replayable trace format, and the signed AgentApps channel through which your harness gains new capabilities without gaining unreviewed code. You write the harness; the kit supplies the machinery a harness deserves. Four npm packages over a portable C++ core:
+
+```
+Your application
+    ↓
+AgentApps (defineApp + manifest)     ← what third parties build (corpus, web, custom)
+    ↓
+@lloyal-labs/rig                     Registry, retrieval primitives, harness building blocks
+    ↓
+@lloyal-labs/lloyal-agents           Continuous Context agent orchestration, authGuard
+    ↓
+@lloyal-labs/sdk                     Branches, sessions, KV cache, reranker
+    ↓
+@lloyal-labs/lloyal.node             Node-native binding (JS ↔ C++)
+    ↓
+liblloyal                            C++ core — KV machinery, sampler, GPU integration
+                                     ─ goes wherever C++ runs ─
+```
+
+[**liblloyal**](https://lloyal-ai.github.io/liblloyal/) runs anywhere a C++ toolchain and a compute backend exist — desktop, mobile, WASM, game engines; the Node binding is the surface that ships today, with prebuilt binaries for macOS (Metal), Linux and Windows (CPU / CUDA / Vulkan).
+
+### The honest comparison
 
 Full stack against full stack:
 
@@ -111,46 +136,20 @@ Full stack against full stack:
 | Process model      | **one Node process**                    | **inference server + agent process + DB**        |
 | Distribution unit  | **npm package, ships with your app**    | **Docker compose / k8s for the back-end pieces** |
 
-The asymmetry is the point. Each row of the right column is a service to install, configure, version, secure, and orchestrate — and an HTTP boundary your agent state gets serialized across. Each row of the left column is an import. (Dependency footprint: `@lloyal-labs/sdk` has zero production dependencies; `lloyal-agents` adds [`effection`](https://frontside.com/effection/) and [`eta`](https://eta.js.org/); `rig` adds `@mozilla/readability` + `linkedom`.)
+The asymmetry is the point. Each row of the right column is a service to install, configure, version, secure, and orchestrate — and an HTTP boundary your agent state gets serialized across. Each row of the left column is an import. (`@lloyal-labs/sdk` has zero production dependencies; `lloyal-agents` adds [`effection`](https://frontside.com/effection/) and [`eta`](https://eta.js.org/); `rig` adds `@mozilla/readability` + `linkedom`.)
 
-## The stack
+### What it takes to run
 
-```
-Your application
-    ↓
-Apps (defineApp + manifest)         ← what third parties build (corpus, web, custom)
-    ↓
-@lloyal-labs/rig                     Registry, retrieval primitives, harness building blocks
-    ↓
-@lloyal-labs/lloyal-agents           Continuous Context agent orchestration, authGuard
-    ↓
-@lloyal-labs/sdk                     Branches, sessions, KV cache, reranker
-    ↓
-@lloyal-labs/lloyal.node             Node-native binding (JS ↔ C++)
-    ↓
-liblloyal                            C++ core — KV machinery, sampler, GPU integration
-                                     ─ goes wherever C++ runs ─
-```
-
-Four npm packages over a portable C++ core. [**liblloyal**](https://lloyal-ai.github.io/liblloyal/) runs anywhere a C++ toolchain and a compute backend exist — desktop, mobile, WASM, game engines; the Node binding is the surface that ships today, with prebuilt binaries for macOS (Metal), Linux and Windows (CPU / CUDA / Vulkan).
-
-## Hardware floor
-
-| Requirement      | Floor for a working harness                                                                                                                              |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RAM              | ~3 GB resident for a 4B-class model at Q4_K_M, plus ~600 MB for a small reranker, plus KV cache. 8 GB total system RAM is comfortable.                   |
-| Compute backend  | GPU recommended (Metal / CUDA / Vulkan / ROCm). CPU works for tiny models or as fallback. Pure MCU-class embedded (no accelerator, no spare RAM) is out. |
-| Storage          | ~3 GB for weights of a 4B-class model at Q4; varies with model size.                                                                                     |
-| Binary footprint | ~150–300 MB of compiled liblloyal + binding code, depending on which compute backends are statically linked.                                             |
-
-The production floor reference harnesses target — three concurrent agents, web + corpus retrieval, 32K context, on a 16 GB consumer laptop:
+The production floor the reference harnesses target — three concurrent agents, web + corpus retrieval, 32K context, on a 16 GB consumer laptop:
 
 - **Weights**: any 4B-class instruction-tuned GGUF llama.cpp loads — **Qwen 3.5** is the recommended default — at **`Q4_K_M`** (~3 GB resident). The model is a configuration choice, not a constraint.
-- **KV cache**: `typeK: "q4_0"`, `typeV: "q4_0"` — FP16 KV would 4× the cache footprint; Q4 KV is the difference between fitting a 32K window on consumer hardware and not.
+- **KV cache**: `typeK: "q4_0"`, `typeV: "q4_0"` — FP16 KV would 4× the footprint; Q4 KV is the difference between fitting a 32K window on consumer hardware and not.
 - **Reranker**: a 0.5–0.6B cross-encoder GGUF at Q8_0 (~600 MB resident).
 - **Bootstrap**: `nCtx: 32768` on a single `llama_context`.
 
 Quality holds at this floor, throughput is interactive, and the whole stack — model, reranker, KV, your code — fits in well under 8 GB resident. SSM and recurrent models (Mamba, RWKV) are first-class via llama.cpp; their fixed-size state composes through fork-and-extend even better than a linearly growing KV cache.
+
+Artifact is the existence proof — multi-agent, source-grounded research with a live transparency surface, running entirely on a consumer machine, built with the same kit you're about to use.
 
 ## Start building
 
@@ -158,14 +157,17 @@ The HDK gives local models what an operating system gave the CPU: processes, a s
 
 <CardGroup cols={3}>
   <Card title="Concept spine" icon="diagram-project" href="/start-here/concept-spine">
-    The seven nouns of the HDK. Read this first — five minutes, and the rest
-    of the docs reads cleanly.
-  </Card>
-  <Card title="Quick Start" icon="rocket" href="/start-here/quick-start">
-    Build a daily digest harness in five minutes — research, draft, deliver,
-    all on a local model.
+    The seven nouns of the HDK. Read this first — five minutes, and the rest of
+    the docs reads cleanly.
   </Card>
   <Card title="Thinking in Lloyal" icon="brain" href="/start-here/thinking-in-lloyal">
-    New to generators and structured concurrency? Start with the mental model.
+    The concurrency model — generators, structured concurrency, and the reaping
+    guarantee everything else rests on.
+  </Card>
+  <Card title="Agents and pools" icon="layer-group" href="/build-a-harness/agents-and-pools">
+    The runtime: one `agentPool` call, N agents in one GPU batch. Then the
+    [App Protocol](/build-an-app/what-is-an-app) for extending a harness safely.
   </Card>
 </CardGroup>
+
+The short version, and then you should go build: you spent years perfecting the harness and left the model outside it. Bring it inside — and the harness stops being scaffolding around an API. It becomes the application. Yours.

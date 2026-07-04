@@ -11,15 +11,19 @@ Two AgentApp-protocol facts touch the tick loop. **Phase 4 (DISPATCH) gates `pro
 
 ## Tick Loop
 
-The agent pool runs a five-phase tick loop. Phase 0 drains orchestrator-queued work (new agent spawns and spine extensions); the remaining four phases drive per-agent decode and tool dispatch:
+The agent pool runs a five-phase tick loop. Phase 0 drains orchestrator-queued work (new agent spawns and spine extensions) plus any pending cancellations; the remaining phases drive per-agent decode and tool dispatch:
 
 ```
 PHASE 0 — SPAWN+EXTEND  drain pendingSpawns and pendingExtends, batched into one store.prefill
+                        (+ drain pendingCancels — discard cancelled agents, prune their KV)
 PHASE 1 — PRODUCE       sample all active agents, collect tool calls
 PHASE 2 — COMMIT        batch-decode produced tokens (single GPU call)
+   ↳ DRAIN              post-process any completed fan-out tool results on the loop fiber
 PHASE 3 — SETTLE        drain settled tool results, batch prefill, reset grammars
-PHASE 4 — DISPATCH      execute collected tool calls (currently sequential)
+PHASE 4 — DISPATCH      execute collected tool calls — per-agent serial, inter-agent concurrent
 ```
+
+Two sub-steps ride the main phases. Phase 0 first drains `pendingCancels`: a user-cancelled agent is **discarded** — its in-flight tool is halted, it emits a terminal `agent:failed` (`user_cancel`), and its branch is pruned with no recovery (see [Cancellation](/under-the-hood/kv-pressure#cancellation)). After COMMIT, a short DRAIN step post-processes any fan-out tool results that completed off the loop fiber since the last tick (a no-op when no `Tool.fanout` tools are in use).
 
 **Phase 0 (SPAWN+EXTEND)** is the rendezvous point with the orchestrator fiber. The orchestrator runs in its own spawn (a child of the pool scope), sibling to the tick loop. When orchestrator code calls `ctx.spawn(spec)` or `ctx.extendSpine(userContent, assistantContent)`, those requests don't issue native calls directly — they queue into `pendingSpawns` / `pendingExtends` and suspend on an Effection [`action()`][action]. The tick fiber drains both queues at the start of each tick, batches the prefills (new agent suffixes + spine extension turns) into a single `store.prefill(prefillPairs)` call, and resolves the suspended actions with their delta token counts. This keeps the **single-fiber discipline** invariant: every native `store.prefill` / `store.commit` call comes from the tick loop's fiber, never from the orchestrator's. Concurrent `extendSpine` calls in flat-mode DAGs (multiple sibling tasks completing simultaneously) cannot race against each other or against per-agent setup — they all serialize through the next Phase 0 drain.
 
@@ -31,7 +35,7 @@ PHASE 4 — DISPATCH      execute collected tool calls (currently sequential)
 
 **Phase 3 (SETTLE)** drains the `pendingSettled` buffer — tool results from the previous tick's DISPATCH. Each result is pressure-gated: if it exceeds headroom, the result is rejected and the agent is marked done. Surviving results are batch-prefilled via `store.prefill()`. If the dispatched tool defines a `probe` (optional getter on the Tool class), the probe text is prefilled immediately after the tool result — nudging the model to reason in prose before the lazy grammar triggers the next tool call. Then agents transition back to `generating` with grammar state reset.
 
-**Phase 4 (DISPATCH)** executes collected tool calls. Before each tool, the pool creates a fresh `ContextPressure` snapshot (reflecting KV consumed by SETTLE) and evaluates `policy.shouldExplore(agent, pressure)` to determine explore vs exploit mode. The `explore` flag and `pressurePercentAvailable` are passed to the tool via `ToolContext`. Each tool runs inside `scoped()` + `call()`:
+**Phase 4 (DISPATCH)** executes collected tool calls — at most one per agent (PRODUCE emits one call, then parks the agent `awaiting_tool`). Before each tool, the pool creates a fresh `ContextPressure` snapshot (reflecting KV consumed by SETTLE) and evaluates `policy.shouldExplore(agent, pressure)` to determine explore vs exploit mode. The `explore` flag and `pressurePercentAvailable` are passed to the tool via `ToolContext`. An **inline** tool (the default) runs on the loop fiber inside `scoped()` + `call()`; a **`Tool.fanout`** tool spawns off the loop fiber so siblings keep decoding (see the note below):
 
 ```typescript
 try {
@@ -56,12 +60,12 @@ try {
 </Note>
 
 <Note>
-DISPATCH is sequential because `llama_context` is not thread-safe. When a tool spawns an inner pool, that pool has its own tick loop creating its own async workers. Sequential DISPATCH ensures only one pool's workers are in flight at a time — exclusive `llama_context` access is a correctness requirement, not a performance tradeoff.
+**Per-agent serial, inter-agent concurrent.** Each agent has at most one tool in flight — PRODUCE emits one call, then parks the agent `awaiting_tool` until its result settles. What differs is *where* a tool runs. **Inline tools** (the default) run on the loop fiber, one after another, so the loop pauses for the duration of each — exclusive `llama_context` access falls out of single-fiber discipline. A tool marked **`Tool.fanout`** runs *off* the loop fiber (bounded by a permit gate, default 8), so sibling agents keep decoding while it awaits I/O; it issues no `llama_context` operation itself — its result is tokenized and prefilled later, in DRAIN + SETTLE, back on the loop fiber. So `llama_context` is only ever touched from the tick loop, and the pool never idles on fan-out tool I/O. The load-bearing invariant is the *per-agent* barrier (below), not global serialization.
 </Note>
 
 ## The Decision Boundary
 
-The sequential DISPATCH model produces a specific class of agent behavior: iterative hypothesis refinement through tool call sequences. This is not prompted or engineered — it emerges from the concurrency semantics.
+The **per-agent** dispatch barrier produces a specific class of agent behavior: iterative hypothesis refinement through tool call sequences. This is not prompted or engineered — it emerges from the concurrency semantics.
 
 ### How it works
 
@@ -97,15 +101,15 @@ An agent that greps with a narrow pattern and gets 0 matches will broaden the pa
 
 ### Why concurrency semantics matter
 
-The decision boundary exists because DISPATCH is sequential and SETTLE is complete. The agent cannot start generating its next action while a tool is still executing, and the tool result is fully prefilled before the agent produces another token. There is no interleaving between "process result" and "decide next action."
+The decision boundary exists because **each agent's dispatch is serial** and SETTLE is complete. An agent has at most one tool in flight and cannot start generating its next action while that tool is still executing; the tool result is fully prefilled before the agent produces another token. There is no interleaving, *for a given agent*, between "process result" and "decide next action." Inter-agent concurrency — a sibling's `Tool.fanout` running off the loop fiber — doesn't change this: the barrier is per-agent, so each agent still gets its own clean decision point.
 
-Under a concurrent dispatch model, tool results arrive mid-generation — the agent is already producing tokens when the result gets prefilled. The result is incorporated, but the agent doesn't get a clean decision point. The generation that was already in flight continues, and the next tool call reflects whatever the model was already committed to before seeing the result. The result is single-hop retrieval: search → read → report, without the iterative refinement that comes from a pause between "here is what I found" and "here is what I'll do next."
+If a *single agent's* dispatch overlapped its own generation, tool results would arrive mid-generation — the agent already producing tokens when the result gets prefilled. The result is incorporated, but the agent doesn't get a clean decision point. The generation that was already in flight continues, and the next tool call reflects whatever the model was already committed to before seeing the result. The result is single-hop retrieval: search → read → report, without the iterative refinement that comes from a pause between "here is what I found" and "here is what I'll do next." The per-agent barrier is exactly what rules that out.
 
 The difference is observable in tool call inputs. Under sequential dispatch, later search queries reference concepts discovered in earlier reads — the queries get progressively more specific as the agent builds understanding. Under concurrent dispatch, search queries tend to be variations on the original question — the agent doesn't form intermediate hypotheses because it never gets the clean context boundary that hypothesis formation requires.
 
 ### Controlling depth
 
-This behavior scales with `maxTurns`. At `maxTurns: 2`, agents do single-shot retrieval. At `maxTurns: 6`, agents do 3-4 rounds of iterative refinement. The quality difference is in the tool call inputs — later queries are informed by earlier results. The cost is wall time: each tool call round-trips through DISPATCH → SETTLE → PRODUCE, and the agent is suspended for the full duration of each tool execution.
+This behavior scales with `maxTurns`. At `maxTurns: 2`, agents do single-shot retrieval. At `maxTurns: 6`, agents do 3-4 rounds of iterative refinement. The quality difference is in the tool call inputs — later queries are informed by earlier results. The cost is per-agent wall time: each tool call round-trips through DISPATCH → SETTLE → PRODUCE, and the agent is suspended for the full duration of its own tool execution. With inline tools the loop waits on each; with `Tool.fanout` tools, sibling agents keep decoding during the wait, so the pool's wall-clock approaches the slowest single agent's chain rather than the sum.
 
 ### Tool ordering affects the decision boundary
 

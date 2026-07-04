@@ -240,10 +240,9 @@ yield* RerankerCtx.set(reranker);   // BEFORE — the corpus factory reads it
 const configStore = createInMemoryConfigStore();
 yield* configStore.set("corpus", { corpusPath: "/path/to/docs" });
 
-const registry = yield* createAppRegistry({
-  configStore,
-  apps: [createCorpusApp, createWebApp],   // build-time factories
-});
+const registry = yield* createAppRegistry({ configStore });
+yield* registry.enable(createCorpusApp);   // build-time factories
+yield* registry.enable(createWebApp);
 
 // registry.enabled() now returns the two enabled Apps.
 // registry scope-exit tears them down (factory ensure()s fire).

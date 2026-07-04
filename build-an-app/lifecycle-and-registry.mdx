@@ -5,7 +5,7 @@ description: createAppRegistry, the per-AgentApp detached scope model, AppFactor
 
 The harness owns the registry; the registry owns each AgentApp's lifetime. The two key contracts:
 
-- `createAppRegistry(opts)` — the harness-wide registry. Declarative `apps` set + dynamic `enable` / `disable`. Per-AgentApp **detached** Effection scopes, structured teardown on registry-scope exit.
+- `createAppRegistry(opts)` — the harness-wide registry. Created **empty**; enable each AgentApp with `registry.enable(factory)`. Per-AgentApp **detached** Effection scopes, structured teardown on registry-scope exit.
 - `AppFactory` — the AgentApp's own constructor. An `() => Operation<App>` that reads its config + reranker, builds, and returns.
 
 No `install` / `uninstall` / `enable` / `disable` lifecycle hooks. Setup is the factory body; teardown is `ensure(...)`.
@@ -24,8 +24,9 @@ yield* configStore.set("corpus", { corpusPath: "/path/to/docs" });
 const registry = yield* createAppRegistry({
   configStore,
   grantStore: createGrantStore(),     // optional; omit ⇒ protected tools all denied
-  apps: [createWebApp, createCorpusApp],
 });
+yield* registry.enable(createWebApp);
+yield* registry.enable(createCorpusApp);
 
 // registry.enabled()    → readonly App[]
 // registry.byName(name)  → App | undefined
@@ -42,29 +43,29 @@ const registry = yield* createAppRegistry({
 export interface CreateAppRegistryOpts {
   configStore: AppConfigStore;        // per-app config, set on AppConfigStoreCtx
   grantStore?: GrantStore;            // optional protected-tool grants, set on GrantStoreCtx
-  apps?: readonly AppFactory[];       // boot set — enabled at construction
 }
 ```
 
-`createAppRegistry` itself does three things on construction:
+`createAppRegistry` returns an **empty** registry and does two things on construction:
 
 1. Sets `AppRegistryCtx` and `AppConfigStoreCtx` (and `GrantStoreCtx` if a `grantStore` was provided) on the **caller's** scope so the pool, the dispatch authGuard, and consumers can read them.
-2. Enables each factory in `apps` in declaration order. Each one runs in its own detached scope.
-3. Registers a scope-exit teardown that halts every enabled AgentApp's detached scope in **reverse register-order**, best-effort.
+2. Registers a scope-exit teardown that halts every enabled AgentApp's detached scope in **reverse enable-order**, best-effort.
+
+Enablement is separate from creation: there's exactly one way an AgentApp enters the registry — `registry.enable(factory)` — so the boot path and the dynamic path can't collide. `yield*`-enable each factory after construction.
 
 ### The interface
 
 ```ts
 export interface AppRegistry {
   byName(name: string): App | undefined;
-  installed(): readonly App[];
+  enabled(): readonly App[];
   stateOf(name: string): AppState;                       // 'enabled' | 'disabled'
   enable(factory: AppFactory): Operation<App>;
   disable(name: string): Operation<void>;
 }
 ```
 
-`installed()` returns AgentApps in **register-order** — the harness's planner / spine renderer can rely on a stable ordering (`installed()[0]` is the AgentApp that registered first).
+`enabled()` returns AgentApps in **enable-order** — the harness's planner / spine renderer can rely on a stable ordering (`enabled()[0]` is the AgentApp enabled first).
 
 ## The factory model — no hooks, just scopes
 
@@ -107,13 +108,13 @@ Each factory runs in its own **detached** Effection scope, not as a child of the
 
 The mechanism lives in `rig/src/registry.ts` using `createScope()` + `scope.run()` + a `suspend()` that holds the AgentApp alive between construction and `destroy()`. AgentApp authors don't manage any of this; the framework wires it.
 
-## Boot set vs dynamic enable
+## Where the factory comes from
 
-Two ways an AgentApp enters the registry:
+Every AgentApp enters the registry the same way — `yield* registry.enable(factory)` on an imported factory. What differs is only where the factory's package came from:
 
-**Build-time imports (the boot set).** The harness `import`s factories and hands them to `createAppRegistry({ apps: [...] })`. This is the path the reasoning.run harness uses today — `createWebApp` and `createCorpusApp` are build-time deps.
+**Build-time dependency.** The harness `import`s a factory it owns as an ordinary npm dep and enables it at boot. This is the path the reasoning.run harness uses today — `createWebApp` and `createCorpusApp` are build-time deps.
 
-**Dynamic enable.** `yield* registry.enable(factory)` mid-session. This is the path channel-distributed AgentApps use: `yield* loadBundle('jira', { semver: '^1.2.0' })` resolves against `apps.lloyal.ai` (URL and trust roots are framework-locked constants), verifies, and returns an `AppFactory`. `enable` then runs it in its own scope. See [Distribution](/build-an-app/distribution).
+**Signed-channel install.** `harness.dev install <publisher>/<app>` fetches, verifies, and `npm install`s a signed tarball into `node_modules`; the harness then `import`s its factory and enables it, exactly like a build-time dep. There is no runtime "load app by name" verb — acquisition is an install-time step, loading is a static `import`. See [Distribution](/build-an-app/distribution).
 
 Both paths converge on the same invariant: the AgentApp enters the registry only if (a) the factory body completes without throwing, (b) `defineApp` validation passes, (c) the AgentApp protocol version is supported, and (d) an existing entry with the same `name` doesn't already occupy the slot.
 

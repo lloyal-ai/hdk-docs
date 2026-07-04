@@ -5,6 +5,19 @@ description: "Public-API renames and removals. Append-only — when a name chang
 
 This page tracks renames, removals, and notable shape changes in the public API surface of `@lloyal-labs/lloyal-agents`, `@lloyal-labs/sdk`, and `@lloyal-labs/rig`. New entries are appended at the top.
 
+## v3.2 — target-dispatch fan-out, wind-down, per-agent cancel
+
+Current package versions: `@lloyal-labs/lloyal-agents@3.2.0`, `@lloyal-labs/rig@3.1.2`, `@lloyal-labs/sdk@3.0.3`, `harness.dev@0.5.0`, `@lloyal-labs/corpus-app@1.1.0`. Runtime peer floor `@lloyal-labs/lloyal.node@^3.0.1`. `APP_PROTOCOL_VERSION` stays `'3.0'` — the model-facing surface is unchanged.
+
+`@lloyal-labs/lloyal-agents` (additive, no breaking changes):
+
+- **Target-dispatch fan-out.** DISPATCH is now per-agent serial, inter-agent concurrent. Each agent still has at most one tool in flight — the [decision boundary](/under-the-hood/concurrency#the-decision-boundary) is preserved — but a tool marked **`Tool.fanout`** runs off the loop fiber, bounded by a permit gate (default 8), so sibling agents keep decoding while it awaits I/O. Inline tools remain serial on the loop fiber. The pool no longer idles on tool I/O; wall-clock approaches the slowest single agent's chain.
+- **`recoveryShape: 'staggered' | 'parallel'`** (default `'staggered'`) + **`reportBudget?`** on `DefaultAgentPolicy`. `staggered` recovers reaped agents one at a time (lossless); `parallel` ("recovery-as-turn") bin-packs their reports in-loop, per-report budget clamped to `[128, 2048]` (or `reportBudget`). See [Recovery shape](/under-the-hood/kv-pressure#recovery-shape--staggered-default-vs-parallel).
+- **`WindDown` context** (`Signal<void, void>`). A fire-once cohort drain: stop spawning, halt the orchestrator, let in-flight tools **drain**, then bin-pack every remaining agent to a report. Not abort. Trace `pool:agentDrop` reason `wind_down`. See [Wind-down](/under-the-hood/kv-pressure#wind-down-drain).
+- **`CancelAgent` context** (`Signal<{ agentId }, void>`). Per-agent **discard** (not drain): halt its tool, emit terminal `agent:failed` (`user_cancel`), no recovery, prune. A `cancelledIds` invariant excludes the agent from the recovery sweep AND from late tool completions. Trace reason `user_cancel`. See [Cancellation](/under-the-hood/kv-pressure#cancellation).
+
+`@lloyal-labs/lloyal.node@3.0.1`: built `LLAMA_OPENSSL=OFF` so `libllama-common` links zero OpenSSL — a self-contained native load with no external OpenSSL dependency. Tracks llama.cpp b9581.
+
 ## v3.0 — tool retry parking, `Source.promptData`, spawn admission reservation
 
 `@lloyal-labs/lloyal-agents` additions (no breaking changes):
@@ -26,21 +39,18 @@ This page tracks renames, removals, and notable shape changes in the public API 
 - Scores are log-odds of an absolute yes/no judgment: `sigmoid(score) = P(yes)`, floor `0 ≡ P 0.5`. Docstrings previously describing a "relative ranker" were corrected — see [Rerank architecture](/under-the-hood/rerank-architecture).
 - `@lloyal-labs/corpus-app` 1.1.0 adds an Okapi-BM25 first stage over reranker-token ids (top-100 lexical gate ahead of the cross-encoder) and moves its TOC from per-spawn prompts to `Source.promptData()`.
 
-## v3.0 — `loadBundle` resolves by name (pre-launch breaking change)
+## v3.0 — signed-tarball channel (no runtime `loadBundle`)
 
-`loadBundle`'s signature changed from `(url, manifest, { trustRoots })` to `(name, { semver })`. Trust roots and catalog URL moved from harness-supplied runtime arguments into compile-time constants in `@lloyal-labs/rig/src/protocol.ts`: `CHANNEL_CATALOG_URL` (`https://apps.lloyal.ai/v1/catalog.json`) and `CHANNEL_TRUST_ROOTS` (Lloyal platform Ed25519 keys — single active key with additive rotation slots for compromise recovery).
+An AgentApp is a **signed npm tarball**; there is no runtime `loadBundle` verb and no dynamic app-bundle import. `harness.dev install <publisher>/<short>[@<semver>]` resolves the name against the canonical catalog, Ed25519-verifies the catalog + manifest + tarball bytes against `CHANNEL_TRUST_ROOTS`, and runs `npm install <tarballUrl>` so the package lands in `node_modules`. The harness then loads it with a plain static `import { createXxxApp } from '<importName>'` and enables it via `registry.enable(factory)`.
 
-What changed:
+- Trust roots and catalog URL are compile-time constants in `@lloyal-labs/rig/src/protocol.ts`: `CHANNEL_CATALOG_URL` (`https://apps.lloyal.ai/v1/catalog.json`) and `CHANNEL_TRUST_ROOTS` (Lloyal platform Ed25519 keys — single active key with additive rotation slots for compromise recovery). To use a different channel, fork rig and patch the constants.
+- The rig runtime exports the verify primitives **`resolveAppEntry`** + **`verifyBundle`** + **`BundleVerificationError`**; the `harness.dev install` CLI uses them. There is no `loadBundle` / `LoadBundleOptions` on the public surface, and no in-memory bundle evaluation.
+- First-party build-time inclusion is unchanged: harness vendors depending on AgentApps they own from a private source `import` the factory and `registry.enable(factory)` it — exactly like an installed app.
+- Catalog format at `https://apps.lloyal.ai/v1/catalog.json`: signed entries carrying `importName` + per-version `manifestUrl` / `tarballUrl` / `sizeBytes`; the catalog and each manifest are Ed25519-signed by the Lloyal platform key (publishers do not sign — Lloyal signs after review).
 
-- `loadBundle(name, { semver })` resolves the requested name against the canonical catalog at `apps.lloyal.ai`, verifies catalog and bundle signatures against `CHANNEL_TRUST_ROOTS`, and returns an `AppFactory`.
-- §8.2 first-party build-time inclusion is unchanged: harness vendors bundling Apps they own from a private source still hand factories directly to `createAppRegistry({ apps: [...] })`.
-- Catalog format at `https://apps.lloyal.ai/v1/catalog.json`: `{ signedAt, entries: [{ name, versions: [{ version, manifestUrl, bundleUrl, appProtocolVersion, sizeBytes }] }], publisherKeyId, signature }`. Catalog signature (canonical JSON over `{ signedAt, entries, publisherKeyId }`) verified before name resolution; per-bundle signatures verified before dynamic import. Both signatures are produced by the Lloyal platform key — publishers do not sign; Lloyal signs after review.
-- `LoadBundleOptions` interface removed from the public surface. Tests inject test values via internal `setTestTrustRoot()` / `setTestCatalogUrl()` helpers in `bundle.ts`, active only when `NODE_ENV === 'test'`.
+Acquisition:
 
-Migration:
-
-- Any harness calling `loadBundle(url, manifest, { trustRoots })` now calls `loadBundle(name, { semver })`.
-- [`harness.dev install <publisher>/<short>[@<semver>]`](/cli/installing) (in `harness.dev@0.4.0`) fetches, signature-verifies, and `npm install`s a signed app from the channel.
+- [`harness.dev install <publisher>/<short>[@<semver>]`](/cli/installing) (in `harness.dev@0.4.0`) fetches, signature-verifies, and `npm install`s a signed app from the channel; plain `npm ci` reproduces it afterward with no `harness.dev` in CI.
 - [`harness.dev publish`](/cli/publishing) (in `harness.dev@0.4.0`) packages an app via `npm pack` and submits it to the channel for review + signing. See [`harness.dev publishers register`](/cli/publishing) for the one-time handle claim.
 
 See [Distribution](/build-an-app/distribution) for the mechanics.
@@ -49,7 +59,7 @@ See [Distribution](/build-an-app/distribution) for the mechanics.
 
 The largest architectural change since v0.1. The framework now ships a first-class **App protocol** — a packaged capability unit (Source + Tools + skill + manifest) that a harness loads via a registry — and the App protocol is codified as a bytes-locked surface in `protocol.ts`. Anchored to `APP_PROTOCOL_VERSION = '3.0'` (hence the version label; `@lloyal-labs/*` package versions continue on their own line). Reasoning.run is the canonical reference harness; `@lloyal-labs/web-app` and `@lloyal-labs/corpus-app` are the two reference Apps.
 
-The era added: the App protocol itself, dispatch-time authorization (`Tool.protected` + `authGuard` + `GrantStore`), the recon pre-flight stage, a reranker calibration regression-and-fix (softmax → logit-diff), per-App `skill.eta` prompts (retiring the harness's `web-worker.eta` / `corpus-worker.eta`), Effection-native lifecycle for the registry + reranker, and the runtime primitives for a future signed-bundle distribution channel.
+The era added: the App protocol itself, dispatch-time authorization (`Tool.protected` + `authGuard` + `GrantStore`), the recon pre-flight stage, a reranker calibration regression-and-fix (softmax → logit-diff), per-App `skill.eta` prompts (retiring the harness's `web-worker.eta` / `corpus-worker.eta`), Effection-native lifecycle for the registry + reranker, and the runtime primitives for the signed-tarball distribution channel.
 
 ### Renames within 3.0 (pre-launch vocabulary unification)
 
@@ -69,8 +79,8 @@ Why: "contract" overloaded with legal-contract reading (royalty / obligation) in
 - **NEW: `defineApp(spec): App`** (`@lloyal-labs/rig`). Sync wiring + validation: manifest schema, App protocol version, tool-map coverage, boundary-marker double-emission, `useWhen` sanitization. Throws synchronously on a bad spec.
 - **NEW: `AppManifest`** declared in `app.json` (per-App). Fields: `name`, `appProtocolVersion`, `protocol: { name, useWhen, tools[] }`, optional `configSchema`. (The App's *published* version comes from `package.json.version` — `app.json` is the protocol-author surface, `package.json` is the npm surface.)
 - **NEW: `AppFactory = () => Operation<App>`**. The App's own constructor; runs in a detached scope the registry provides. Setup is the factory body; teardown is `ensure(...)`. **No install/uninstall hooks** — see "Lifecycle as scope" below.
-- **NEW: `createAppRegistry({ configStore, grantStore?, apps? })`** (`@lloyal-labs/rig`). Harness-wide registry. Declarative boot set + dynamic `enable` / `disable`. Per-app detached scope; reverse-register-order teardown on registry scope exit; best-effort (a throwing teardown never strands a sibling). Sets `AppRegistryCtx` + `AppConfigStoreCtx` (+ `GrantStoreCtx` if provided) on the caller's scope.
-- **NEW: `AppRegistry` interface** — `byName`, `installed()` (readonly App[] in register-order), `stateOf` (`'enabled' | 'disabled'`), `enable(factory)`, `disable(name)`.
+- **NEW: `createAppRegistry({ configStore, grantStore? })`** (`@lloyal-labs/rig`). Harness-wide registry, created **empty** — enable each app with `registry.enable(factory)`. Per-app detached scope; reverse-enable-order teardown on registry scope exit; best-effort (a throwing teardown never strands a sibling). Sets `AppRegistryCtx` + `AppConfigStoreCtx` (+ `GrantStoreCtx` if provided) on the caller's scope.
+- **NEW: `AppRegistry` interface** — `byName`, `enabled()` (readonly App[] in enable-order), `stateOf` (`'enabled' | 'disabled'`), `enable(factory)`, `disable(name)`.
 - **NEW: `AppState = 'enabled' | 'disabled'`** — two states, no half-life. A throwing factory tears down its partial scope and propagates; the App never enters the registry. A throwing teardown is swallowed + logged.
 - **NEW: `APP_PROTOCOL_VERSION = '3.0'`** + **`SUPPORTED_APP_PROTOCOL_VERSIONS = ['3.0']`** + **`VALIDATED_MODELS_3_0`** (`@lloyal-labs/rig/protocol`). Registry refuses an App whose declared `appProtocolVersion` isn't supported.
 
@@ -124,7 +134,7 @@ A pathology investigation in reasoning.run (the "TLS handshake → HDK chunk sco
 
 ### Distribution primitives (channel-canonical)
 
-- **NEW: `loadBundle(name, { semver }): AppFactory`** + **`verifyBundle(bytes, sig64, publicKey)`** + **`BundleVerificationError`** (`@lloyal-labs/rig/bundle.ts`). Resolves names against the canonical catalog at `apps.lloyal.ai`; verifies catalog + bundle signatures against framework-vendored `CHANNEL_TRUST_ROOTS`; dynamic ESM import; returns the bundle's factory ready for `registry.enable`. URLs and trust roots are compile-time constants in `protocol.ts` — the harness cannot override.
+- **NEW: `resolveAppEntry(catalog, name, { semver })`** + **`verifyBundle(bytes, sig64, publicKey)`** + **`BundleVerificationError`** (`@lloyal-labs/rig/bundle.ts`). The signed-channel verify primitives the `harness.dev install` CLI uses: resolve a name against the canonical catalog at `apps.lloyal.ai`, then Ed25519-verify catalog + manifest + tarball bytes against framework-vendored `CHANNEL_TRUST_ROOTS` before `npm install`. No runtime `loadBundle` / dynamic bundle import — the harness loads installed packages with a static `import`. URLs and trust roots are compile-time constants in `protocol.ts` — the harness cannot override.
 - **NEW: `CHANNEL_CATALOG_URL` + `CHANNEL_TRUST_ROOTS` constants** in `@lloyal-labs/rig/src/protocol.ts`. The structural-binding mechanism: to use a different channel, fork rig and patch the constants.
 - **NEW: `harness.dev` CLI package + dispatcher.** Released as `harness.dev@0.4.0`. Commands: default-scaffolder (`harness.dev <name>`), `app` (app scaffolder), `publishers register` + `me` (publisher account claim + inspection), `publish` (submit app for review + signing via `npm pack` → quarantine queue), `publish status <id>` (poll submission state), `install <publisher>/<short>[@<semver>]` (fetch + signature-verify + `npm install`). Full reference: [CLI](/cli).
 

@@ -335,6 +335,71 @@ If agents end idle without results after the tick loop exits (killed by `maxTurn
 
 Production note: reasoning.run's recon stage is this same mechanism with a recon-shaped policy — `ReconPolicy` hard-caps turns via `shouldExit`, and force-kills recover with a `PREFLIGHT_RECOVER` prompt.
 
+### Recovery shape — staggered (default) vs parallel
+
+`recoverInline` above is the **staggered** shape (`DefaultAgentPolicy`'s default). Reaped agents recover **one at a time**: each prefills its extraction prompt, decodes to stop in a single-agent produce/commit loop *inside* the `hardLimit` reserve, then prunes to free KV before the next agent recovers. It is lossless — no per-report cap — and KV-headroom-scheduled: the reserve only has to fit one report at a time.
+
+A pool can opt into the **parallel** shape ("recovery-as-turn") — reaped agents recover *in the loop*, bin-packed alongside live siblings instead of serially after them:
+
+```typescript
+const policy = new DefaultAgentPolicy({
+  recoveryShape: 'parallel',   // default 'staggered'
+  reportBudget: 512,           // optional per-report cap (tokens)
+});
+```
+
+Under `parallel`, a killed-without-result agent is turned into an in-loop report: the pool parks it `awaiting_tool`, marks it extracting, and returns a synthetic settled tool (`recovery:<id>`); the next SETTLE re-activates it with the eager terminal grammar and its report decodes bin-packed with the cohort. Each report gets a budget `b` sized so the whole alive cohort fits the recovery reserve in one batched tick:
+
+```
+b ≤ (remaining − hardLimit − BATCH_BUFFER) / aliveCount − RECOVERY_PREFILL_OVERHEAD
+```
+
+clamped to `[MIN_REPORT_BUDGET (128), MAX_REPORT_BUDGET (2048)]`, or to `reportBudget` if set (`BATCH_BUFFER = 512`, `RECOVERY_PREFILL_OVERHEAD = 150`). A token-stop backstop force-finishes an extracting agent at `b` tokens so one runaway report can't starve the batch. If a report doesn't fit the reserve, SETTLE defers it; if no active sibling can free KV, it falls through the stall-break to serial `recoverInline` — so `parallel` degrades to `staggered` under genuine pressure rather than failing.
+
+Choose `staggered` (the default) when reports are large or KV is tight: it's lossless and needs the least reserve. Choose `parallel` when many agents reap together and you want their reports to land in one batched pass instead of a serial tail. Set it via `recoveryShape` on `DefaultAgentPolicyOpts`, or `policy.setRecoveryShape(...)` at runtime.
+
+## Wind-down (drain)
+
+Wind-down is the graceful "wrap up now" signal for the **whole cohort** — distinct from pressure, which reaps agents one at a time under KV stress. The harness provides a fire-once `WindDown` signal on the pool's context and `.send()`s it (on a deadline, a turn budget, or a user "finish" action):
+
+```typescript
+import { WindDown } from '@lloyal-labs/lloyal-agents';
+
+const windDown = createSignal<void, void>();
+yield* WindDown.set(windDown);
+// ...later, to wrap up:
+windDown.send();
+```
+
+On emission the pool, **once**:
+
+1. **Halts the orchestrator first** (no new spawns or spine extensions), *before* flipping its `windingDown` flag — the ordering is load-bearing, or a spawn racing the flag can strand native state.
+2. **Lets in-flight tools drain** — a tool already executing runs to completion and settles. Wind-down is **not** abort: it stops *starting* work, it doesn't kill work in progress.
+3. **Reaps each remaining agent into a report**, bin-packed via the parallel recovery path (`handleRecover`) regardless of the policy's `recoveryShape`, so the cohort's findings land together. An agent already mid-terminal-report, or already extracting, is left to finish.
+
+Each reaped agent emits `pool:agentDrop` with reason `wind_down`. Because in-flight tools drain and every agent reports, wind-down loses no findings — it's the clean way to end a run early, as opposed to cancelling (below), which discards.
+
+## Cancellation
+
+Cancellation is the per-agent twin of wind-down — but where wind-down *drains*, cancellation **discards**. The harness provides a repeatable `CancelAgent` signal and `.send({ agentId })`s it (e.g. a user dismisses one agent's panel):
+
+```typescript
+import { CancelAgent } from '@lloyal-labs/lloyal-agents';
+
+const cancel = createSignal<{ agentId: number }, void>();
+yield* CancelAgent.set(cancel);
+// ...later:
+cancel.send({ agentId: 3 });
+```
+
+At the start of the next tick, the pool drains pending cancellations. For each cancelled agent it:
+
+1. **Halts that agent's in-flight tool** (aborting the fetch/read). Sibling agents are untouched; the orchestrator is not halted.
+2. **Emits a terminal `agent:failed`** with reason `user_cancel` (trace `pool:agentDrop` reason `user_cancel`) — **no recovery**. A cancel means "throw this away," so findings are not extracted.
+3. **Transitions the agent to `idle` and prunes its branch** to reclaim KV.
+
+**The discard invariant.** A cancelled agent is recorded so it stays discarded against two late-arriving paths: (a) it is excluded from the end-of-pool recovery sweep, so a branch that couldn't be pruned (a non-leaf that recursed) is never force-recovered; and (b) if its tool completes *after* the cancel, that completion is dropped silently — no late `tool:result` contradicts the terminal `agent:failed`. The result is exactly one terminal event per cancelled agent, with no resurrected findings.
+
 ## `cellsUsed` tracks live pressure
 
 <Note>
@@ -378,6 +443,8 @@ const policy = new DefaultAgentPolicy({
 | `budget.context.hardLimit` | 512 | Kill floor + recovery reserve; must be ≥ `nBatch` |
 | `budget.time.*` | unset | No time budget unless configured |
 | `recovery.*` | unset | No extraction unless configured |
+| `recoveryShape` | `'staggered'` | Reap shape — `'staggered'` (serial, lossless) or `'parallel'` (in-loop bin-packed) |
+| `reportBudget` | unset | Per-report token cap for `'parallel'` recovery (else clamped to `[128, 2048]`) |
 | `terminalToolName` | unset | Protects mid-report agents from non-critical kills |
 | `maxToolRetries` | 1 | Park-and-retry attempts per call on `ToolRetryError` |
 
@@ -508,5 +575,7 @@ These cells have dedicated scenario tests in `packages/agents/test/invariants/sc
 | `policy_exit` | PRODUCE `shouldExit` (custom) | Policy returned `true` not driven by pressure |
 | `maxTurns` | PRODUCE at `isStop` | Turn count ≥ maxTurns, no terminal tool |
 | `tool_error` | DISPATCH | Tool's `execute()` threw (non-retryable) |
+| `wind_down` | PRODUCE reap (`WindDown`) | Cohort [wind-down](#wind-down-drain) — agent reaped to a bin-packed report; in-flight tools drained first |
+| `user_cancel` | Phase 0 cancel drain (`CancelAgent`) | Per-agent [cancel](#cancellation) — discarded, no recovery |
 
-Every drop reason except `pressure_init` is followed by a recovery attempt (inline or post-loop) whose outcome is visible in `pool:recoveryReturn` or `pool:recoveryFailed` — no silent data loss.
+Every drop reason except `pressure_init` and `user_cancel` is followed by a recovery attempt (inline or post-loop) whose outcome is visible in `pool:recoveryReturn` or `pool:recoveryFailed` — no silent data loss. `user_cancel` is a deliberate discard: no recovery, by design.
