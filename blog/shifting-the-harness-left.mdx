@@ -17,6 +17,10 @@ The number that matters is this: in GPU compute per step, serving all ten agents
   />
 </Frame>
 
+<Card title="This run is public" icon="github" href="https://github.com/lloyal-ai/reasoning-run" horizontal>
+  The trace, config, and full report are in the repo — run the same swarm with `npx reasoning.run`.
+</Card>
+
 ## The bill you'd expect
 
 Serve ten agents the usual way and here's the shape of it. You stand up an inference server. Each agent is its own conversation, so each carries its own copy of the context — the same system prompt, the same tool schemas, the same background — and each is decoded on its own. Ten agents, ten copies of the context, ten streams of work for the GPU to interleave. The model sits behind a network; you call out to it and pay per token, per agent, in both directions. Concurrency is a multiplier on the bill, and it stays one — more agents, more cost, in a straight line, for as long as you run.
