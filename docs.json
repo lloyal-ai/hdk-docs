@@ -144,7 +144,6 @@
           {
             "group": "Blog",
             "pages": [
-              "blog/index",
               "blog/shifting-the-harness-left"
             ]
           }

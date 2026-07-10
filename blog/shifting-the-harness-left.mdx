@@ -10,10 +10,10 @@ Ten agents, one GPU, one open model, working a real task: *"GLM-5.2 versus the t
 
 The number that matters is this: in GPU compute per step, serving all ten agents cost us almost exactly what serving one costs. The tenth agent is close to free, and the reason it's free is the whole argument for how we build.
 
-<Frame caption="Ten agents, one deployment: the swarm forked from a single shared GLM-5.2 context.">
+<Frame caption="The run itself: ten agents forked from one GLM-5.2, one llama_decode per step.">
   <img
-    src="/assets/blog/fanout-wide-still-web.png"
-    alt="Ten GLM-5.2 research agents fanned out in a single deployment, decoding in lockstep from one shared KV context."
+    src="/assets/blog/fanout-10agent-web.gif"
+    alt="Terminal recording of ten GLM-5.2 agents running concurrently on one deployment — nine researchers fanning out across the web and one synthesist, all decoding from a single shared KV context."
   />
 </Frame>
 
@@ -43,10 +43,10 @@ The pads stay private while the work runs. Each agent can see the room's assignm
 
 The picture earns a click; the mechanism has to hold the room. Here is what actually happens, and every claim traces to a line in our own inference kernel.
 
-<Frame caption="The run itself: ten agents forked from one GLM-5.2, one llama_decode per step.">
+<Frame caption="One board, N pads, one dispatch — the model inside the harness process.">
   <img
-    src="/assets/blog/fanout-10agent-web.gif"
-    alt="Terminal recording of ten GLM-5.2 agents running concurrently on one deployment — nine researchers fanning out across the web and one synthesist, all decoding from a single shared KV context."
+    src="/assets/blog/architecture-shift-left.png"
+    alt="Architecture diagram showing one GLM-5.2 model process, one shared KV context board, and ten agent pads dispatched in a single llama_decode call."
   />
 </Frame>
 
@@ -80,9 +80,33 @@ That's the left-shift: the unit you build moves from *an inference endpoint your
 
 We didn't describe a system and hope you'd believe it. This post, and the campaign around it, was produced by the swarm it describes — agents forking one GLM-5.2 on one box, on rentable GPUs (2× B200 on RunPod; Scaleway too, more coming), writing real deliverables. The research run behind it is real, and its full output — the model comparison, the trace, the configuration — is published, so you can watch the nine agents fan out, see the corrections happen, and check the cost model against the cache occupancy yourself.
 
+<Frame caption="Ten agents live on one deployment — the wide capture from the run.">
+  <img
+    src="/assets/blog/fanout-wide-still-web.png"
+    alt="Ten GLM-5.2 research agents fanned out in a single deployment, decoding in lockstep from one shared KV context."
+  />
+</Frame>
+
 The frontier model is finally open and good enough to run on your own hardware. GLM-5.2 is what makes "inside the harness" a real option instead of a compromise. Take that option and ten agents cost about what one does, because they share the one expensive thing and forking it is free.
 
-**See how it works, or run it yourself → [docs.lloyal.ai](https://docs.lloyal.ai)**
+**The run is public — read the trace, check the config, or run the swarm yourself.**
+
+<CardGroup cols={2}>
+  <Card
+    title="Run the swarm yourself"
+    icon="github"
+    href="https://github.com/lloyal-ai/reasoning-run"
+  >
+    `npx reasoning.run` gets you running. The full trace, config, and cost report from this run are in the repo.
+  </Card>
+  <Card
+    title="Install from npm"
+    icon="npm"
+    href="https://www.npmjs.com/package/reasoning.run"
+  >
+    The `reasoning.run` package, published and versioned.
+  </Card>
+</CardGroup>
 
 ---
 
