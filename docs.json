@@ -139,6 +139,18 @@
         ]
       },
       {
+        "tab": "Blog",
+        "groups": [
+          {
+            "group": "Blog",
+            "pages": [
+              "blog/index",
+              "blog/shifting-the-harness-left"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "Licensing",
         "groups": [
           {

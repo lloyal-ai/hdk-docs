@@ -1,0 +1,89 @@
+---
+title: "Shifting the harness left: 10 concurrent GLM-5.2 agents for the compute of one"
+description: "How we served a deep-research app with 10 GLM-5.2 agents on one deployment — one shared KV context, one llama_decode per step, paid in memory not compute. Full trace, config, and cost receipt published."
+"og:image": "/assets/blog/fanout-wide-still-web.png"
+---
+
+*Lloyal Labs — July 2026*
+
+Ten agents, one GPU, one open model, working a real task: *"GLM-5.2 versus the top 10 frontier and open models, head to head."* Nine researchers and a synthesist, each one searching the web, reading pages, backing out when a source turns out to be about the wrong thing, and writing findings back to a report on disk.
+
+The number that matters is this: in GPU compute per step, serving all ten agents cost us almost exactly what serving one costs. The tenth agent is close to free, and the reason it's free is the whole argument for how we build.
+
+<Frame caption="Ten agents, one deployment: the swarm forked from a single shared GLM-5.2 context.">
+  <img
+    src="/assets/blog/fanout-wide-still-web.png"
+    alt="Ten GLM-5.2 research agents fanned out in a single deployment, decoding in lockstep from one shared KV context."
+  />
+</Frame>
+
+## The bill you'd expect
+
+Serve ten agents the usual way and here's the shape of it. You stand up an inference server. Each agent is its own conversation, so each carries its own copy of the context — the same system prompt, the same tool schemas, the same background — and each is decoded on its own. Ten agents, ten copies of the context, ten streams of work for the GPU to interleave. The model sits behind a network; you call out to it and pay per token, per agent, in both directions. Concurrency is a multiplier on the bill, and it stays one — more agents, more cost, in a straight line, for as long as you run.
+
+That's the world where the harness lives all the way to the right: out in ops, in infra, in a serving tier your application talks to from arm's length. The model is a meter you rent by the token.
+
+We built the other thing. The quickest way to see why it's the other thing is a picture.
+
+## One whiteboard, a room full of people
+
+Put the model's context — the system prompt, the tool definitions, the shared background every agent needs — on a whiteboard at the front of a room. Writing that board is the expensive part. You do it once.
+
+Now fill the room with ten people. The wasteful way to brief them is to copy the whole board onto ten separate boards, one per person, ten times the writing. That's the serving bill above.
+
+Or you leave the board where it is and everyone reads it. On that one board is the whole briefing — the background, the tools, and the roster of who's covering what, so each person knows what the others are handling and stays out of their lane. Each person keeps their own scratch pad for the part that's theirs. The costly thing, the briefing, is written down once and consulted in place. Ten people, one board, ten small pads.
+
+Here's where the picture stops being a picture. In a real room, "everyone reads the same board" still means ten people each turning their heads and reading — ten separate acts. In our runtime it doesn't. The agents don't each get their own copy of the shared context and they don't each re-read it into their own memory. They point at the same cells, and each one still works out its own next token from that shared board plus its own pad — not from each other's pads. Adding an agent to the shared context is one bit set, a marker that says *this agent, too, is an owner of these cells.* No copy, no re-read, no recompute. The board was written once, and every agent thinks from that exact board.
+
+So the fork is cheap where it counts: the expensive thing — the decoded context — isn't copied at all. Each new agent gets its own lightweight bookkeeping, but it shares the same cells, and reading them costs nothing to set up.
+
+The pads stay private while the work runs. Each agent can see the room's assignments on the shared board, so nobody chases the same source twice, but the findings each one writes stay on its own pad — invisible to its siblings — until the end, when one last agent reads every pad at once and writes the report. Shared briefing, independent work, one fan-in at the finish.
+
+## The receipt
+
+The picture earns a click; the mechanism has to hold the room. Here is what actually happens, and every claim traces to a line in our own inference kernel.
+
+<Frame caption="The run itself: ten agents forked from one GLM-5.2, one llama_decode per step.">
+  <img
+    src="/assets/blog/fanout-10agent-web.gif"
+    alt="Terminal recording of ten GLM-5.2 agents running concurrently on one deployment — nine researchers fanning out across the web and one synthesist, all decoding from a single shared KV context."
+  />
+</Frame>
+
+The runtime loads the frontier model once, into a single process, in memory — not across a network. The shared context is decoded once into the KV cache. Spawning agents two through ten is a `seq_cp`, which in one shared context means, verbatim from our kernel notes, *"no new cells, no buffer copy, zero decode/attention compute"* — it walks the shared cells and sets one more owner bit on each. A single physical cell can carry many owners at once, so the shared prompt is decoded a single time and every agent attends those same cells.
+
+Then the swarm runs. On each generation step, every live agent decodes in one GPU dispatch — a single `llama_decode`, not ten. As far as the GPU is concerned there is no "ten sequences" dimension; there are token rows, each tagged with the agent that owns it, and one forward pass covers all of them. The cost model we built the runtime around falls straight out of that:
+
+> Dispatch count is O(1) in agent count. Per-step wall-time scales with how full the cache is, not with how many agents are in it. Concurrency is free on compute and paid in space.
+
+The tenth agent adds one row and one O(1) bit-test per cell. Nowhere in the compute is there a multiplier on the number of agents. That's what "for the cost of one" means, stated exactly: one model load, one shared context, one dispatch per step. The expensive, redundant things every other stack re-pays for each agent, we pay once and share.
+
+If you want the tell that it's fullness and not headcount, watch a long report decode near the end of a run. It's slow because the cache is full — the step costs cache-size times report-length, and report count doesn't enter into it. Two agents and ten agents decode at the same per-step speed. If concurrency cost compute, that wouldn't hold. It does.
+
+## The honest floor
+
+So is the tenth agent actually free? On compute, near enough. But there's a real bill, and it's better you hear it from us than find it yourself: you pay in space, not compute.
+
+Every agent that diverges grows its own private tail in the KV cache. Ten agents writing ten reports hold ten reports' worth of cells at their peak. The frontier model is paid for once, the shared context is paid for once, the dispatch stays O(1) — but the memory grows with the actual work the agents do. The ceiling on how many agents run at once isn't compute; it's how much KV cache fits on the box.
+
+Which is the trade, put plainly: we turned a compute multiplier into a memory budget. On a box with room — two B200s, in this run — that budget is roomy, and the expensive thing, the frontier model's context, is computed exactly once however wide the swarm gets. A per-token cloud API can't make this trade at all, because it never hands you the shared cells to fork in the first place.
+
+## Why this is "shifting the harness left"
+
+Look again at what was on that screen. Not a model endpoint being called from a distance. An application — a deep-research app with its own topology of agents, its own tool use, its own corrections when a search came back about the wrong thing — running with the model inside its own process.
+
+A harness holds the thing it harnesses. In most stacks that phrase is decoration: the model lives at a vendor and the "harness" is glue around a remote call. In ours it's the literal architecture. The model runs inside the harness process, which is why the developer stops serving a model and starts serving an application. You write how the agents collaborate — chain, fanout, DAG — as ordinary code. Serving becomes a deployment choice rather than a rebuild. Concurrency, KV sharing, scheduling, and GPU execution live down in the runtime; you write the capability.
+
+That's the left-shift: the unit you build moves from *an inference endpoint your app calls* to *an application your app is.* The serving machinery — the coordination plane, the GPU box — still does real work; what moves left is where you build, not whether operations exists. And it's the reason "for the cost of one" is possible at all. You can only share a context and fork it for free when the model lives in the harness. Push it back behind a network and every agent is a fresh conversation again, and you're back to copying the board ten times.
+
+## The part you can check
+
+We didn't describe a system and hope you'd believe it. This post, and the campaign around it, was produced by the swarm it describes — agents forking one GLM-5.2 on one box, on rentable GPUs (2× B200 on RunPod; Scaleway too, more coming), writing real deliverables. The research run behind it is real, and its full output — the model comparison, the trace, the configuration — is published, so you can watch the nine agents fan out, see the corrections happen, and check the cost model against the cache occupancy yourself.
+
+The frontier model is finally open and good enough to run on your own hardware. GLM-5.2 is what makes "inside the harness" a real option instead of a compromise. Take that option and ten agents cost about what one does, because they share the one expensive thing and forking it is free.
+
+**See how it works, or run it yourself → [docs.lloyal.ai](https://docs.lloyal.ai)**
+
+---
+
+*Serve intelligence where your data lives. The model runs inside the harness — governed, forkable, and yours.*
