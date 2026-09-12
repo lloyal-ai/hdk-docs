@@ -6,22 +6,26 @@ flowchart TD
     PRODUCE --> STOP{"isStop?"}
     STOP -->|No| COLLECT["Collect token\nfor batch commit"]
     STOP -->|Yes| PARSE["parseChatOutput"]
-    PARSE --> POLICY["policy.onProduced()"]
+    PARSE --> GATES{"beforeDispatch gates\nframe (auth) · tool · harness"}
+    GATES -->|refused| INJECT["Nudge in the call's place\n(booked, not attended)"]
+    GATES -->|passed| POLICY["policy.onProduced()"]
     POLICY -->|report| DONE["reportResult + idle"]
-    POLICY -->|tool_call| DISPATCH["Queue for DISPATCH"]
-    POLICY -->|nudge| INJECT["Inject error result\n+ optional probe"]
+    POLICY -->|tool_call| DISPATCH["Queue for DISPATCH\n(re-gated if the call changed)"]
     POLICY -->|over budget| SOFTCUT["Nudge or kill\n(pressure_softcut)"]
 
     COLLECT --> COMMIT["store.commit()\nbatch decode"]
-    COMMIT --> SETTLE["SETTLE: drain settledBuffer"]
-    SETTLE --> FIT{"result tokens\n<= headroom?"}
-    FIT -->|Yes| PREFILL["store.prefill()"]
-    FIT -->|No| REJECT{"policy.onSettleReject()"}
-    REJECT -->|nudge| INJECT2["Replace with error"]
-    REJECT -->|idle| KILL2["Kill agent"]
+    COMMIT --> SETTLE["SETTLE: admit pending items"]
+    SETTLE --> FIT{"cost\n<= headroom?"}
+    FIT -->|Yes| PREFILL["store.prefill()\nbook · afterAdmit → follow-up?"]
+    FIT -->|No, and nothing can free room| REJECT{"beforeAdmit\ntool · harness · frame"}
+    REJECT -->|nudge| INJECT2["Replace with the nudge"]
+    REJECT -->|drop| KILL2["Drop agent\n(pressure_settle_reject / settle_stall_break)"]
 
     DISPATCH --> EXEC["Tool executes"]
-    EXEC --> RESULT["Result → settledBuffer\n(next tick's SETTLE)"]
+    EXEC --> AFTER{"afterExecute\ntool · harness · frame"}
+    AFTER -->|attempt| RESULT["Result → pending item\n(next tick's SETTLE)"]
+    AFTER -->|retry| PARK["Park; same call\nafter afterMs"]
+    AFTER -->|fail| FAILED["Failure settles\nas the result"]
 
     style KILL fill:#e74c3c,color:#fff
     style KILL2 fill:#e74c3c,color:#fff
