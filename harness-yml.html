@@ -85,7 +85,7 @@ defaults:
 <tr><td><code>model.embedding.context</code></td><td>a positive integer</td><td>boot</td><td>The most tokens one text may embed as; a longer text is refused, never truncated.</td></tr>
 <tr><td><code>model.embedding.pooling</code></td><td><code>mean</code> · <code>cls</code> · <code>last</code></td><td>boot</td><td>How the model folds token states into one vector &mdash; its own property; a catalog id carries it, a local file must say.</td></tr>
 </tbody></table></div>
-<p>Unset, <code>context</code> is 2048, which is the batch too: a text is encoded whole. A <code>path:</code> model with no <code>pooling</code> is refused at bind, naming the key. <code>nomic-embed-text-v1.5-q4</code> is the edge default: a tenth of the memory and a quarter of the latency of the Qwen encoder; Qwen recalls more of what the reranker would confirm and suits an appliance-class box.</p>
+<p>Unset, <code>context</code> is 2048, which is the batch too: a text is encoded whole. A <code>path:</code> model with no <code>pooling</code> is refused at bind, naming the key. <code>nomic-embed-text-v1.5-q4</code> is the one to reach for on an edge box: a tenth of the memory and a quarter of the latency of the Qwen encoder; Qwen recalls more of what the reranker would confirm and suits an appliance-class box.</p>
 
 <h2 id="the-catalog">The catalog and the slots</h2>
 <p>A catalog <code>id</code> is fetched on first launch into the project&rsquo;s <code>models/&lt;block&gt;/&lt;id&gt;.gguf</code> slot and verified against the catalog&rsquo;s digest, fail-closed: a truncated or tampered download is deleted, never loaded. A <code>path</code> is trusted by possession and never copied.</p>
