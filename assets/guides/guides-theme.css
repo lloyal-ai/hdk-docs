@@ -2743,10 +2743,10 @@ so ordinary
 
 /* Guides menu.
 
-   Seven labels need about 1250px at the default gap. Above the breakpoint the
-   bar stays a row and the button is hidden; below it, the links become a panel
-   the button discloses. A sideways-scrolling strip showed a phone two entries
-   and no indication the other five existed.
+   Ten labels need about 1360px at the tightened gap. Above 780px the bar
+   stays a row (scrolling sideways where it must) and the button is hidden;
+   below it, the links become a panel the button discloses. A sideways-scrolling
+   strip showed a phone two entries and no indication the other eight existed.
 
    The links are plain anchors in both layouts, so the nav still works with the
    script disabled — it simply stays a scrolling row. */

@@ -218,9 +218,9 @@ const NAV = [
 ];
 
 /**
- * Ten labels need ~1360px at the tightened gap. Above that the bar is a row; below it the row
- * becomes a disclosure, because a strip that scrolls sideways shows a phone two
- * entries and gives no sign the other five exist.
+ * Ten labels need ~1360px at the tightened gap. Down to 780px the bar is a row that scrolls
+ * sideways; below that it becomes a disclosure, because a strip that scrolls sideways shows a
+ * phone two entries and gives no sign the other eight exist.
  *
  * The button ships in the markup and is hidden by CSS above the breakpoint, so
  * there is nothing to construct at runtime and nothing moves if the script

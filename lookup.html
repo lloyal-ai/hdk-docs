@@ -83,7 +83,7 @@ interface ScorerReranker {
   getChunks(): TChunk[];
 }</code></pre></div>
 <p><code>promptData()</code> is what the per-spawn skill template reads, so an agent learns what kind of source it holds before it searches.</p>
-<p class="path-label">packages/agents/src/source.ts</p>
+<p class="path-label">packages/rig/src/source.ts</p>
 </section>
 
 <section>
@@ -141,7 +141,8 @@ GrantStoreCtx  // createContext&lt;GrantStore&gt;('lloyal.grantStore')</code></p
 <p>Wrong import paths were the single most common staleness in older material. These are the current homes.</p>
 <div class="table-wrap"><table><thead><tr><th>Symbol</th><th>Package</th></tr></thead><tbody>
 <tr><td><code>withSpine</code> · <code>agentPool</code> · <code>dag</code></td><td><code>@lloyal-labs/lloyal-agents</code></td></tr>
-<tr><td><code>Source</code> · <code>EntailmentScorer</code> · <code>ScorerReranker</code></td><td><code>@lloyal-labs/lloyal-agents</code></td></tr>
+<tr><td><code>EntailmentScorer</code></td><td><code>@lloyal-labs/lloyal-agents</code></td></tr>
+<tr><td><code>Source</code> · <code>Reranker</code> · <code>Embedder</code> · <code>admitChunks</code> · <code>service</code></td><td><code>@lloyal-labs/rig</code></td></tr>
 <tr><td><code>GrantStore</code> · <code>GrantStoreCtx</code></td><td><code>@lloyal-labs/lloyal-agents</code></td></tr>
 <tr><td><code>composePrompt</code> · <code>renderPrompt</code> · <code>renderTemplate</code></td><td><code>@lloyal-labs/lloyal-agents</code></td></tr>
 <tr><td><code>renderSpine</code></td><td><code>@lloyal-labs/rig</code></td></tr>

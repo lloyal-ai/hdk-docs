@@ -47,8 +47,8 @@ description: Composition of models — one reasoning model and, beside it, every
     context: 16384
   vision: {}          # no id: the projector the catalog pairs with the llm</code></pre></div>
 <p>Three things follow from presence being the trigger.</p>
-<ul><li><strong>An empty block is a request.</strong> <code>vision: {}</code>, or a bare <code>vision:</code>, asks for vision and takes the catalog pairing. <code>reranker: {}</code> asks for a reranker and selects none, so the boot refuses: <em>set <code>model.reranker.id</code> (a catalog id) or <code>model.reranker.path</code></em>. A <code>vision: {}</code> under a <code>path:</code> llm is the same refusal with one more clause &mdash; <em>none follows from the llm</em> &mdash; because bytes the catalog knows nothing about have no pairing.</li><li><strong>A default never requests a model.</strong> <code>model.reranker.context</code> defaults to 16384, but only once the block is present. No selection key has a default, so nothing loads that nobody asked for. The 630 MB reranker that used to appear because an installed ability declared one now appears because you wrote a line.</li><li><strong>Removing a block disables what needs it.</strong> Delete <code>model.reranker</code> and the harness still starts; every ability that requires a reranker is refused at enable with the block named, and the run continues without those abilities. Put the block back and they enable again.</li></ul>
-<p>Every key, its env name, what it takes and when a change applies is on the <a href="/harness-yml#the-model-family">harness.yml reference</a>. The tuning that used to be hard-coded in the boots &mdash; the reranker&rsquo;s context, the scoring question it is asked &mdash; is settable there because the service declares it.</p>
+<ul><li><strong>An empty block is a request.</strong> <code>vision: {}</code>, or a bare <code>vision:</code>, asks for vision and takes the catalog pairing. <code>reranker: {}</code> asks for a reranker and selects none, so the boot refuses: <em>set <code>model.reranker.id</code> (a catalog id) or <code>model.reranker.path</code></em>. A <code>vision: {}</code> under a <code>path:</code> llm is the same refusal with one more clause &mdash; <em>none follows from the llm</em> &mdash; because bytes the catalog knows nothing about have no pairing.</li><li><strong>A default never requests a model.</strong> <code>model.reranker.context</code> defaults to 16384, but only once the block is present. No selection key has a default, so nothing loads that nobody asked for. The 630 MB reranker appears because you wrote a line, never because an installed ability declared one.</li><li><strong>Removing a block disables what needs it.</strong> Delete <code>model.reranker</code> and the harness still starts; every ability that requires a reranker is refused at enable with the block named, and the run continues without those abilities. Put the block back and they enable again.</li></ul>
+<p>Every key, its env name, what it takes and when a change applies is on the <a href="/harness-yml#the-model-family">harness.yml reference</a>. The reranker&rsquo;s context and the scoring question it is asked are settable there because the service declares them.</p>
 
 <h1 id="reading-a-service">Reading a service</h1>
 <p>One call, from either consumer, anywhere under the binding:</p>
@@ -63,17 +63,28 @@ yield* service("vision");                       // the marker: the trunk can see
 <p>An ability reads its services in its setup, once, and hands them to its source and tools at construction. Because the enable gate refused the ability before the factory ran if the requirement was unmet, the read inside a declared ability always answers.</p>
 <div class="code-frame"><div class="code-label">src/index.ts</div><pre><code>export const createCorpusAbility = defineAbility(manifest, function* () {
   const reranker = yield* service("reranker");     // declared in ability.json, so this answers
-  const chunks = yield* call(() => fitChunks(chunkResources(resources), {
-    maxTokens: DEFAULT_CHUNK_TOKENS, tokenize: (t) => reranker.tokenize(t),
-  }));
+
+  const cfgStore = yield* AbilityConfigStoreCtx.expect();
+  const cfg = (yield* cfgStore.get("corpus")) ?? {};
+  const corpusPath = typeof cfg.corpusPath === "string" ? cfg.corpusPath : undefined;
+  if (!corpusPath) throw new Error("createCorpusAbility: missing config `corpusPath`");
+
+  const resources = loadResources(corpusPath);
+  const chunks = yield* call(() =>
+    fitChunks(chunkResources(resources), { maxTokens: DEFAULT_CHUNK_TOKENS, tokenize: (t) => reranker.tokenize(t) }),
+  );
+
   const source = new CorpusSource(resources, chunks, reranker);
-  return { source, tools: byName(source.tools), skill };
+  const tools: Record&lt;string, Tool&gt; = {};
+  for (const t of source.tools) tools[t.name] = t;
+
+  return { source, tools, skill };
 });</code></pre></div>
-<p>That is the whole of what the corpus ability does with the service. It used to be nine lines of try/catch and a paragraph naming the boot function that ought to have set a context; the framework guarantees the read now, so the ability just reads.</p>
+<p>That is the whole of what the corpus ability does with the service: one read, handed to its source at construction. The framework guarantees the read, so the ability writes no refusal of its own.</p>
 
 <h2 id="from-a-harness">From a harness</h2>
 <p>A harness reads a service the same way, from its own code: the boot binds before <code>harness()</code> runs, on the edge once for the process and on a served host once per admitted session, so the call answers anywhere inside. Nothing has to be declared &mdash; the harness named the block.</p>
-<div class="code-frame"><div class="code-label">harness/library.ts</div><pre><code>export function* librarySearch(query: string, briefs: Brief[]) {
+<div class="code-frame"><div class="code-label">your harness code</div><pre><code>export function* librarySearch(query: string, briefs: Brief[]) {
   const reranker = yield* service("reranker");
   const scores = yield* call(() => reranker.scoreBatch(query, briefs.map((b) => b.summary)));
   return briefs.map((b, i) => ({ ...b, score: scores[i] })).sort((a, b) => b.score - a.score);
@@ -154,10 +165,10 @@ yield* service("vision");                       // the marker: the trunk can see
 <tr><td><code>bind(artifact, block)</code></td><td>the artifact as the instance <code>service(name)</code> answers &mdash; an Effection resource, so the instance lives as long as the scope that bound it and is torn down with it</td></tr>
 <tr><td><code>trunk(artifact, block)</code></td><td>the options the artifact contributes to the resident context; typed only for a service whose map entry is a <code>Trunk</code>, so an instance service cannot accidentally be folded into the trunk</td></tr>
 </tbody></table></div>
-<p><code>block</code> is the service&rsquo;s <code>model.&lt;name&gt;</code> as the layering resolved it, typed from its keys, so a provider reads its tuning without parsing anything. The reranker row is one line; the binding it calls, <code>createReranker</code>, is the one file in the framework that opens a second native context and composes the runtime&rsquo;s reranking primitive over it, and it is its own file so a test can stand a fake at that boundary and prove the walk without loading a model. A new kind whose binding needs a different acquirer &mdash; a model that is not a <code>.gguf</code> in a slot &mdash; would add one more optional cell then; nothing today needs it, so it is not in the contract.</p>
+<p><code>block</code> is the service&rsquo;s <code>model.&lt;name&gt;</code> as the layering resolved it, typed from its keys, so a provider reads its tuning without parsing anything. The reranker row is one line; the binding it calls, <code>createReranker</code>, is one of the two files in the framework that open a second native context (the embedder&rsquo;s, <code>createEmbedder</code>, is the other) and compose a runtime primitive over it, and each is its own file so a test can stand a fake at that boundary and prove the walk without loading a model. A new kind whose binding needs a different acquirer &mdash; a model that is not a <code>.gguf</code> in a slot &mdash; would add one more optional cell then; nothing today needs it, so it is not in the contract.</p>
 
 <h2 id="two-halves">The two halves of a new kind</h2>
-<p>&ldquo;And more&rdquo; is the load-bearing phrase in the promise at the top of this page, and it is worth being exact about what the contract buys. A new kind of model has two halves, which used to be fused and are now separate:</p>
+<p>The promise at the top of this page ends in a dash &mdash; a judge, a projector, an encoder, a classifier, and whatever comes next &mdash; and it is worth being exact about what the contract buys for the next one. A new kind of model has two halves, which the contract keeps separate:</p>
 <ul><li><strong>The service layer</strong> &mdash; configuration, acquisition, binding, the accessor, the installer&rsquo;s step, the gates. After this contract, a map line, a set of keys, a row and a catalog entry, compiler-guided.</li><li><strong>The native substrate</strong> &mdash; the model actually running in the runtime. Unchanged by the contract, and the part that decides whether the kind exists at all.</li></ul>
 <p>Embedding is the evidence for the first half: its substrate was finished first &mdash; the encoder, its pooling modes and a worked recipe in the runtime, proven against a real model &mdash; and its service came after, as a row, a binding and four keys, with nothing else in the framework touched. It is the worked example precisely because it isolates the layer this contract is about. It does <em>not</em> establish that a Whisper encoder costs a row, because Whisper&rsquo;s substrate is the part embedding already had. The honest claim is this: a new kind used to be an arc whichever half you looked at; now the service half is a row, and the remaining question for any model is only whether it runs.</p>
 
