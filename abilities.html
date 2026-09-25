@@ -47,7 +47,7 @@ description: A packaged capability — manifest, source, tools, skill — that a
 <tr><td><code>protocol.name</code></td><td>The discipline an agent applies. Appears in the boundary marker on every per-spawn message.</td></tr>
 <tr><td><code>protocol.useWhen</code></td><td>One sentence, read by the planner at execution time to route work here.</td></tr>
 <tr><td><code>protocol.tools[]</code></td><td>Tool names. Must equal the setup's tool map keys as a set — no missing, no extras.</td></tr>
-<tr><td><code>configSchema</code></td><td>Optional JSON Schema for operator-supplied config.</td></tr>
+<tr><td><code>configSchema</code></td><td>Optional JSON Schema for operator-supplied config &mdash; read in the setup or at a tool&rsquo;s call, see <a href="#the-setup">The setup</a>.</td></tr>
 <tr><td><code>services</code></td><td>Optional. The services the Ability requires &mdash; <code>reranker</code>, <code>vision</code>, <code>embedding</code>. A service exists when the harness names its model in <code>harness.yml</code>; the harness never provisions one because an Ability asked, and an Ability whose requirement the file does not name is refused at enable. The trunk model is never listed.</td></tr>
 </tbody></table></div>
 <h2 id="services">Services</h2>
@@ -59,9 +59,10 @@ description: A packaged capability — manifest, source, tools, skill — that a
 <p><strong>One signed artefact, bound to your data when you enable it.</strong> The setup is a generator returning the parts, and its output is validated when the factory runs — the same moment the Ability comes alive against your instance of the domain.</p>
 <div class="table-wrap"><table><thead><tr><th>part</th><th>role</th></tr></thead><tbody>
 <tr><td><strong>source</strong></td><td>Access to a live system, plus retrieval intelligence: the tools getter, a contents advert, and a reranker-backed scorer.</td></tr>
-<tr><td><strong>tools</strong></td><td>The actions. Each carries a JSON-Schema <code>parameters</code>, an <code>execute</code> generator, and a <code>protected</code> flag marking sensitive or write operations.</td></tr>
+<tr><td><strong>tools</strong></td><td>The actions. Each carries a JSON-Schema <code>parameters</code>, an <code>execute</code> generator that may read the Ability's config at the call, and a <code>protected</code> flag marking sensitive or write operations.</td></tr>
 <tr><td><strong>skill</strong></td><td>The per-spawn preamble — <em>how</em> an agent should investigate with this Ability. Rendered per spawn, never folded into the shared spine.</td></tr>
 </tbody></table></div>
+<p><strong>Config is read where it is used, and that decides when a save applies.</strong> An Ability&rsquo;s stored config &mdash; the object <code>configSchema</code> describes &mdash; is read through <code>AbilityConfigStoreCtx</code>, from the setup and from any tool&rsquo;s <code>execute</code>. Read in the setup, a value becomes a resource the Ability owns for its life: a corpus index built from a path, a pacer for keyless search. Read in a tool at the call, a value follows the reader&rsquo;s save at once: the next search of every agent already holding the tool goes through the key saved a moment ago. Prefer the call for anything that is a value rather than a resource. A save under a live run re-enables the Ability either way; what a running agent already holds keeps working, on the build it took, until its run ends, and the next run takes the new build.</p>
 
 <h1 id="build-one">Build one</h1>
 <div class="code-frame"><div class="code-label">TERMINAL</div><pre><code>npx lloyal-ai ability:new jira --publisher acme
