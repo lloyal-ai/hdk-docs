@@ -34,7 +34,7 @@ description: Composition of models — one reasoning model and, beside it, every
 <tr><td><strong>reach</strong></td><td>a harness or an ability</td><td><code>yield* service('reranker')</code></td><td>the bound instance, or the marker, from anywhere under the binding.</td></tr>
 <tr><td><strong>refuse</strong></td><td>the framework</td><td>the same call; the enable gate</td><td>one message, naming the block whose presence would have bound it.</td></tr>
 </tbody></table></div>
-<p>The order matters at the boot: everything is <em>acquired</em> before anything is <em>loaded</em>, so a first run that needs 600 MB of reranker finds out before it has spent the minutes loading 2.6 GB of trunk, and a bind that fails fails before a session exists to fail in.</p>
+<p>The order matters at the boot: everything is <em>acquired</em> before anything is <em>loaded</em>, so a first run that needs 600 MB of reranker finds out before it has spent the minutes loading 2.6 GB of trunk, and on the edge a bind that fails fails before a session exists to fail in. The served host binds an instance service once per admitted session, inside that session&rsquo;s scope: a bind that fails there ends that session alone, and the host keeps serving.</p>
 
 <h1 id="naming-a-model">Naming a model</h1>
 <p><strong>The block&rsquo;s presence is the request; its contents are the selection.</strong> A service is enabled by writing its block under <code>model:</code> and disabled by removing it. The keys inside choose which model: <code>path</code> outranks <code>id</code>; a block with neither takes what its provider can derive, and a block with neither and no derivation is refused before anything runs, naming the key to add.</p>
