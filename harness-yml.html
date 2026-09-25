@@ -69,7 +69,7 @@ defaults:
 <p>Unset, <code>context</code> is 16384. The reranker runs on its own context, at <code>q8_0</code> KV precision &mdash; at <code>q4_0</code> its verdicts invert on close pairs.</p>
 
 <h2 id="vision">vision</h2>
-<p>The projector through which the reasoning model sees an image. The block with no <code>id</code> takes the projector the catalog pairs with the llm, so switching the llm switches the projector with it; a <code>path:</code> llm has no pairing and needs an explicit <code>id</code>.</p>
+<p>The projector through which the reasoning model sees an image. The block with no <code>id</code> takes the projector the catalog pairs with the llm, so switching the llm switches the projector with it; a <code>path:</code> llm has no pairing and needs an explicit <code>id</code> or <code>path</code>.</p>
 <div class="table-wrap"><table><thead><tr><th>Key</th><th>Takes</th><th>Applies</th><th>What it is</th></tr></thead><tbody>
 <tr><td><code>model.vision.id</code></td><td>a catalog id</td><td>reload</td><td>The catalog id of the vision projector; unset, the one the catalog pairs with the reasoning model.</td></tr>
 <tr><td><code>model.vision.path</code></td><td>a path to a <code>.gguf</code></td><td>reload</td><td>A local .gguf for the vision projector; outranks the catalog id.</td></tr>
