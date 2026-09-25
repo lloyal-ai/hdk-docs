@@ -2836,12 +2836,12 @@ so ordinary
   }
 }
 
-/* The six labels need ~1050px at the default 32px gap. Tightening the gutters
-   below 1180px buys the ~110px that keeps a 1024-wide laptop on one screen
+/* The ten labels need ~1520px at the default 32px gap. Tightening the gutters
+   below 1560px buys the ~160px that keeps a 1440-wide laptop on one screen
    without scrolling; narrower than that the bar scrolls sideways, which is the
    honest trade against shortening labels the hub spells out in full. */
 
-@media (max-width: 1180px) {
+@media (max-width: 1560px) {
   #lloyal-guides .lloyal-topnav {
     gap: 20px;
     padding-left: 24px;

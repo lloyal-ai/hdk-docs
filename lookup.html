@@ -59,7 +59,7 @@ interface ScorerReranker {
 <p>The <code>&lt;Instruct&gt;</code> sentence is bound at construction, not per call. <code>createReranker</code> takes it, and every Ability sharing that instance asks the same question.</p>
 <div class="table-wrap"><table><thead><tr><th>Option</th><th>Default</th><th>Note</th></tr></thead><tbody>
 <tr><td><code>instruction</code></td><td><code>RETRIEVAL_INSTRUCTION</code></td><td>Deep-frozen. Supplying one changes the criterion for every Ability on that reranker.</td></tr>
-<tr><td><code>typeK</code> / <code>typeV</code></td><td><code>q4_0</code></td><td>KV precision bounds the smallest score difference worth treating as real.</td></tr>
+<tr><td><code>typeK</code> / <code>typeV</code></td><td><code>q8_0</code></td><td>KV precision bounds the smallest score difference worth treating as real; at <code>q4_0</code> close pairs invert.</td></tr>
 <tr><td><code>nSeqMax</code></td><td><code>10</code></td><td>Parallel scoring slots &mdash; the group width of one batched dispatch.</td></tr>
 <tr><td><code>nCtx</code></td><td><code>4096</code></td><td><code>nBatch</code> derives as <code>floor(nCtx / nSeqMax)</code>.</td></tr>
 </tbody></table></div>
@@ -159,6 +159,7 @@ GrantStoreCtx  // createContext&lt;GrantStore&gt;('lloyal.grantStore')</code></p
 <div class="reference-grid">
 <a href="/build-your-first-harness">Build your first harness <span class="out">→</span></a>
 <a href="/thinking-in-lloyal">Thinking in Lloyal <span class="out">→</span></a>
+<a href="/harness-yml">harness.yml <span class="out">→</span></a>
 <a href="/agent-policy-and-context-pressure">Adaptive compute <span class="out">→</span></a>
 <a href="https://www.npmjs.com/package/lloyal-ai">lloyal-ai CLI <span class="out">↗</span></a>
 <a href="https://apps.lloyal.ai/">Abilities catalogue <span class="out">↗</span></a>

@@ -210,6 +210,7 @@ const NAV = [
   { slug: 'thinking-in-lloyal', href: '/thinking-in-lloyal', label: 'Thinking in Lloyal' },
   { slug: 'continuous-context', href: '/continuous-context', label: 'Continuous Context' },
   { slug: 'abilities', href: '/abilities', label: 'Abilities' },
+  { slug: 'services', href: '/services', label: 'Services' },
   { slug: 'agent-policy-and-context-pressure', href: '/agent-policy-and-context-pressure', label: 'Adaptive compute' },
   { slug: 'focal-lens', href: '/focal-lens', label: 'Focus' },
   { slug: 'where-a-harness-runs', href: '/where-a-harness-runs', label: 'Where a harness runs' },
@@ -217,7 +218,7 @@ const NAV = [
 ];
 
 /**
- * Eight labels need ~1400px. Above that the bar is a row; below it the row
+ * Ten labels need ~1360px at the tightened gap. Above that the bar is a row; below it the row
  * becomes a disclosure, because a strip that scrolls sideways shows a phone two
  * entries and gives no sign the other five exist.
  *

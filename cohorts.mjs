@@ -31,6 +31,8 @@ export const COHORT = {
   'focal-lens':                        ['guide', 'short', 'hl'],
   'lookup':                            ['guide', 'short'],
   'where-a-harness-runs':              ['guide', 'short'],
+  'harness-yml':                       ['guide', 'short'],
+  'services':                          ['guide', 'short'],
   // The first page styled entirely by the shared layers — it has no per-page
   // selectors at all, which before the flatten meant no styling at all.
   'publisher-tos':                     ['guide', 'short'],
