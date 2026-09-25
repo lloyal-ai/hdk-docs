@@ -144,6 +144,10 @@ yield* service("vision");                       // the marker: the trunk can see
     trunk: (artifact, block) =>
       ({ mmprojPath: artifact, imageMinTokens: block.minTokens, imageMaxTokens: block.maxTokens }),
   },
+  embedding: {
+    bind: (artifact, block) =>
+      createEmbedder(artifact, { nCtx: block.context, pooling: embeddingPooling(block) }),
+  },
 };</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>Cell</th><th>Says</th></tr></thead><tbody>
 <tr><td><code>derive(of)</code></td><td>which model backs the service when its block names none, given the llm&rsquo;s selection; <code>undefined</code> refuses, naming <code>model.&lt;name&gt;.id</code></td></tr>

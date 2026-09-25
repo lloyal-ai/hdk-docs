@@ -28,6 +28,7 @@ model:
     branches: 5
   reranker:
     id: qwen3-reranker-0.6b-q8
+  vision: {}
 
 sources:
   outputDir: reports
@@ -42,7 +43,7 @@ defaults:
 <p>The <code>research</code> template&rsquo;s manifest as scaffolded. <code>model</code> is the family every harness ships; <code>sources</code> and <code>defaults</code> are this template&rsquo;s own keys; <code>targets</code> is the scaffold&rsquo;s.</p>
 
 <h1 id="the-model-family">The model family</h1>
-<p>One block per model, and <strong>the block&rsquo;s presence is the request</strong>: naming a block under <code>model:</code> is what loads that model; removing it is how &ldquo;I don&rsquo;t need this&rdquo; is said. Its keys are the selection &mdash; <code>path</code> outranks <code>id</code>. An empty block (<code>vision: {}</code>, or a bare <code>vision:</code>) is a request with nothing selected: a service with a derivation takes it (vision pairs from the llm), and one without is refused, naming the key to add (<code>reranker: {}</code> &rarr; &ldquo;set <code>model.reranker.id</code> or <code>model.reranker.path</code>&rdquo;). No key of the family has a default, because a default would resolve whether or not you asked.</p>
+<p>One block per model, and <strong>the block&rsquo;s presence is the request</strong>: naming a block under <code>model:</code> is what loads that model; removing it is how &ldquo;I don&rsquo;t need this&rdquo; is said. Its keys are the selection &mdash; <code>path</code> outranks <code>id</code>. An empty block (<code>vision: {}</code>, or a bare <code>vision:</code>) is a request with nothing selected: a service with a derivation takes it (vision pairs from the llm), and one without is refused, naming the key to add (<code>reranker: {}</code> &rarr; &ldquo;set <code>model.reranker.id</code> or <code>model.reranker.path</code>&rdquo;). No selection key has a default; a tuning key may (<code>model.reranker.context</code>), and it stands only once its block is present &mdash; a default never requests a model.</p>
 <p>Every key lives at the path the file names it by: <code>model.llm.context</code> is the key, the yml path, and the provenance name. Every block beside <code>llm</code> is a <a href="/services">service</a>: the guide has the lifecycle, what a bound one exposes, and how a new kind is added.</p>
 
 <h2 id="llm">llm</h2>
@@ -63,6 +64,7 @@ defaults:
 <tr><td><code>model.reranker.id</code></td><td>a catalog id</td><td>reload</td><td>The catalog id of the reranker &mdash; the pointwise judge that scores what the abilities retrieve.</td></tr>
 <tr><td><code>model.reranker.path</code></td><td>a path to a <code>.gguf</code></td><td>reload</td><td>A local .gguf for the reranker; outranks the catalog id.</td></tr>
 <tr><td><code>model.reranker.context</code></td><td>a positive integer</td><td>boot</td><td>The reranker context; every scoring sequence leases from it.</td></tr>
+<tr><td><code>model.reranker.instruction</code></td><td><code>{ text, smokeTest }</code> &mdash; the scoring question and its canary pair, or <code>smokeTest: none</code></td><td>boot</td><td>The scoring question and its canary &mdash; what relevant means for every ability sharing the reranker.</td></tr>
 </tbody></table></div>
 <p>Unset, <code>context</code> is 16384. The reranker runs on its own context, at <code>q8_0</code> KV precision &mdash; at <code>q4_0</code> its verdicts invert on close pairs.</p>
 
@@ -70,6 +72,7 @@ defaults:
 <p>The projector through which the reasoning model sees an image. The block with no <code>id</code> takes the projector the catalog pairs with the llm, so switching the llm switches the projector with it; a <code>path:</code> llm has no pairing and needs an explicit <code>id</code>.</p>
 <div class="table-wrap"><table><thead><tr><th>Key</th><th>Takes</th><th>Applies</th><th>What it is</th></tr></thead><tbody>
 <tr><td><code>model.vision.id</code></td><td>a catalog id</td><td>reload</td><td>The catalog id of the vision projector; unset, the one the catalog pairs with the reasoning model.</td></tr>
+<tr><td><code>model.vision.path</code></td><td>a path to a <code>.gguf</code></td><td>reload</td><td>A local .gguf for the vision projector; outranks the catalog id.</td></tr>
 <tr><td><code>model.vision.minTokens</code></td><td>a positive integer</td><td>reload</td><td>The floor on how many tokens one image is projected into; grounding tasks want it high.</td></tr>
 <tr><td><code>model.vision.maxTokens</code></td><td>a positive integer</td><td>reload</td><td>The ceiling on what one image costs in context cells; lower it to fit more images.</td></tr>
 </tbody></table></div>
