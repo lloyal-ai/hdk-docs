@@ -179,7 +179,7 @@ export type Config = ConfigOf&lt;typeof config&gt;;</code></pre></div>
 
 <h1 id="harness-json">harness.json</h1>
 <p>The local overlay, beside the manifest: what the settings pane writes, at version <code>2</code>, one block per model in the same shape as the manifest. It is written atomically with mode 0600 &mdash; it can carry a credential &mdash; and every save tightens a looser file; scaffolds ship it in <code>.gitignore</code>, and a save appends it there when it is not. A save carries only the keys it changes, merged into the families the table declares and replacing anything else whole, so a local overlay never pins an untouched value over the rungs beneath it.</p>
-<p>A file written before alpha.10 says <code>"version": 1</code> and is refused, naming the fix: delete it and relaunch. A file at a version this runtime does not write is ignored by the loader and never rebuilt over by a save &mdash; nothing overwrites a newer runtime&rsquo;s settings.</p>
+<p>A file written before 1.11 says <code>"version": 1</code> and is refused, naming the fix: delete it and relaunch. A file at a version this runtime does not write is ignored by the loader and never rebuilt over by a save &mdash; nothing overwrites a newer runtime&rsquo;s settings.</p>
 <blockquote><p><strong>The manifest is the deploy; the overlay is the machine. Naming a model in either is enabling it.</strong></p></blockquote>
 </article></main>
 <footer class="footer wrap"><span class="mission">Enable every organisation to deliver intelligence on its terms.</span><span>Lloyal Labs · Melbourne</span></footer>
