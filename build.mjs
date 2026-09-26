@@ -210,6 +210,7 @@ const NAV = [
   { slug: 'thinking-in-lloyal', href: '/thinking-in-lloyal', label: 'Thinking in Lloyal' },
   { slug: 'continuous-context', href: '/continuous-context', label: 'Continuous Context' },
   { slug: 'abilities', href: '/abilities', label: 'Abilities' },
+  { slug: 'services', href: '/services', label: 'Services' },
   { slug: 'agent-policy-and-context-pressure', href: '/agent-policy-and-context-pressure', label: 'Adaptive compute' },
   { slug: 'focal-lens', href: '/focal-lens', label: 'Focus' },
   { slug: 'where-a-harness-runs', href: '/where-a-harness-runs', label: 'Where a harness runs' },
@@ -217,9 +218,9 @@ const NAV = [
 ];
 
 /**
- * Eight labels need ~1400px. Above that the bar is a row; below it the row
- * becomes a disclosure, because a strip that scrolls sideways shows a phone two
- * entries and gives no sign the other five exist.
+ * Ten labels need ~1360px at the tightened gap. Down to 780px the bar is a row that scrolls
+ * sideways; below that it becomes a disclosure, because a strip that scrolls sideways shows a
+ * phone two entries and gives no sign the other eight exist.
  *
  * The button ships in the markup and is hidden by CSS above the breakpoint, so
  * there is nothing to construct at runtime and nothing moves if the script
