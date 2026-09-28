@@ -1,0 +1,91 @@
+<!--
+title: Ship your app
+description: How a scaffolded harness becomes a distributable macOS application — what the packager is told, what your users meet on first launch, and what signing and notarizing actually require.
+-->
+<div class="page">
+<header class="masthead wrap"><div><div class="wordmark">Lloyal Labs</div><div class="tagline">Engineering AI's contact with reality.</div></div><div class="issue"><span><a href="https://verticalinference.lloyal.ai/">Vertical Inference</a><br>Distribution</span></div></header>
+<section class="hero wrap"><div class="eyebrow"><a href="/">Developer docs</a> / Architecture and operations</div><h1>Ship your app</h1><div class="hero-sub">A scaffolded harness becomes a macOS application someone else installs, with no packaging machinery left in the project.</div></section>
+<section class="thesis wrap"><div class="thesis-grid"><p>Running three ways is not the same as being distributable. The gap is a signed, notarized disk image and a first launch that provisions itself on a machine you have never seen.</p><div class="pullquote">Nothing is signed<br>unless you ask.</div></div></section>
+<main class="article-shell wrap"><nav class="toc" aria-label="Table of contents"><div class="toc-label">In this guide</div><a class="toc-l1" href="#what-ship-produces">What <code>ship</code> produces</a><a class="toc-l1" href="#the-first-launch">The first launch your users meet</a><a class="toc-l2" href="#what-an-update-does-not-do">What an update does not do</a><a class="toc-l1" href="#two-roots">Two roots, and why they differ</a><a class="toc-l1" href="#the-icon">The icon</a><a class="toc-l1" href="#signing-and-notarizing">Signing and notarizing</a><a class="toc-l2" href="#get-a-developer-id">Get a Developer ID</a><a class="toc-l2" href="#choose-a-notary-route">Choose a notary route</a><a class="toc-l2" href="#give-them-to-the-build">Give them to the build</a><a class="toc-l2" href="#what-notarize-guarantees">What --notarize guarantees</a><a class="toc-l2" href="#check-it-before-you-send-it">Check it before you send it</a><a class="toc-l1" href="#not-here-yet">Not here yet</a></nav><article class="article">
+
+<h1 id="what-ship-produces">What <code>ship</code> produces</h1>
+<p>A macOS disk image in <code>release/</code>, carrying the compiled engine, its production dependencies, its prompt files and the manifest. A reader mounts it and drags the application to Applications.</p>
+<div class="code-frame"><div class="code-label">Shell</div><pre><code>npx lloyal-ai ship              # unsigned: opens on this Mac, nowhere else
+npx lloyal-ai ship --notarize   # the distributable artifact</code></pre></div>
+<p>The first run asks for an application identifier and records it in <code>harness.yml</code>; every run after it, and CI, reads it from there.</p>
+<div class="code-frame"><div class="code-label">harness.yml</div><pre><code>ship:
+  id: ai.lloyal.fieldnote
+  icon: build/icon.icns</code></pre></div>
+<p>Nothing else about packaging enters your project. The entitlements, the archive rules, the native-module unpacking and the disk-image layout are synthesised for the build and thrown away with the temporary directory they were written to. A project that later needs its own arrangement can take a copy and spread it over the generated one.</p>
+<blockquote><p><strong>Model weights are not inside it.</strong> The wiki template packages to about 142&nbsp;MB and deep-research to about 154&nbsp;MB, whatever the models they name.</p></blockquote>
+
+<h1 id="the-first-launch">The first launch your users meet</h1>
+<p>They meet the same provisioning screen you did on your first <code>dev:desktop</code> run. There is no separate end-user path, because there is no separate code.</p>
+<ul><li>one row per model named in <code>harness.yml</code> — the reasoning model, and whichever of reranker, vision and embedding that harness declares;</li><li>each fetched and <strong>digest-verified</strong> against the SHA the catalogue pins, from the upstream source or the Lloyal mirror, whichever answers;</li><li>the bytes, the rate and the time remaining, per row;</li><li>a weight the reader already has, offered as an alternative to downloading it;</li><li>everything written to the application's own support directory, never beside your project.</li></ul>
+<p>Every launch after that opens at once. A download that is truncated or tampered with is deleted rather than loaded, and the next source is tried.</p>
+
+<h2 id="what-an-update-does-not-do">What an update does not do</h2>
+<p>The manifest ships inside the application as its default and becomes the installation's own the first time it launches. That copy happens once.</p>
+<p>So changing a model in <code>harness.yml</code> reaches a <strong>fresh</strong> installation. An existing one keeps the manifest it seeded, along with every edit its reader has made to it since — which is the point, because that file now holds their choices, not yours. An update brings new code, never a rewrite of a file the reader owns.</p>
+
+<h1 id="two-roots">Two roots, and why they differ</h1>
+<p>A packaged harness has two locations rather than one, and they are two because of what the operating system allows rather than by design.</p>
+<div class="table-wrap"><table><thead><tr><th>What</th><th>Where, once packaged</th><th>Why</th></tr></thead><tbody>
+<tr><td>Engine entry, compiled code, dependencies</td><td>inside the <code>asar</code> archive</td><td>Electron reads it there; the OS cannot make it a working directory.</td></tr>
+<tr><td>The engine's working directory</td><td><code>Contents/Resources</code></td><td>A real directory — the archive's physical parent.</td></tr>
+<tr><td>Prompt files</td><td>beside the archive, under <code>Resources</code></td><td>The loader resolves them through <code>cwd</code> and reads them with plain <code>fs</code> at every render.</td></tr>
+<tr><td>Everything a run produces</td><td>the application's support directory</td><td>The bundle is read-only. The manifest, the overlay, the models, the media store and the reports live here.</td></tr>
+</tbody></table></div>
+<p>In development all three are the working directory, so an edit to a prompt is still live at the next render. Neither template's prompt loader changes between the two.</p>
+
+<h1 id="the-icon">The icon</h1>
+<p>Each template ships a mark at <code>build/icon.icns</code> and names it in the manifest, so an application is never born wearing Electron's logo with nothing to say it was yours to set. Replace that file, or point <code>ship.icon</code> at another.</p>
+<p>A <code>.icns</code> or a square <code>.png</code> of at least 512&nbsp;px, 1024 preferred. <strong>Not an SVG</strong>: the rasteriser draws paths and not type, so a mark made of lettering ships as a blank tile and nothing in the build says so. Render it first.</p>
+
+<h1 id="signing-and-notarizing">Signing and notarizing</h1>
+<p>An unsigned image opens on the Mac that built it and is refused on every other. Gatekeeper judges what was downloaded, so the disk image itself has to be notarized, not only the application inside it.</p>
+<blockquote><p><strong>Nothing is signed unless <code>--notarize</code> asks for it</strong>, however well the machine is set up. A leftover variable from another project is not a decision to release, and a request that cannot be met is refused before the build rather than quietly downgraded.</p></blockquote>
+
+<h2 id="get-a-developer-id">Get a Developer ID</h2>
+<p>Membership of the Apple Developer Program, then a <strong>Developer ID Application</strong> certificate. An individual account is enough; the signature carries your own name until you enrol as an organisation. Install it in your keychain, and note the name it appears under.</p>
+<p>This is the non-App-Store distribution path. It is not the Mac App Store, which needs a different certificate and a different target.</p>
+
+<h2 id="choose-a-notary-route">Choose a notary route</h2>
+<p>Apple accepts three, and the choice is about where the secret lives.</p>
+<div class="table-wrap"><table><thead><tr><th>Route</th><th>What it puts on disk</th><th>Use it when</th></tr></thead><tbody>
+<tr><td><strong>Stored profile</strong> — <code>xcrun notarytool store-credentials &lt;name&gt;</code></td><td>Nothing. The secret stays in your keychain.</td><td>On your own machine. Prefer this.</td></tr>
+<tr><td><strong>App Store Connect key</strong> — a <code>.p8</code> file</td><td>A file path, not a secret.</td><td>On CI, where there is no keychain.</td></tr>
+<tr><td><strong>Apple ID</strong> — an app-specific password</td><td>The password itself.</td><td>Last resort; see the warning below.</td></tr>
+</tbody></table></div>
+<blockquote><p>An app-specific password becomes an argument to <code>notarytool</code>, and arguments are readable by anything running as you for as long as the submission takes. The other two routes avoid that entirely.</p></blockquote>
+<p>When more than one is present the earliest of Apple ID, then key, then profile wins — the same order the packager uses, so the application and the image around it are never notarized under different accounts.</p>
+
+<h2 id="give-them-to-the-build">Give them to the build</h2>
+<p>From the environment, or from <code>.env.local</code> in the project, which the scaffold's <code>.gitignore</code> already excludes. A real environment variable wins over the file, so CI needs no file and a stale one cannot override a runner.</p>
+<div class="code-frame"><div class="code-label">.env.local</div><pre><code># The pair that leaves no secret in the file.
+CSC_NAME="Your Name (TEAMID)"
+APPLE_KEYCHAIN_PROFILE=lloyal</code></pre></div>
+<p><code>CSC_NAME</code> is the certificate's name <strong>without</strong> the <code>Developer ID Application:</code> that Keychain Access shows in front of it. The packager chooses the kind of certificate itself and refuses a name carrying that prefix.</p>
+<div class="code-frame"><div class="code-label">.env.local — on CI</div><pre><code>CSC_LINK=&lt;base64 of a Developer ID Application .p12&gt;
+CSC_KEY_PASSWORD=&lt;its password&gt;
+APPLE_API_KEY=/secure/AuthKey_XXXX.p8
+APPLE_API_KEY_ID=XXXX
+APPLE_API_ISSUER=&lt;issuer uuid&gt;</code></pre></div>
+<p>One assignment per line: a dotenv file reads the rest of a line as the value. Run <code>ship --notarize</code> with nothing configured and it prints this block rather than making you find it.</p>
+
+<h2 id="what-notarize-guarantees">What <code>--notarize</code> guarantees</h2>
+<ul><li>the <strong>hardened runtime</strong>, with the three exemptions a resident model needs: JIT and unsigned executable memory for the inference runtime, and library validation off so the addon's sibling libraries load at all;</li><li><strong>signing is mandatory</strong> — a certificate that cannot be found fails the build instead of producing an unsigned application while you believe otherwise;</li><li>a <strong>distribution</strong> certificate, stated rather than left to the default, because the identity search otherwise falls back to a development certificate with only a warning;</li><li>the application notarized and stapled, and then <strong>the disk image notarized and stapled in its own right</strong>, because that is the file a browser downloads.</li></ul>
+<p>There is no signed-but-not-notarized outcome to ask for. Apple only notarizes a submission already signed with a Developer ID, so it is both or neither.</p>
+
+<h2 id="check-it-before-you-send-it">Check it before you send it</h2>
+<div class="code-frame"><div class="code-label">Shell</div><pre><code>xcrun stapler validate release/YourApp-1.0.0-arm64.dmg
+spctl -a -vvv -t install /Applications/YourApp.app</code></pre></div>
+<p>Neither is the real test. Gatekeeper judges the quarantine attribute, and only a download sets it — so put the image somewhere and fetch it through a browser onto a Mac that has never seen yours. To approximate that locally, set the attribute by hand before opening it:</p>
+<div class="code-frame"><div class="code-label">Shell</div><pre><code>xattr -w com.apple.quarantine "0081;00000000;Safari;" YourApp-1.0.0-arm64.dmg</code></pre></div>
+
+<h1 id="not-here-yet">Not here yet</h1>
+<div class="status-columns"><section><div class="status-title"><span class="status current">Current</span> Available now</div><ul><li>macOS disk images, signed and notarized from a laptop or from CI;</li><li>a default icon per template, replaceable;</li><li>first-launch provisioning of every model the manifest names;</li><li>a reader's own weight accepted in place of a download.</li></ul></section><section><div class="status-title"><span class="status planned">Planned</span> Not yet paved</div><ul><li>Windows: Authenticode rather than notarization, and since 2023 a signing key must live on hardware or in a cloud service, so the environment-variable shape does not carry over;</li><li>Linux packaging;</li><li>the Mac App Store, which is a different certificate and target;</li><li>auto-update — today, version two is another download.</li></ul></section></div>
+<blockquote><p><strong>Where a harness runs is a deployment decision. Whether anyone else can run it is a signing one.</strong></p></blockquote>
+</article></main>
+<footer class="footer wrap"><span class="mission">Enable every organisation to deliver intelligence on its terms.</span><span>Lloyal Labs · Melbourne</span></footer>
+</div>

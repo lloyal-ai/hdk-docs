@@ -214,13 +214,15 @@ const NAV = [
   { slug: 'agent-policy-and-context-pressure', href: '/agent-policy-and-context-pressure', label: 'Adaptive compute' },
   { slug: 'focal-lens', href: '/focal-lens', label: 'Focus' },
   { slug: 'where-a-harness-runs', href: '/where-a-harness-runs', label: 'Where a harness runs' },
+  { slug: 'ship', href: '/ship', label: 'Shipping' },
   { slug: 'lookup', href: '/lookup', label: 'Lookup' },
 ];
 
 /**
- * Ten labels need ~1360px at the tightened gap. Down to 780px the bar is a row that scrolls
+ * Eleven labels need ~1440px at the tightened gap (measured, not estimated: at 1440 the row exactly
+ * fills and the auto margins collapse; below that it scrolls). Down to 780px the bar is a row that scrolls
  * sideways; below that it becomes a disclosure, because a strip that scrolls sideways shows a
- * phone two entries and gives no sign the other eight exist.
+ * phone two entries and gives no sign the other nine exist.
  *
  * The button ships in the markup and is hidden by CSS above the breakpoint, so
  * there is nothing to construct at runtime and nothing moves if the script
