@@ -26,12 +26,13 @@ description: Build a harness, understand the execution model, govern adaptive be
     <a class="path-card" href="/thinking-in-lloyal"><h3>Thinking in Lloyal <span class="path-arrow">→</span></h3><p>Learn how owned lifetimes, live inference state, Agents, Tools, orchestration, finality, and continuity fit together &mdash; and the advanced patterns they compose into.</p><div class="path-label">Mental model · programming guide</div></a>
     <a class="path-card" href="/continuous-context"><h3>Continuous Context <span class="path-arrow">→</span></h3><p>Keep the execution rather than rebuilding it from a transcript, so specialists inherit the live case instead of a summary handed down.</p><div class="path-label">Execution continuity · programming guide</div></a>
     <a class="path-card" href="/abilities"><h3>Abilities <span class="path-arrow">→</span></h3><p>Install a capability that reads the calling agent&rsquo;s live state, forks it, spawns agents that inherit it, and can require the harness to load another model.</p><div class="path-label">Extension format · capabilities</div></a>
+    <a class="path-card" href="/services"><h3>Services <span class="path-arrow">→</span></h3><p>Composition of models: one reasoning model and, beside it, every model an agent&rsquo;s work needs &mdash; named once in <code>harness.yml</code>, read with one call from an ability or a harness, refused by name.</p><div class="path-label">Composition of models · capabilities</div></a>
     <a class="path-card" href="/agent-policy-and-context-pressure"><h3>Adaptive compute <span class="path-arrow">→</span></h3><p>Allocate compute across a running AgentPool, and prune whole branches on judgement instead of compacting the context window.</p><div class="path-label">Adaptive compute · engineering note</div></a>
     <a class="path-card" href="/focal-lens"><h3>Focus <span class="path-arrow">→</span></h3><p>Decide what earns a place in a context already spoken for. A question you write, answered per candidate, admitted verbatim.</p><div class="path-label">Context admission · engineering note</div></a>
   </div>
 </section>
 <section class="learning-path wrap">
-  <div class="learning-grid"><h2>Recommended learning path</h2><div class="learning-flow"><div class="learning-step">Build your first harness</div><div class="learning-arrow">→</div><div class="learning-step">Thinking in Lloyal</div><div class="learning-arrow">→</div><div class="learning-step">Continuous Context</div><div class="learning-arrow">→</div><div class="learning-step">Abilities</div><div class="learning-arrow">→</div><div class="learning-step">Adaptive compute</div><div class="learning-arrow">→</div><div class="learning-step">Focus</div></div></div>
+  <div class="learning-grid"><h2>Recommended learning path</h2><div class="learning-flow"><div class="learning-step">Build your first harness</div><div class="learning-arrow">→</div><div class="learning-step">Thinking in Lloyal</div><div class="learning-arrow">→</div><div class="learning-step">Continuous Context</div><div class="learning-arrow">→</div><div class="learning-step">Abilities</div><div class="learning-arrow">→</div><div class="learning-step">Services</div><div class="learning-arrow">→</div><div class="learning-step">Adaptive compute</div><div class="learning-arrow">→</div><div class="learning-step">Focus</div></div></div>
 </section>
 
 <section class="architecture wrap">
@@ -47,6 +48,7 @@ description: Build a harness, understand the execution model, govern adaptive be
   <div class="reference-grid">
     <a href="https://www.npmjs.com/package/lloyal-ai">lloyal-ai CLI <span class="out">↗</span></a>
     <a href="/lookup">Lookup <span class="out">→</span></a>
+    <a href="/harness-yml">harness.yml <span class="out">→</span></a>
     <a href="https://apps.lloyal.ai/">Abilities catalogue <span class="out">↗</span></a>
     <a href="https://github.com/lloyal-ai/hdk">HDK source <span class="out">↗</span></a>
     <a href="https://www.npmjs.com/package/@lloyal-labs/lloyal-agents">Agent runtime <span class="out">↗</span></a>

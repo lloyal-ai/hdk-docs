@@ -1,0 +1,186 @@
+<!--
+title: Services
+description: Composition of models — one reasoning model and, beside it, every model an agent's work needs, composed as services: named once in harness.yml, read with one call from an ability or a harness, acquired, bound and refused by one contract. What a service is, the lifecycle every one goes through, what a bound one exposes, and how a new kind is added.
+-->
+<div class="page">
+<header class="masthead wrap"><div><div class="wordmark">Lloyal Labs</div><div class="tagline">Engineering AI's contact with reality.</div></div><div class="issue"><span><a href="https://verticalinference.lloyal.ai/">Vertical Inference</a><br>Composition of models</span></div></header>
+<section class="hero wrap"><div class="eyebrow"><a href="/">Developer docs</a> / Capabilities</div><h1>Services</h1><div class="hero-sub">Composition of models. One reasoning model and, beside it, every model an agent&rsquo;s work needs &mdash; a judge, a projector, an encoder, a classifier &mdash; composed as services for agents. Naming a model is enabling it; reading it is one line.</div></section>
+<section class="thesis wrap"><div class="thesis-grid"><p>An application is rarely one model. The model that reasons is not the model that judges whether a passage answers the question, nor the one that turns pixels into something it can attend over, nor the one that indexes a corpus ahead of the question. In an API-wrapper framework each of those is another endpoint, another client, another place the working state has to be serialised to and read back from. Here they are <strong>resident together</strong>, named in one place, and reached by one call: a harness composes the models its work needs by writing their blocks in <code>harness.yml</code>, an ability declares the ones it cannot function without, and every one of them goes through one lifecycle &mdash; <em>declare, configure, acquire, bind, reach, refuse</em> &mdash; that the framework runs for every kind alike, without looking inside. What a bound model exposes is its own; what it costs to add a kind is a row.</p><div class="pullquote">Resident together,<br>named once,<br>reached by one call.</div></div></section>
+
+<main class="article-shell wrap"><nav class="toc" aria-label="Table of contents"><div class="toc-label">In this guide</div><a class="toc-l1" href="#what-a-service-is">What a service is</a><a class="toc-l2" href="#the-set-today">The set today</a><a class="toc-l1" href="#the-lifecycle">The lifecycle</a><a class="toc-l1" href="#naming-a-model">Naming a model</a><a class="toc-l1" href="#reading-a-service">Reading a service</a><a class="toc-l2" href="#from-an-ability">From an ability</a><a class="toc-l2" href="#from-a-harness">From a harness</a><a class="toc-l2" href="#what-a-bound-service-exposes">What a bound service exposes</a><a class="toc-l1" href="#requiring-a-service">Requiring a service</a><a class="toc-l2" href="#the-two-gates">The two gates</a><a class="toc-l1" href="#what-the-boot-does">What the boot does</a><a class="toc-l2" href="#acquire">Acquire</a><a class="toc-l2" href="#load-and-bind">Load and bind</a><a class="toc-l1" href="#adding-a-kind">Adding a kind</a><a class="toc-l2" href="#the-provider">The provider</a><a class="toc-l2" href="#two-halves">The two halves of a new kind</a><a class="toc-l1" href="#where-it-lives">Where it lives</a></nav><article class="article">
+
+<h1 id="what-a-service-is">What a service is</h1>
+<p>A service is every model beside the trunk &mdash; the reasoning model every agent branches from &mdash; known by one name that is also its block in <code>harness.yml</code> (<code>model.reranker</code>) and its slot on disk (<code>models/reranker/</code>). The trunk is never a service: it is the harness&rsquo;s own model, always present, and abilities never list it.</p>
+<p>There are two shapes a service can take, and the difference is what a consumer gets back:</p>
+<ul><li><strong>An instance of its own.</strong> The reranker runs on a context of its own, and a bound reranker is an object with methods: score, tokenize, dispose. It lives as long as the scope that bound it.</li><li><strong>A capability of the trunk.</strong> The vision projector is not an object anything calls: it goes onto the resident context so the trunk can see, and every agent forked from that trunk sees with it. What a consumer reads back is a marker that says the projector is there, and nothing to call. Sight is the context&rsquo;s, not an object&rsquo;s.</li></ul>
+<p>The framework treats both through the same contract. It never asks a service what it can do; it asks the service&rsquo;s <em>provider</em> how the artifact reaches the run, and a provider answers with one of two cells &mdash; <code>bind</code> for an instance, <code>trunk</code> for a capability &mdash; described under <a href="#the-provider">the provider</a>.</p>
+
+<h2 id="the-set-today">The set today</h2>
+<div class="table-wrap"><table><thead><tr><th>Service</th><th>Shape</th><th>What it is</th><th>Status</th></tr></thead><tbody>
+<tr><td><code>reranker</code></td><td>instance</td><td>The pointwise judge the abilities score with: a cross-encoder on its own context, answering how well a passage meets a query as a logit difference. The judgement behind <a href="/focal-lens">context admission</a>.</td><td>Exposed today</td></tr>
+<tr><td><code>vision</code></td><td>trunk</td><td>The projector through which the reasoning model sees an image. Paired from the catalog with the llm when the block names no id, so switching the llm switches the projector.</td><td>Exposed today</td></tr>
+<tr><td><code>embedding</code></td><td>instance</td><td>An encoder answering one unit vector per text, in input order, for retrieval that indexes ahead of the question. Serialized on a context of its own; a text longer than its context is refused, never truncated.</td><td>Exposed today</td></tr>
+<tr><td>audio, classification, &hellip;</td><td>&mdash;</td><td>The kinds the contract is built to take: a Whisper encoder, a classifier, a speech sanitizer.</td><td>Design pattern &mdash; the service layer costs a row; the native substrate is separate work</td></tr>
+</tbody></table></div>
+<p>The set is closed and lives in the framework: a service is added by a contribution, not by a package registering one at runtime. That is a decision about governance rather than a limit of the design &mdash; a signed ability that declared a third-party service would reopen the question of who vouches for what it loads &mdash; and it is held open for later.</p>
+
+<h1 id="the-lifecycle">The lifecycle</h1>
+<p>Every service goes through six phases, and each phase has exactly one owner and one place. A harness developer touches the second; an ability author touches the first and the fifth; a framework contributor touches the fourth. Nobody constructs a service, writes a refusal, or sequences acquisition against binding.</p>
+<div class="table-wrap"><table><thead><tr><th>Phase</th><th>Who says it</th><th>Where</th><th>What it means</th></tr></thead><tbody>
+<tr><td><strong>declare</strong></td><td>an ability&rsquo;s manifest</td><td><code>ability.json</code> &rarr; <code>services: ["reranker"]</code></td><td>the requirement: what this ability cannot work without. Signed into the catalogue, shown to the reviewer. Never the trunk.</td></tr>
+<tr><td><strong>configure</strong></td><td>the harness developer</td><td><code>harness.yml</code> &rarr; <code>model.reranker:</code></td><td>the request: naming the block is enabling the service; its keys select which model. An absent block is a decision.</td></tr>
+<tr><td><strong>acquire</strong></td><td>the boot</td><td><code>models/&lt;name&gt;/</code></td><td>the model file, fetched and digest-verified on the first run and never again; reported step by step while it happens.</td></tr>
+<tr><td><strong>bind</strong></td><td>the provider</td><td>the owning scope</td><td>the artifact becomes what a consumer reads: an instance, or an option on the trunk&rsquo;s context.</td></tr>
+<tr><td><strong>reach</strong></td><td>a harness or an ability</td><td><code>yield* service('reranker')</code></td><td>the bound instance, or the marker, from anywhere under the binding.</td></tr>
+<tr><td><strong>refuse</strong></td><td>the framework</td><td>the same call; the enable gate</td><td>one message, naming the block whose presence would have bound it.</td></tr>
+</tbody></table></div>
+<p>The order matters at the boot: everything is <em>acquired</em> before anything is <em>loaded</em>, so a first run that needs 600 MB of reranker finds out before it has spent the minutes loading 2.6 GB of trunk, and on the edge a bind that fails fails before a session exists to fail in. The served host binds an instance service once per admitted session, inside that session&rsquo;s scope: a bind that fails there ends that session alone, and the host keeps serving.</p>
+
+<h1 id="naming-a-model">Naming a model</h1>
+<p><strong>The block&rsquo;s presence is the request; its contents are the selection.</strong> A service is enabled by writing its block under <code>model:</code> and disabled by removing it. The keys inside choose which model: <code>path</code> outranks <code>id</code>; a block with neither takes what its provider can derive, and a block with neither and no derivation is refused before anything runs, naming the key to add.</p>
+<div class="code-frame"><div class="code-label">harness.yml</div><pre><code>model:
+  llm:
+    id: qwen3.5-4b
+    context: 32768
+  reranker:
+    id: qwen3-reranker-0.6b-q8
+    context: 16384
+  vision: {}          # no id: the projector the catalog pairs with the llm</code></pre></div>
+<p>Three things follow from presence being the trigger.</p>
+<ul><li><strong>An empty block is a request.</strong> <code>vision: {}</code>, or a bare <code>vision:</code>, asks for vision and takes the catalog pairing. <code>reranker: {}</code> asks for a reranker and selects none, so the boot refuses: <em>set <code>model.reranker.id</code> (a catalog id) or <code>model.reranker.path</code></em>. A <code>vision: {}</code> under a <code>path:</code> llm is the same refusal with one more clause &mdash; <em>none follows from the llm</em> &mdash; because bytes the catalog knows nothing about have no pairing.</li><li><strong>A default never requests a model.</strong> <code>model.reranker.context</code> defaults to 16384, but only once the block is present. No selection key has a default, so nothing loads that nobody asked for. The 630 MB reranker appears because you wrote a line, never because an installed ability declared one.</li><li><strong>Removing a block disables what needs it.</strong> Delete <code>model.reranker</code> and the harness still starts; every ability that requires a reranker is refused at enable with the block named, and the run continues without those abilities. Put the block back and they enable again.</li></ul>
+<p>Every key, its env name, what it takes and when a change applies is on the <a href="/harness-yml#the-model-family">harness.yml reference</a>. The reranker&rsquo;s context and the scoring question it is asked are settable there because the service declares them.</p>
+
+<h1 id="reading-a-service">Reading a service</h1>
+<p>One call, from either consumer, anywhere under the binding:</p>
+<div class="code-frame"><div class="code-label">TypeScript</div><pre><code>import { service } from "@lloyal-labs/rig";
+
+const reranker = yield* service("reranker");   // the bound instance
+yield* service("vision");                       // the marker: the trunk can see</code></pre></div>
+<p>It answers the bound instance, or throws with one message: <code>`reranker` is not configured &mdash; add `model.reranker` to harness.yml</code>. That message is the same whoever asks and whatever the service, which is why no consumer writes a refusal of its own.</p>
+<p><strong>Availability, not permission.</strong> The call tells you whether the harness bound the service. It does not check that <em>this</em> caller declared it: every ability scope is seeded with the same bound set, so a harness that configured a reranker has one for every ability and for its own code alike. What an ability may <em>require</em> is enforced at the two gates below, not at the read.</p>
+
+<h2 id="from-an-ability">From an ability</h2>
+<p>An ability reads its services in its setup, once, and hands them to its source and tools at construction. Because the enable gate refused the ability before the factory ran if the requirement was unmet, the read inside a declared ability always answers.</p>
+<div class="code-frame"><div class="code-label">src/index.ts</div><pre><code>export const createCorpusAbility = defineAbility(manifest, function* () {
+  const reranker = yield* service("reranker");     // declared in ability.json, so this answers
+
+  const cfgStore = yield* AbilityConfigStoreCtx.expect();
+  const cfg = (yield* cfgStore.get("corpus")) ?? {};
+  const corpusPath = typeof cfg.corpusPath === "string" ? cfg.corpusPath : undefined;
+  if (!corpusPath) throw new Error("createCorpusAbility: missing config `corpusPath`");
+
+  const resources = loadResources(corpusPath);
+  const chunks = yield* call(() =>
+    fitChunks(chunkResources(resources), { maxTokens: DEFAULT_CHUNK_TOKENS, tokenize: (t) => reranker.tokenize(t) }),
+  );
+
+  const source = new CorpusSource(resources, chunks, reranker);
+  const tools: Record&lt;string, Tool&gt; = {};
+  for (const t of source.tools) tools[t.name] = t;
+
+  return { source, tools, skill };
+});</code></pre></div>
+<p>That is the whole of what the corpus ability does with the service: one read, handed to its source at construction. The framework guarantees the read, so the ability writes no refusal of its own.</p>
+
+<h2 id="from-a-harness">From a harness</h2>
+<p>A harness reads a service the same way, from its own code: the boot binds before <code>harness()</code> runs, on the edge once for the process and on a served host once per admitted session, so the call answers anywhere inside. Nothing has to be declared &mdash; the harness named the block.</p>
+<div class="code-frame"><div class="code-label">your harness code</div><pre><code>export function* librarySearch(query: string, briefs: Brief[]) {
+  const reranker = yield* service("reranker");
+  const scores = yield* call(() => reranker.scoreBatch(query, briefs.map((b) => b.summary)));
+  return briefs.map((b, i) => ({ ...b, score: scores[i] })).sort((a, b) => b.score - a.score);
+}</code></pre></div>
+<p>The one read rig makes on a harness&rsquo;s behalf is sight: when a harness stages attachments for a run, rig&rsquo;s <code>admitted()</code> reads <code>service("vision")</code> for any image among them, so a picture handed to a model that cannot see is refused with the same message as any other unconfigured service, before a byte enters the context.</p>
+
+<h2 id="what-a-bound-service-exposes">What a bound service exposes</h2>
+<p>The uniformity is the lifecycle, not the method set. A bound service exposes what it is:</p>
+<div class="table-wrap"><table><thead><tr><th>Service</th><th>Answers</th><th>Members</th></tr></thead><tbody>
+<tr><td><code>reranker</code></td><td><code>Reranker</code></td><td><code>score(query, chunks)</code> streams progressive results over pre-tokenized chunks; <code>scoreBatch(query, texts)</code> answers one logit difference per text, unbounded, positive meaning &ldquo;yes&rdquo;; <code>tokenize(text)</code> and <code>tokenizeChunks(chunks)</code> put text into the reranker&rsquo;s own vocabulary; <code>dispose()</code> is idempotent and the owning scope calls it for you.</td></tr>
+<tr><td><code>vision</code></td><td><code>Trunk</code></td><td><code>artifact</code> only &mdash; the projector&rsquo;s path. There is nothing to call: an image placed on a branch is projected by the context itself.</td></tr>
+<tr><td><code>embedding</code></td><td><code>Embedder</code></td><td><code>embed(texts)</code> answers one L2-normalized vector per text, in order, so cosine similarity is a dot product; <code>tokenize(text)</code> measures in the encoder&rsquo;s own vocabulary; <code>dimension</code> is the length of every vector. Both are Operations. <code>embed</code> consumes <em>prepared</em> text: a model&rsquo;s query or document prefix is the caller&rsquo;s to add, because the encoder cannot know which side a text is.</td></tr>
+</tbody></table></div>
+<p>Every score the reranker returns is in logits: the log-odds of its yes/no judgement, comparable across queries to the extent of the model&rsquo;s calibration, never a 0&ndash;1 similarity. The reranker runs at <code>q8_0</code> KV precision on its own context because at <code>q4_0</code> its verdicts invert on close pairs. The scoring question &mdash; what &ldquo;relevant&rdquo; means for every ability sharing the judge &mdash; is bound once when the reranker is, from <code>model.reranker.instruction</code>, with a canary pair scored at boot so a broken setup fails then rather than silently. <a href="/focal-lens">A focal lens for context admission</a> is what the abilities build on those scores.</p>
+
+<h1 id="requiring-a-service">Requiring a service</h1>
+<p>An ability declares only what it cannot function without, by name, in its manifest. The names are checked against the closed set when the ability module is imported: an unknown name is a malformed manifest and never reaches a registry.</p>
+<div class="code-frame"><div class="code-label">ability.json</div><pre><code>{
+  "name": "corpus",
+  "abilityProtocolVersion": "3.0",
+  "services": ["reranker"],
+  "protocol": { "name": "corpus_research", "useWhen": "…", "tools": ["grep", "read_file", "search"] }
+}</code></pre></div>
+<p>A declaration is a requirement and a governed disclosure, not a request: the harness never provisions something because an ability asked. What it provisions is what its own <code>model</code> blocks name, and an ability whose requirement is not among them does not enable. There is no optional service: an ability that can degrade without one does not declare it, and reads nothing.</p>
+
+<h2 id="the-two-gates">The two gates</h2>
+<p>Declared means required, and two gates hold it &mdash; the accessor enforces nothing.</p>
+<div class="table-wrap"><table><thead><tr><th>Gate</th><th>Asks</th><th>When</th><th>On failure</th></tr></thead><tbody>
+<tr><td><strong>install</strong></td><td>can this service be <em>selected</em> from the resolved configuration?</td><td><code>lloyal install</code> and <code>lloyal new</code>, after the bundle is verified and before any file is written</td><td>names the missing key and <strong>offers</strong> to write it &mdash; <code>model.reranker.id: qwen3-reranker-0.6b-q8</code>, the catalog&rsquo;s &mdash; in a terminal; declining leaves <code>harness.yml</code> byte-identical, and a pipe with nobody to ask refuses. A present block passes: whether it selects is the boot&rsquo;s to settle.</td></tr>
+<tr><td><strong>enable</strong></td><td>did the service <em>bind</em>?</td><td><code>registry.enable</code>, before the ability&rsquo;s factory runs</td><td>refuses the ability, naming the block: <code>corpus requires `reranker`, which is not configured &mdash; add `model.reranker` to harness.yml</code>. The harness starts either way.</td></tr>
+</tbody></table></div>
+<p>Four things can go wrong here and each has its own message, because &ldquo;add a declaration&rdquo; is the wrong advice for three of them: a <em>missing declaration</em> (the install gate&rsquo;s offer), an <em>unsupported service</em> (refused at import, outright), a <em>failed model load</em> (the boot&rsquo;s, with the loader&rsquo;s reason), and <em>no compatible projector</em> (a <code>vision</code> block under a <code>path:</code> llm, refused at the install&rsquo;s plan).</p>
+
+<h1 id="what-the-boot-does">What the boot does</h1>
+<p>Everything below is the framework&rsquo;s. It is here so the behaviour you see on a first run has a reason, not because a harness has to do any of it.</p>
+
+<h2 id="acquire">Acquire</h2>
+<p>The steps a run performs are <strong>derived</strong> from the model family: the machine, the reasoning model, then every service whose block is present, in the order the providers are declared, each with the spec that satisfies it. No boot and no view keeps a list of services. A step is satisfied the way any model is resolved &mdash; a <code>path</code> is trusted by possession, an <code>id</code> is found in its slot or fetched from the catalog and verified against its digest, fail-closed.</p>
+<ol><li><strong>The machine, before a byte.</strong> The catalog model you named carries a machine class; a box under that class&rsquo;s floor of total memory &mdash; 10 GB for an edge model, 24 GB for an appliance model &mdash; is refused with what it has and what it needs, and nothing is downloaded. The check runs on every start, because weights carried onto a box too small for them fail exactly as hard.</li><li><strong>The reasoning model</strong>, then <strong>each service&rsquo;s model</strong>, reported as <code>install:step</code> snapshots on the harness&rsquo;s own channel: every step, every time, so a view holds no state machine. A run that acquires nothing sends nothing and simply opens.</li><li><strong>Where a view can act, a failed step holds.</strong> On the desktop the platform&rsquo;s installer &mdash; mounted by <code>HarnessProvider</code>, themed by the harness&rsquo;s own CSS custom properties, written by no harness &mdash; shows the step list, the active step&rsquo;s bytes and rate, and offers <em>try again</em>, <em>use a file I already have</em>, and <em>stop</em>. A chosen file is remembered through the harness&rsquo;s own persistence, the download in flight is cancelled without trying another mirror, and the step re-resolves from the file. In a terminal or a pipe there is nobody to ask, so a failed step ends the run with its reason. A served host acquires before it listens: no browser exists yet to hold for.</li></ol>
+
+<h2 id="load-and-bind">Load and bind</h2>
+<p>With every artifact on disk, the boot builds the resident context. The trunk providers fold their options in first &mdash; the projector&rsquo;s path and the image token budgets &mdash; so every session&rsquo;s trunk has the same sight. Then the instance providers bind, in the scope that owns them:</p>
+<ul><li><strong>On the edge</strong>, once, for the life of the process. The reranker&rsquo;s context is built beside the trunk&rsquo;s and torn down with the boot&rsquo;s scope.</li><li><strong>On a served host</strong>, once per admitted session, off the artifacts the boot already acquired. Weights and acquired files are shared; instances and their lifetimes are the session&rsquo;s. A session whose service fails to bind dies alone and says why on the host&rsquo;s log; the host keeps serving.</li></ul>
+<p>The bound set is put in reach as one context, <code>Services</code>, and the registry seeds that same context into every ability&rsquo;s scope as it enables it. That is the whole mechanism behind <code>service(name)</code>: a read of a bag the platform filled.</p>
+
+<h1 id="adding-a-kind">Adding a kind</h1>
+<p>Adding a service touches four places, and the compiler names whichever you skip. None of them is the installer, a boot, the registry, the config layering or the view.</p>
+<div class="table-wrap"><table><thead><tr><th>Place</th><th>What you add</th><th>What the build checks</th></tr></thead><tbody>
+<tr><td>the contract</td><td>a key in <code>ServiceMap</code> naming what a consumer gets, and the name in <code>SERVICES</code></td><td>the two are held exhaustive against each other in both directions</td></tr>
+<tr><td>the configuration</td><td><code>model.&lt;name&gt;.id</code>, <code>model.&lt;name&gt;.path</code>, and the service&rsquo;s tuning keys in <code>modelSettings</code></td><td>the provider&rsquo;s block is typed from these; a row whose keys are missing does not compile</td></tr>
+<tr><td>the provider</td><td>one row in the provider table: how the artifact reaches the run</td><td>the table is a mapped type over <code>ServiceMap</code>; a missing row is a compile error</td></tr>
+<tr><td>the catalog</td><td>an entry per model the service can name, with its digest</td><td>the CLI&rsquo;s mirror of the set and the catalog is held to the platform&rsquo;s by a test</td></tr>
+</tbody></table></div>
+
+<h2 id="the-provider">The provider</h2>
+<p>A provider row is what a contributor writes, from the contract alone. Three optional cells; a row has one of the two binding cells, and <code>derive</code> only when a block can mean something without naming a model.</p>
+<div class="code-frame"><div class="code-label">packages/rig/src/providers/index.ts</div><pre><code>export const providers: { [K in Service]: ProviderRow&lt;K&gt; } = {
+  reranker: {
+    bind: (artifact, block) =>
+      createReranker(artifact, { nCtx: block.context, instruction: block.instruction }),
+  },
+  vision: {
+    derive: ({ llm }) => {
+      if (llm.path || !llm.id) return undefined;               // bytes the catalog cannot pair
+      const paired = catalogEntry("llm", llm.id)?.vision;
+      return paired ? { id: paired } : undefined;
+    },
+    trunk: (artifact, block) =>
+      ({ mmprojPath: artifact, imageMinTokens: block.minTokens, imageMaxTokens: block.maxTokens }),
+  },
+  embedding: {
+    bind: (artifact, block) =>
+      createEmbedder(artifact, { nCtx: block.context, pooling: embeddingPooling(block) }),
+  },
+};</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>Cell</th><th>Says</th></tr></thead><tbody>
+<tr><td><code>derive(of)</code></td><td>which model backs the service when its block names none, given the llm&rsquo;s selection; <code>undefined</code> refuses, naming <code>model.&lt;name&gt;.id</code></td></tr>
+<tr><td><code>bind(artifact, block)</code></td><td>the artifact as the instance <code>service(name)</code> answers &mdash; an Effection resource, so the instance lives as long as the scope that bound it and is torn down with it</td></tr>
+<tr><td><code>trunk(artifact, block)</code></td><td>the options the artifact contributes to the resident context; typed only for a service whose map entry is a <code>Trunk</code>, so an instance service cannot accidentally be folded into the trunk</td></tr>
+</tbody></table></div>
+<p><code>block</code> is the service&rsquo;s <code>model.&lt;name&gt;</code> as the layering resolved it, typed from its keys, so a provider reads its tuning without parsing anything. The reranker row is one line; the binding it calls, <code>createReranker</code>, is one of the two files in the framework that open a second native context (the embedder&rsquo;s, <code>createEmbedder</code>, is the other) and compose a runtime primitive over it, and each is its own file so a test can stand a fake at that boundary and prove the walk without loading a model. A new kind whose binding needs a different acquirer &mdash; a model that is not a <code>.gguf</code> in a slot &mdash; would add one more optional cell then; nothing today needs it, so it is not in the contract.</p>
+
+<h2 id="two-halves">The two halves of a new kind</h2>
+<p>The promise at the top of this page ends in a dash &mdash; a judge, a projector, an encoder, a classifier, and whatever comes next &mdash; and it is worth being exact about what the contract buys for the next one. A new kind of model has two halves, which the contract keeps separate:</p>
+<ul><li><strong>The service layer</strong> &mdash; configuration, acquisition, binding, the accessor, the installer&rsquo;s step, the gates. After this contract, a map line, a set of keys, a row and a catalog entry, compiler-guided.</li><li><strong>The native substrate</strong> &mdash; the model actually running in the runtime. Unchanged by the contract, and the part that decides whether the kind exists at all.</li></ul>
+<p>Embedding is the evidence for the first half: its substrate was finished first &mdash; the encoder, its pooling modes and a worked recipe in the runtime, proven against a real model &mdash; and its service came after, as a row, a binding and four keys, with nothing else in the framework touched. It is the worked example precisely because it isolates the layer this contract is about. It does <em>not</em> establish that a Whisper encoder costs a row, because Whisper&rsquo;s substrate is the part embedding already had. The honest claim is this: a new kind used to be an arc whichever half you looked at; now the service half is a row, and the remaining question for any model is only whether it runs.</p>
+
+<h1 id="where-it-lives">Where it lives</h1>
+<p>The contract and the platform are two sides in one package, split at the one boundary that matters: whether the code reaches the native runtime.</p>
+<div class="table-wrap"><table><thead><tr><th>Entry</th><th>Holds</th><th>Who imports it</th></tr></thead><tbody>
+<tr><td><code>@lloyal-labs/rig</code></td><td>the contract: <code>ServiceMap</code>, <code>SERVICES</code>, the <code>Services</code> context, <code>service()</code>; beside it the retrieval contract (<code>Reranker</code>, <code>Chunk</code>, <code>Source</code>, <code>admitChunks</code>) and the ability contract (the manifest types, <code>AbilityConfigStoreCtx</code>). Browser-safe, node-free.</td><td>abilities and harnesses</td></tr>
+<tr><td><code>@lloyal-labs/rig/node</code></td><td>the providers (<code>providers/</code>: the table, and the reranker&rsquo;s native binding in its own file), the walk over them, the install, the catalog and the machine gate.</td><td>the boots; a contributor adding a row</td></tr>
+<tr><td><code>@lloyal-labs/lloyal-agents</code></td><td>nothing of this. The agent runtime&rsquo;s one reach into retrieval is the <code>EntailmentScorer</code> a source builds from its reranker and hands over on the tool context.</td><td>&mdash;</td></tr>
+</tbody></table></div>
+<p>The split is a dependency fact, not a convention: an ability that imported the providers would drag the native addon into every context that merely constructs it &mdash; <code>lloyal describe</code>, a browser, a unit test &mdash; so the contract lives where those can reach and the providers where only a boot does.</p>
+<blockquote><p><strong>A harness and its abilities draw on the same set of models, named once in <code>harness.yml</code>, reached by the same call, with no consumer needing to know how any of them was acquired.</strong></p></blockquote>
+</article></main>
+<footer class="footer wrap"><span class="mission">Enable every organisation to deliver intelligence on its terms.</span><span>Lloyal Labs · Melbourne</span></footer>
+</div>

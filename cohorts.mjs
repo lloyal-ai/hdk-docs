@@ -17,8 +17,8 @@
  * which is the point; an undeclared slug throws.
  *
  *   guide  every page except index
- *   long   the four long guides    (--max 1180px, looser heading rhythm)
- *   short  the four short ones     (--max 1320px, tighter)
+ *   long   the long guides         (--max 1180px, looser heading rhythm)
+ *   short  the short ones          (--max 1320px, tighter)
  *   hl     the syntax palette: the long guides PLUS focal-lens, not a cohort
  */
 export const COHORT = {
@@ -31,6 +31,8 @@ export const COHORT = {
   'focal-lens':                        ['guide', 'short', 'hl'],
   'lookup':                            ['guide', 'short'],
   'where-a-harness-runs':              ['guide', 'short'],
+  'harness-yml':                       ['guide', 'short'],
+  'services':                          ['guide', 'short'],
   // The first page styled entirely by the shared layers — it has no per-page
   // selectors at all, which before the flatten meant no styling at all.
   'publisher-tos':                     ['guide', 'short'],

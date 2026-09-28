@@ -1,0 +1,186 @@
+<!--
+title: harness.yml
+description: Every key a harness is configured with — the model blocks, your own keys, the abilities family, where each rung reads it, what it takes, and when a change applies. Derived from the tables the keys are declared in.
+-->
+<div class="page">
+<header class="masthead wrap"><div><div class="wordmark">Lloyal Labs</div><div class="tagline">Engineering AI's contact with reality.</div></div><div class="issue"><span><a href="https://verticalinference.lloyal.ai/">Vertical Inference</a><br>Reference</span></div></header>
+<section class="hero wrap"><div class="eyebrow"><a href="/">Developer docs</a> / Reference</div><h1>harness.yml</h1><div class="hero-sub">Every key a harness is configured with: what it takes, where each rung reads it, and when a change applies.</div></section>
+<section class="thesis wrap"><div class="thesis-grid"><p>A harness declares its configuration once, as a table of keys. <code>harness.yml</code> is the committed manifest of those keys; everything here is read off the tables the keys are declared in &mdash; the model family every harness ships (<code>modelSettings</code>) and the template&rsquo;s own &mdash; so the file that disagrees with this page is the one to read.</p><div class="pullquote">Naming a model<br>is enabling it.</div></div></section>
+
+<main class="article-shell wrap"><nav class="toc" aria-label="Table of contents"><div class="toc-label">On this page</div><a class="toc-l1" href="#the-rungs">Where a value comes from</a><a class="toc-l1" href="#the-model-family">The model family</a><a class="toc-l2" href="#llm">llm</a><a class="toc-l2" href="#reranker">reranker</a><a class="toc-l2" href="#vision">vision</a><a class="toc-l2" href="#embedding">embedding</a><a class="toc-l2" href="#the-catalog">The catalog and the slots</a><a class="toc-l1" href="#when-a-change-applies">When a change applies</a><a class="toc-l1" href="#your-own-keys">Your own keys</a><a class="toc-l2" href="#the-shipped-templates-keys">The shipped templates&rsquo; keys</a><a class="toc-l1" href="#the-abilities-family">The abilities family</a><a class="toc-l1" href="#targets">targets</a><a class="toc-l1" href="#the-box">The box&rsquo;s own settings</a><a class="toc-l1" href="#harness-json">harness.json</a></nav><article class="article">
+
+<h1 id="the-rungs">Where a value comes from</h1>
+<p>Every declared key is resolved through the same four rungs, highest first, and the rung that supplied it is reported beside it as its <strong>provenance</strong> &mdash; what the dev pane&rsquo;s Settings tab shows next to each value.</p>
+<div class="table-wrap"><table><thead><tr><th>Rung</th><th>Where</th><th>Temper</th></tr></thead><tbody>
+<tr><td><code>env</code></td><td>the environment variable a key names</td><td>a value the key cannot take falls through to the rung beneath; an integer key parses digits only</td></tr>
+<tr><td><code>file</code></td><td><code>harness.json</code>, beside the manifest</td><td>machine-written by the settings pane; a hand edit the key cannot take falls through</td></tr>
+<tr><td><code>yml</code></td><td><code>harness.yml</code>, committed</td><td>a deliberate deploy: a value the key cannot take <strong>fails the boot</strong>, naming the path and what it takes</td></tr>
+<tr><td><code>default</code></td><td>the key&rsquo;s declaration</td><td>stands when no rung supplies a value; a key with a default is always present</td></tr>
+</tbody></table></div>
+<p>Two more provenances appear without being rungs: <code>session</code>, a value patched in memory by a served session that no file will remember, and <code>cli</code>, a flag name a key may declare for a boot that passes overrides &mdash; the shipped boots pass none.</p>
+<p>An empty string is a clear at every rung: the value comes from the rung beneath. A key declared as a path is expanded (<code>~</code>) and made absolute at the boundary &mdash; against the project for a value from either file or the default, against the process for one set in the environment.</p>
+<div class="code-frame"><div class="code-label">harness.yml</div><pre><code>targets: [cli, desktop, web]
+
+model:
+  llm:
+    id: qwen3.5-4b
+    context: 32768
+    branches: 5
+  reranker:
+    id: qwen3-reranker-0.6b-q8
+  vision: {}
+
+sources:
+  outputDir: reports
+
+defaults:
+  effort: low
+  guards:
+    url_dedup:
+      scope: cohort
+    query_dedup:
+      scope: cohort</code></pre></div>
+<p>The <code>research</code> template&rsquo;s manifest as scaffolded. <code>model</code> is the family every harness ships; <code>sources</code> and <code>defaults</code> are this template&rsquo;s own keys; <code>targets</code> is the scaffold&rsquo;s.</p>
+
+<h1 id="the-model-family">The model family</h1>
+<p>One block per model, and <strong>the block&rsquo;s presence is the request</strong>: naming a block under <code>model:</code> is what loads that model; removing it is how &ldquo;I don&rsquo;t need this&rdquo; is said. Its keys are the selection &mdash; <code>path</code> outranks <code>id</code>. An empty block (<code>vision: {}</code>, or a bare <code>vision:</code>) is a request with nothing selected: a service with a derivation takes it (vision pairs from the llm), and one without is refused, naming the key to add (<code>reranker: {}</code> &rarr; &ldquo;set <code>model.reranker.id</code> or <code>model.reranker.path</code>&rdquo;). No selection key has a default; a tuning key may (<code>model.reranker.context</code>), and it stands only once its block is present &mdash; a default never requests a model.</p>
+<p>Every key lives at the path the file names it by: <code>model.llm.context</code> is the key, the yml path, and the provenance name. Every block beside <code>llm</code> is a <a href="/services">service</a>: the guide has the lifecycle, what a bound one exposes, and how a new kind is added.</p>
+
+<h2 id="llm">llm</h2>
+<p>The reasoning model and the one shared context every agent branches from.</p>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Takes</th><th>Env</th><th>Applies</th><th>What it is</th></tr></thead><tbody>
+<tr><td><code>model.llm.id</code></td><td>a catalog id</td><td>&mdash;</td><td>reload</td><td>The catalog id of the reasoning model, fetched and digest-verified before it loads.</td></tr>
+<tr><td><code>model.llm.path</code></td><td>a path to a <code>.gguf</code></td><td>&mdash;</td><td>reload</td><td>A local .gguf for the reasoning model; outranks the catalog id.</td></tr>
+<tr><td><code>model.llm.context</code></td><td>a positive integer</td><td><code>LLAMA_CTX_SIZE</code></td><td>boot</td><td>The context window of the one shared llama_context; every branch leases its cells from this budget.</td></tr>
+<tr><td><code>model.llm.gpu</code></td><td><code>default</code> · <code>cuda</code> · <code>vulkan</code></td><td><code>LLOYAL_GPU</code></td><td>boot</td><td>The native backend the process loaded. A configured backend fails loud when unavailable, never silently CPU.</td></tr>
+<tr><td><code>model.llm.branches</code></td><td>a positive integer</td><td>&mdash;</td><td>boot</td><td>How many sequences the context holds at once (nSeqMax); each holds its own KV lease.</td></tr>
+<tr><td><code>model.llm.kvCache</code></td><td><code>f32</code> · <code>f16</code> · <code>bf16</code> · <code>q8_0</code> · <code>q4_0</code> · <code>q4_1</code> · <code>iq4_nl</code> · <code>q5_0</code> · <code>q5_1</code></td><td>&mdash;</td><td>boot</td><td>The KV cache type for the attention layers: higher precision costs memory, and the reranker needs it.</td></tr>
+</tbody></table></div>
+<p>Unset, <code>context</code> is 32768 and <code>branches</code> is 32; the KV cache is <code>q4_0</code>. Before a byte is fetched, the boot asks whether this machine can hold the catalog model it names: an <em>edge</em> model needs 10 GB of total memory, an <em>appliance</em> model 24 GB, and a box under the floor is refused with what it has and what it needs &mdash; a <code>path:</code> model is trusted by possession and not gated. The CUDA backend pack is the box&rsquo;s, not a key: <code>lloyal backends:install</code> puts it there and writes <code>gpu: cuda</code> for you.</p>
+
+<h2 id="reranker">reranker</h2>
+<p>The pointwise judge the abilities score with. An ability that needs one says so in its manifest (<code>services: ["reranker"]</code>); the block is what provides it.</p>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Takes</th><th>Applies</th><th>What it is</th></tr></thead><tbody>
+<tr><td><code>model.reranker.id</code></td><td>a catalog id</td><td>reload</td><td>The catalog id of the reranker &mdash; the pointwise judge that scores what the abilities retrieve.</td></tr>
+<tr><td><code>model.reranker.path</code></td><td>a path to a <code>.gguf</code></td><td>reload</td><td>A local .gguf for the reranker; outranks the catalog id.</td></tr>
+<tr><td><code>model.reranker.context</code></td><td>a positive integer</td><td>boot</td><td>The reranker context; every scoring sequence leases from it.</td></tr>
+<tr><td><code>model.reranker.instruction</code></td><td><code>{ text, smokeTest }</code> &mdash; the scoring question and its canary pair, or <code>smokeTest: none</code></td><td>boot</td><td>The scoring question and its canary &mdash; what relevant means for every ability sharing the reranker.</td></tr>
+</tbody></table></div>
+<p>Unset, <code>context</code> is 16384. The reranker runs on its own context, at <code>q8_0</code> KV precision &mdash; at <code>q4_0</code> its verdicts invert on close pairs.</p>
+
+<h2 id="vision">vision</h2>
+<p>The projector through which the reasoning model sees an image. The block with no <code>id</code> takes the projector the catalog pairs with the llm, so switching the llm switches the projector with it; a <code>path:</code> llm has no pairing and needs an explicit <code>id</code> or <code>path</code>.</p>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Takes</th><th>Applies</th><th>What it is</th></tr></thead><tbody>
+<tr><td><code>model.vision.id</code></td><td>a catalog id</td><td>reload</td><td>The catalog id of the vision projector; unset, the one the catalog pairs with the reasoning model.</td></tr>
+<tr><td><code>model.vision.path</code></td><td>a path to a <code>.gguf</code></td><td>reload</td><td>A local .gguf for the vision projector; outranks the catalog id.</td></tr>
+<tr><td><code>model.vision.minTokens</code></td><td>a positive integer</td><td>reload</td><td>The floor on how many tokens one image is projected into; grounding tasks want it high.</td></tr>
+<tr><td><code>model.vision.maxTokens</code></td><td>a positive integer</td><td>reload</td><td>The ceiling on what one image costs in context cells; lower it to fit more images.</td></tr>
+</tbody></table></div>
+
+<h2 id="embedding">embedding</h2>
+<p>The encoder a harness indexes with, one vector per text. A model&rsquo;s pooling is its own property &mdash; Qwen3-Embedding reads its last token, nomic-embed averages &mdash; so a catalog id carries it and a local file must say.</p>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Takes</th><th>Applies</th><th>What it is</th></tr></thead><tbody>
+<tr><td><code>model.embedding.id</code></td><td>a catalog id</td><td>reload</td><td>The catalog id of the embedding model &mdash; the encoder a harness indexes with, one vector per text.</td></tr>
+<tr><td><code>model.embedding.path</code></td><td>a path to a <code>.gguf</code></td><td>reload</td><td>A local .gguf for the embedding model; outranks the catalog id.</td></tr>
+<tr><td><code>model.embedding.context</code></td><td>a positive integer</td><td>boot</td><td>The most tokens one text may embed as; a longer text is refused, never truncated.</td></tr>
+<tr><td><code>model.embedding.pooling</code></td><td><code>mean</code> · <code>cls</code> · <code>last</code></td><td>boot</td><td>How the model folds token states into one vector &mdash; its own property; a catalog id carries it, a local file must say.</td></tr>
+</tbody></table></div>
+<p>Unset, <code>context</code> is 2048, which is the batch too: a text is encoded whole. A <code>path:</code> model with no <code>pooling</code> is refused at bind, naming the key. <code>nomic-embed-text-v1.5-q4</code> is the one to reach for on an edge box: a tenth of the memory and a quarter of the latency of the Qwen encoder; Qwen recalls more of what the reranker would confirm and suits an appliance-class box.</p>
+
+<h2 id="the-catalog">The catalog and the slots</h2>
+<p>A catalog <code>id</code> is fetched on first launch into the project&rsquo;s <code>models/&lt;block&gt;/&lt;id&gt;.gguf</code> slot and verified against the catalog&rsquo;s digest, fail-closed: a truncated or tampered download is deleted, never loaded. A <code>path</code> is trusted by possession and never copied.</p>
+<div class="table-wrap"><table><thead><tr><th>Id</th><th>Block</th><th>Weights</th><th>Pairs with</th></tr></thead><tbody>
+<tr><td><code>qwen3.5-4b</code> · Q4_K_M</td><td>llm</td><td>2.6 GB</td><td><code>qwen3.5-4b-mmproj</code></td></tr>
+<tr><td><code>qwen3.8-27b-q4</code> · Q4_K_M</td><td>llm</td><td>16.5 GB</td><td><code>qwen3.8-27b-mmproj</code></td></tr>
+<tr><td><code>qwen3.8-27b-iq1</code> · UD-IQ1_S</td><td>llm</td><td>6.2 GB</td><td><code>qwen3.8-27b-mmproj</code></td></tr>
+<tr><td><code>qwen3-reranker-0.6b-q8</code> · Q8_0</td><td>reranker</td><td>630 MB</td><td>&mdash;</td></tr>
+<tr><td><code>qwen3.5-4b-mmproj</code> · F16</td><td>vision</td><td>672 MB</td><td>&mdash;</td></tr>
+<tr><td><code>qwen3.8-27b-mmproj</code> · F16</td><td>vision</td><td>928 MB</td><td>&mdash;</td></tr>
+<tr><td><code>nomic-embed-text-v1.5-q4</code> · Q4_K_M</td><td>embedding</td><td>84 MB</td><td>pools <code>mean</code></td></tr>
+<tr><td><code>qwen3-embedding-0.6b-q8</code> · Q8_0</td><td>embedding</td><td>639 MB</td><td>pools <code>last</code></td></tr>
+</tbody></table></div>
+<p>The CLI writes the selection for you: <code>lloyal models:use &lt;id&gt; [--role llm|reranker|vision|embedding]</code> writes the block&rsquo;s <code>id</code>, <code>lloyal models:add &lt;path&gt; [--role]</code> its <code>path</code>, each replacing the other; <code>lloyal models:list</code> shows the catalog, your pins and what is on disk. An <code>llm</code> block that names neither and has exactly one <code>.gguf</code> in its slot adopts it; two is refused as ambiguous.</p>
+
+<h1 id="when-a-change-applies">When a change applies</h1>
+<p>Each key declares when a change to it takes effect, and the settings pane offers a control only where one can do something.</p>
+<div class="table-wrap"><table><thead><tr><th>Tier</th><th>Means</th><th>Changed with</th></tr></thead><tbody>
+<tr><td><code>session</code></td><td>at once, for what runs next; remembered locally</td><td><code>set_config</code> &mdash; the pane&rsquo;s control</td></tr>
+<tr><td><code>reload</code></td><td>it names the residency: saved now, the next launch loads it</td><td><code>reload_runtime</code> &mdash; saved, then the process ends and relaunches</td></tr>
+<tr><td><code>boot</code></td><td>it sizes the context the process already built</td><td><code>harness.yml</code> (or the key&rsquo;s env), then a restart</td></tr>
+</tbody></table></div>
+<p>Every key of the model family is <code>reload</code> or <code>boot</code>: the family describes the <strong>running residency</strong>, which a save cannot change, so it stays boot-frozen for the life of the process &mdash; what a session reports is what it runs. A served session saves in memory only (its keys read <code>session</code>) and cannot reload the runtime: the host chose its model when it started and serves every session from that one residency.</p>
+
+<h1 id="your-own-keys">Your own keys</h1>
+<p>A template declares its configuration in <code>src/config.ts</code>: the model family spread in, then its own keys. The key is the path in the resolved config; the entry says where each rung reads it, what it takes, and what stands when nobody sets it. The <code>Config</code> and <code>Origin</code> types are read off the table, so a key added here is typed everywhere at once, and the dev pane lists it.</p>
+<div class="code-frame"><div class="code-label">src/config.ts</div><pre><code>export const config = defineConfig({
+  ...modelSettings,
+  "sources.outputDir": {
+    yml: "sources.outputDir", path: true, default: "reports",
+    describe: "Where settled briefs, their annexures and the session trace are written.",
+  },
+  "defaults.effort": {
+    yml: "defaults.effort", oneOf: ["low", "medium", "high", "ultra"], default: "high",
+    describe: "How much a run may spend.",
+  },
+});
+export type Config = ConfigOf&lt;typeof config&gt;;</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>Field</th><th>Says</th></tr></thead><tbody>
+<tr><td><code>yml</code></td><td>where the committed rung reads it, dotted; absent, the key is never committed</td></tr>
+<tr><td><code>env</code></td><td>the environment variable that outranks both files</td></tr>
+<tr><td><code>cli</code></td><td>the name a boot&rsquo;s overrides carry it under</td></tr>
+<tr><td><code>path</code></td><td>a path: <code>~</code> expanded and made absolute at the boundary, whichever rung supplied it</td></tr>
+<tr><td><code>integer</code></td><td>a positive integer; the env rung parses digits, the others refuse anything else</td></tr>
+<tr><td><code>oneOf</code></td><td>the values it may take; a committed value outside them fails the load</td></tr>
+<tr><td><code>check</code></td><td>any other rule; a committed value that fails it fails the load, a local one falls through</td></tr>
+<tr><td><code>default</code></td><td>what stands when no rung supplies a value &mdash; inside a model block, only once the block is present</td></tr>
+<tr><td><code>applies</code></td><td><code>session</code> (the default), <code>reload</code> or <code>boot</code></td></tr>
+<tr><td><code>describe</code></td><td>what the key is, in one sentence, for whoever shows it</td></tr>
+</tbody></table></div>
+<p>Two rules the declaration enforces: <code>version</code> and the <code>abilities</code> family are the platform&rsquo;s and cannot be declared, and a key cannot also be a family &mdash; <code>model.reranker</code> and <code>model.reranker.id</code> cannot both exist. A family holds keys; a scalar, an array or an object-valued key (<code>defaults.guards</code>) is one value, replaced whole.</p>
+
+<h2 id="the-shipped-templates-keys">The shipped templates&rsquo; keys</h2>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Template</th><th>Takes</th><th>Default</th><th>What it is</th></tr></thead><tbody>
+<tr><td><code>sources.outputDir</code></td><td>basic</td><td>a path</td><td><code>.</code></td><td>Where the session trace is written.</td></tr>
+<tr><td><code>sources.outputDir</code></td><td>research</td><td>a path</td><td><code>reports</code></td><td>Where settled briefs, their annexures and the session trace are written; the library reads it back.</td></tr>
+<tr><td><code>defaults.effort</code></td><td>research</td><td><code>low</code> · <code>medium</code> · <code>high</code> · <code>ultra</code></td><td><code>high</code></td><td>How much a run may spend: the plan&rsquo;s size, each inquiry&rsquo;s turns and time, and when a settling pass is reaped.</td></tr>
+<tr><td><code>defaults.reasoningMode</code></td><td>research</td><td><code>flat</code> · <code>deep</code></td><td><code>flat</code></td><td>flat surveys the plan&rsquo;s tasks side by side; deep investigates them one after another, each reading what the last found.</td></tr>
+<tr><td><code>defaults.guards</code></td><td>research</td><td>a map of gate name to <code>false</code> or <code>{ scope: lineage | cohort }</code></td><td>&mdash;</td><td>The harness&rsquo;s overrides for the agents&rsquo; guards: which repeated searches and re-fetched URLs are refused, and at what scope.</td></tr>
+</tbody></table></div>
+<p><code>defaults.guards</code> is the harness&rsquo;s side of a gate an ability declared: <code>url_dedup: { scope: cohort }</code> widens the gate to every agent in the pool; <code>url_dedup: false</code> switches it off. <a href="/agent-policy-and-context-pressure#tool-guards-are-policy-not-execution">Tool guards are policy</a> has the ability&rsquo;s side.</p>
+
+<h1 id="the-abilities-family">The abilities family</h1>
+<p>Every harness carries <code>abilities.&lt;name&gt;</code>, declared by none: one entry per installed ability, holding whatever its manifest&rsquo;s <code>configSchema</code> asks for. Committed entries come first, then the local overlay replaces a named ability&rsquo;s entry whole and leaves the others; a value is resolved as a path when its key ends in <code>Path</code> or it begins with <code>~</code>, <code>/</code> or <code>.</code>. An ability whose schema has required keys is not enabled until they are present, and its settings page says so. Values never ride the wire: the pane sees each key redacted to its presence, so a secret saved once is never read back.</p>
+<div class="table-wrap"><table><thead><tr><th>Ability</th><th>Key</th><th>Required</th><th>Note</th></tr></thead><tbody>
+<tr><td><code>corpus</code></td><td><code>corpusPath</code></td><td>yes</td><td>the folder of documents it indexes; resolved as a path</td></tr>
+<tr><td><code>web</code></td><td><code>tavilyKey</code></td><td>no</td><td>a secret &mdash; redacted to presence on the wire; without it the keyless search runs</td></tr>
+<tr><td><code>documents</code></td><td>&mdash;</td><td>&mdash;</td><td>no configuration</td></tr>
+<tr><td><code>wikipedia</code></td><td>&mdash;</td><td>&mdash;</td><td>no configuration</td></tr>
+</tbody></table></div>
+<div class="code-frame"><div class="code-label">harness.yml</div><pre><code>abilities:
+  corpus:
+    corpusPath: ./docs</code></pre></div>
+
+<h1 id="targets">targets</h1>
+<p><code>targets: [cli, desktop, web]</code> is the scaffold&rsquo;s: which surfaces the project carries. The CLI reads it when it prunes a target you drop; the runtime never reads it. It is the one key at the top of the file that no table declares.</p>
+
+<h1 id="the-box">The box&rsquo;s own settings</h1>
+<p>What describes the machine rather than the harness comes from the environment and nowhere else: one build serves many machines, and a committed manifest would ship one box&rsquo;s numbers to all of them.</p>
+<div class="table-wrap"><table><thead><tr><th>Variable</th><th>Read by</th><th>Says</th></tr></thead><tbody>
+<tr><td><code>PORT</code></td><td>the served boot</td><td>the port the host listens on; 8787 unset</td></tr>
+<tr><td><code>HOST</code></td><td>the served boot</td><td>the interface it binds; <code>127.0.0.1</code> unset &mdash; serving every interface is an explicit choice</td></tr>
+<tr><td><code>MAX_SESSIONS</code></td><td>the served boot</td><td>how many browser sessions may be <em>resident</em> at once; 4 unset. Size it against the model, the context and the vision configuration deployed, with the sessions idle</td></tr>
+<tr><td><code>LLOYAL_CONTENT_ORIGIN</code></td><td>the served boot</td><td>the origin allowed to upload to the content plane</td></tr>
+<tr><td><code>LLOYAL_DEV</code></td><td>both boots</td><td><code>1</code> mounts dev observability: the trace sink and the pane</td></tr>
+<tr><td><code>LLOYAL_GPU</code></td><td>both boots</td><td>the env rung of <code>model.llm.gpu</code>; with no gpu configured an inherited value is cleared, so the file stays the one source</td></tr>
+<tr><td><code>LLAMA_CTX_SIZE</code></td><td>both boots</td><td>the env rung of <code>model.llm.context</code></td></tr>
+<tr><td><code>LLOYAL_NO_FALLBACK</code></td><td>the native runtime</td><td>a configured backend sets it to <code>1</code> unless you set it: an unavailable backend fails loud rather than loading on CPU</td></tr>
+<tr><td><code>LLOYAL_BACKEND_DIR</code></td><td>the native runtime</td><td>a provisioned CUDA backend pack, where <code>lloyal backends:install</code> did not put one</td></tr>
+</tbody></table></div>
+
+<h1 id="harness-json">harness.json</h1>
+<p>The local overlay, beside the manifest: what the settings pane writes, at version <code>2</code>, one block per model in the same shape as the manifest. It is written atomically with mode 0600 &mdash; it can carry a credential &mdash; and every save tightens a looser file; scaffolds ship it in <code>.gitignore</code>, and a save appends it there when it is not. A save carries only the keys it changes, merged into the families the table declares and replacing anything else whole, so a local overlay never pins an untouched value over the rungs beneath it.</p>
+<p>A file written before 1.11 says <code>"version": 1</code> and is refused, naming the fix: delete it and relaunch. A file at a version this runtime does not write is ignored by the loader and never rebuilt over by a save &mdash; nothing overwrites a newer runtime&rsquo;s settings.</p>
+<blockquote><p><strong>The manifest is the deploy; the overlay is the machine. Naming a model in either is enabling it.</strong></p></blockquote>
+</article></main>
+<footer class="footer wrap"><span class="mission">Enable every organisation to deliver intelligence on its terms.</span><span>Lloyal Labs · Melbourne</span></footer>
+</div>
