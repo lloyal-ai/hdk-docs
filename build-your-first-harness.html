@@ -45,7 +45,7 @@ description: Use lloyal-ai to create an application, begin a Session, inspect it
   <main class="article-shell wrap">
     <nav class="toc" aria-label="Table of contents">
       <div class="toc-label">In this guide</div>
-      <a class="toc-l1" href="#step-1-create-the-harness">1. Create the harness</a><a class="toc-l2" href="#name-the-application">Name the application</a><a class="toc-l2" href="#choose-its-surfaces">Choose its surfaces</a><a class="toc-l2" href="#choose-a-trunk-model">Choose a trunk model</a><a class="toc-l2" href="#choose-a-starting-point">Choose a starting point</a><a class="toc-l2" href="#materialise-the-project">Materialise the project</a><a class="toc-l2" href="#begin-a-session">Begin a Session</a><a class="toc-l1" href="#step-2-find-the-application">2. Find the application</a><a class="toc-l1" href="#step-3-work-always-belongs-somewhere">3. Work always belongs somewhere</a><a class="toc-l1" href="#step-4-live-attention-is-a-resource">4. Live attention is a resource</a><a class="toc-l1" href="#step-5-agents-are-managed-not-launched">5. Agents are managed, not launched</a><a class="toc-l1" href="#step-6-application-code-controls-execution">6. Application code controls execution</a><a class="toc-l2" href="#change-the-intent">Change the intent</a><a class="toc-l2" href="#change-the-topology">Change the topology</a><a class="toc-l1" href="#step-7-finality-and-continuity-are-explicit">7. Finality and continuity are explicit</a><a class="toc-l1" href="#what-you-just-programmed">What you just programmed</a><a class="toc-l1" href="#continue">Continue</a>
+      <a class="toc-l1" href="#step-1-create-the-harness">1. Create the harness</a><a class="toc-l2" href="#name-the-application">Name the application</a><a class="toc-l2" href="#choose-its-surfaces">Choose its surfaces</a><a class="toc-l2" href="#choose-a-trunk-model">Choose a trunk model</a><a class="toc-l2" href="#choose-a-starting-point">Choose a starting point</a><a class="toc-l2" href="#materialise-the-project">Materialise the project</a><a class="toc-l2" href="#begin-a-session">Begin a Session</a><a class="toc-l1" href="#step-2-find-the-application">2. Find the application</a><a class="toc-l1" href="#step-3-work-always-belongs-somewhere">3. Work always belongs somewhere</a><a class="toc-l1" href="#step-4-live-attention-is-a-resource">4. Live attention is a resource</a><a class="toc-l1" href="#step-5-agents-are-managed-not-launched">5. Agents are managed, not launched</a><a class="toc-l1" href="#step-6-application-code-controls-execution">6. Application code controls execution</a><a class="toc-l2" href="#change-the-intent">Change the intent</a><a class="toc-l2" href="#the-tests-notice">The tests notice</a><a class="toc-l2" href="#change-the-topology">Change the topology</a><a class="toc-l1" href="#step-7-finality-and-continuity-are-explicit">7. Finality and continuity are explicit</a><a class="toc-l1" href="#make-it-yours">Make it yours</a><a class="toc-l2" href="#name-it">Name it</a><a class="toc-l2" href="#give-it-a-look">Give it a look</a><a class="toc-l2" href="#tell-it-who-it-works-for">Tell it who it works for</a><a class="toc-l2" href="#write-its-prompts">Write its prompts</a><a class="toc-l1" href="#what-you-just-programmed">What you just programmed</a><a class="toc-l1" href="#continue">Continue</a>
     </nav>
     <article class="article"><h1 id="step-1-create-the-harness">1. Create the harness</h1>
 <p>Start the interactive scaffold:</p>
@@ -253,6 +253,9 @@ notes leave as data
 </code></pre></div><p>Run the same task again.</p>
 <p>You changed what interpretations the harness creates without changing the model, Tool, surface, or runtime.</p>
 <p>This is the fourth key concept in its first form: application code controls execution by deciding what work exists.</p>
+<h2 id="the-tests-notice">The tests notice</h2>
+<p>Run <code>npm test</code> after that change and it fails. The scaffold ships behavioural tests in <code>test/invariants/</code>, and they script the model's replies — one per angle, then the settling agent's. A third angle has no reply scripted for it, so the assertions shift.</p>
+<p>This is the suite doing its job: it pins what the harness produces, so changing the harness is supposed to be visible here. Add the reply your new angle needs and it passes again. The tests are yours — they came with the project, not with the framework.</p>
 <h2 id="change-the-topology">Change the topology</h2>
 <p>The starter uses <code>parallel(...)</code> because each angle can proceed independently from the same starting state:</p>
 <div class="code-frame"><div class="code-label">STRUCTURE</div><pre><code>parallel
@@ -313,6 +316,51 @@ subsequent work may inherit it
 ≠ accepted result
 ≠ continuing Session state
 </code></pre></div><p>The starter already exercises result acceptance and continuity. Protected external actions add a separate authority boundary, covered in <a href="/agent-policy-and-context-pressure">Adaptive compute</a>.</p>
+<hr/>
+<h1 id="make-it-yours">Make it yours</h1>
+<p>Four edits change what the application <em>is</em> without touching how it runs. Each lives in one file, and every surface reads it from there.</p>
+<h2 id="name-it">Name it</h2>
+<p>The window title, the browser tab, the terminal header and the served host all read one constant:</p>
+<div class="code-frame"><div class="code-label">TYPESCRIPT</div><pre><code><span class="k">export</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">APP</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s2">"Field Notes"</span><span class="p">,</span>
+<span class="p">}</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="kd">const</span><span class="p">;</span>
+</code></pre></div><p>The folder keeps the name you scaffolded with. What people see comes from here, so the two are free to differ.</p>
+<h2 id="give-it-a-look">Give it a look</h2>
+<p>The interface is ordinary CSS in <code>src/ui/app.css</code>, and its <code>:root</code> block is the whole palette. The <code>--harness-*</code> tokens matter more than they look: the platform's own screens read them, so the installer a reader meets <em>before the app opens</em> is drawn in your colours.</p>
+<div class="code-frame"><div class="code-label">CSS</div><pre><code><span class="p">:</span><span class="nd">root</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nv">--text</span><span class="p">:</span><span class="w"> </span><span class="mh">#ece6da</span><span class="p">;</span>
+<span class="w">  </span><span class="nv">--bg</span><span class="p">:</span><span class="w"> </span><span class="mh">#14161b</span><span class="p">;</span>
+<span class="w">  </span><span class="nv">--link</span><span class="p">:</span><span class="w"> </span><span class="mh">#e3a248</span><span class="p">;</span>
+<span class="w">  </span><span class="c">/* The platform's own screens read these. */</span>
+<span class="w">  </span><span class="nv">--harness-accent</span><span class="p">:</span><span class="w"> </span><span class="nf">var</span><span class="p">(</span><span class="nv">--link</span><span class="p">);</span>
+<span class="w">  </span><span class="nv">--harness-bg</span><span class="p">:</span><span class="w"> </span><span class="nf">var</span><span class="p">(</span><span class="nv">--bg</span><span class="p">);</span>
+<span class="w">  </span><span class="nv">--harness-fg</span><span class="p">:</span><span class="w"> </span><span class="nf">var</span><span class="p">(</span><span class="nv">--text</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div><p>Change those tokens and the first screen anyone sees changes with them. There is no separate installer theme to keep in step.</p>
+<h2 id="tell-it-who-it-works-for">Tell it who it works for</h2>
+<p>Two sentences, empty as shipped, that every framed prompt carries:</p>
+<div class="code-frame"><div class="code-label">TYPESCRIPT</div><pre><code><span class="k">export</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">INSTRUCTIONS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">purpose</span><span class="o">:</span><span class="w"> </span><span class="s2">"You help field engineers get oriented on unfamiliar equipment fast."</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">answers</span><span class="o">:</span><span class="w"> </span><span class="s2">"Open with the one-sentence answer. Name the standard wherever one exists."</span><span class="p">,</span>
+<span class="p">};</span>
+</code></pre></div><p><code>purpose</code> reaches every Agent that thinks about the question. <code>answers</code> reaches only the one writing the words a reader gets. Left empty they add nothing — not a blank line, not a stray heading.</p>
+<h2 id="write-its-prompts">Write its prompts</h2>
+<p>Everything the model is told by your own hand is a file in <code>src/harness/prompts/</code>: <code>&lt;name&gt;.system.eta</code> beside <code>&lt;name&gt;.user.eta</code>. They are read again on every render, so an edit is live at the next question with no restart.</p>
+<p>These are <a href="https://eta.js.org">Eta</a> templates, which means they are JavaScript. <code>&lt;%= %&gt;</code> writes a value; <code>&lt;% %&gt;</code> runs a statement. So a prompt can loop, branch, and stay one file instead of three:</p>
+<div class="code-frame"><div class="code-label">ETA</div><pre><code>Question: &lt;%= it.query %&gt;
+
+&lt;% for (const source of it.sources) { %&gt;
+- &lt;%= source.title %&gt; — &lt;%= source.url %&gt;
+&lt;% } %&gt;
+
+&lt;% if (it.sources.length === 0) { %&gt;
+No sources were gathered. Say so plainly rather than inventing a summary.
+&lt;% } %&gt;
+</code></pre></div><p>Prose the model reads is built the way any other text is. The starter hands its notes in already joined, which is fine while the shape is fixed; build the list in the template instead and the shape of what the model sees lives in the file you are reading.</p>
+<p>Every system file opens by handing itself to the one frame, so the identity above is said in the same place every time. It is a <em>layout</em>, not an include — the file declares it on its first line and the frame wraps whatever the file goes on to say:</p>
+<div class="code-frame"><div class="code-label">ETA</div><pre><code>&lt;% layout("./framed", { writesTheAnswer: true }) %&gt;
+</code></pre></div><p><code>framed.eta</code> puts <code>purpose</code> before your text and, when the stage writes the words a reader gets, <code>answers</code> after it. Setting <code>writesTheAnswer</code> is how a file says which it is.</p>
+<p>One more thing worth knowing: a key the template reads that was never given renders <strong>empty</strong>, and says so in the engine's log. It never puts the word <code>undefined</code> in front of the model.</p>
 <hr/>
 <h1 id="what-you-just-programmed">What you just programmed</h1>
 <div class="table-wrap"><table>
