@@ -1,41 +1,58 @@
 ---
-title: "From async/await to Lloyal"
-description: "The whole translation from async/await to Lloyal's generators in one page: what each form means, the four lines that carry the model, the mistakes that compile and leak, and the rules to hand your coding agent."
-lede: "If you write async/await, this page is the whole translation — and the one thing you gain from it."
+title: "Structured concurrency"
+description: "Lloyal's harnesses are built on Effection, Frontside's structured concurrency library for JavaScript. What Effection guarantees, its translation from async/await, what Lloyal adds for live inference, the mistakes that compile and leak, and the rules to hand your coding agent."
+lede: "Every Lloyal harness runs on Effection's structured concurrency. If you write async/await, this page is the translation — and what it buys you."
 ---
 
 <!--
-Moved, not rewritten: the Rosetta Stone, the four lines, the operator reference, the return-type rule,
-the common mistakes and the repository invariants all come from Thinking in Lloyal (2026-09-30).
-The opening paragraph is the lloyal-ai README's "The one idea underneath".
+Renamed from /async-to-lloyal (2026-09-30) to credit Effection as the source of the model.
+Credited from Frontside's guides, read 2026-09-30:
+  https://frontside.com/effection/guides/v4/thinking-in-effection/  (the three guarantees)
+  https://frontside.com/effection/guides/v4/async-rosetta-stone/    (await ↔ yield*, async function ↔ function*, Promise ↔ Operation, for await ↔ each …)
+The Lloyal rows (waitUntilSettled, withSpine) and the rest of this page are Lloyal's own.
 -->
 
-A Lloyal program is a generator. Read `function*` as `async function` and `yield*` as `await`, and what you gain is **ownership**: whatever a piece of work starts is finished or cleaned up when that work ends, however it ends. That is why a Stop works in the middle of anything, and why there is almost no teardown code to write.
+Lloyal does not have its own concurrency model. Every harness runs on **[Effection](https://frontside.com/effection)**, the structured concurrency library for JavaScript made by [Frontside](https://frontside.com), and the ideas on this page — generators as operations, `yield*` in place of `await`, scopes that own every lifetime — are Effection's. Lloyal builds on them, and adds the few pieces that live model state needs.
 
-The rules below are few, and they matter: code that breaks them usually compiles, runs, and leaks. [Thinking in Lloyal](/thinking-in-lloyal) is the long version of why.
+## What Effection guarantees {#what-effection-guarantees}
 
-## Async-to-Lloyal Rosetta Stone {#async-to-lloyal-rosetta-stone}
+From Frontside's [Thinking in Effection](https://frontside.com/effection/guides/v4/thinking-in-effection/):
 
-| JavaScript instinct | Lloyal/Effection form | Ownership meaning |
+- **No operation runs longer than its parent.** When a parent completes or is halted, Effection tears down its children — the way memory is released when nothing refers to it.
+- **Every operation exits fully.** Cleanup runs, whether the work returned, threw or was stopped.
+- **It's just JavaScript.** `let`, `const`, `if`, `for`, `try`/`catch`/`finally` all work as you expect; generators take the place of `async`/`await`, because async/await cannot model structured concurrency.
+
+That is why a Stop in a Lloyal app works in the middle of anything, and why there is almost no teardown code to write: whatever a piece of work starts — a tool call, a pool of agents, a fork of the model's state — is finished or cleaned up when that work ends, however it ends.
+
+The rules below are few, and they matter: code that breaks them usually compiles, runs, and leaks. [Thinking in Lloyal](/thinking-in-lloyal) is how the same ownership extends to the model's live state.
+
+## From async/await to Effection {#async-to-lloyal-rosetta-stone}
+
+If you know how to do it in JavaScript, you know how to do it in Effection. These rows follow Frontside's [Async Rosetta Stone](https://frontside.com/effection/guides/v4/async-rosetta-stone/), with what each one means for ownership:
+
+| JavaScript | Effection | Ownership meaning |
 | --- | --- | --- |
 | `async function` | `function*(): Operation<T>` | A composable scoped program |
 | `await work()` | `yield* work()` | Perform work under the current owner |
 | `Promise<T>` | `Operation<T>` | Work waiting to be placed in a scope |
 | `Promise.all(...)` | `yield* all(...)` | Run and join an owned cohort |
+| `Promise.race(...)` | `yield* race(...)` | Race owned alternatives and halt the losers |
 | fire-and-forget Promise | `yield* spawn(...)` | Start a child that cannot outlive this scope |
-| `Promise.race(...)` | `yield* race(...)` | Race owned alternatives and halt losers |
 | call an async API | `yield* call(() => ...)` | Cross deliberately into Promise code |
-| write into the model — `commitTurn`, `commit`, `prefill`, `promote` | `yield* waitUntilSettled(session.commitTurn(...))` | Finish the native write, even when halted |
 | `finally` cleanup | `ensure()` or a resource | Bind cleanup to scope exit |
 | `for await` | `for (... of yield* each(stream))` | Consume a scoped subscription |
 | global dependency | Effection Context | Inherit a capability inside a scope |
-| temporary workspace | `withSpine(...)` | Borrow live inference state and reclaim it |
 
-Further language-level references:
+## What Lloyal adds {#what-lloyal-adds}
 
--   [https://frontside.com/effection/guides/v4/thinking-in-effection/](https://frontside.com/effection/guides/v4/thinking-in-effection/)
--   [https://frontside.com/effection/guides/v4/async-rosetta-stone/](https://frontside.com/effection/guides/v4/async-rosetta-stone/)
+Two forms are Lloyal's, because live model state has lifetimes of its own:
 
+| Situation | Lloyal form | Ownership meaning |
+| --- | --- | --- |
+| write into the model — `commitTurn`, `commit`, `prefill`, `promote` | `yield* waitUntilSettled(session.commitTurn(...))` | Finish the native write, even when halted |
+| a temporary workspace for agents | `yield* withSpine(options, body)` | Borrow live inference state and reclaim it when the body ends |
+
+Both are built from Effection's own primitives — `scoped`, `ensure`, `until` — and they are in `@lloyal-labs/lloyal-agents`.
 
 ## Four lines that carry the model {#four-lines-that-carry-the-model}
 
@@ -236,6 +253,14 @@ Do not set `Tool.fanout = true` when the Tool may touch the main SessionContext,
   while Channels return Operations that must be yielded.
 - Do not mark a Tool as `fanout` if it may touch the main SessionContext.
 ```
+
+## Learn Effection {#learn-effection}
+
+Effection's guides are the reasoning behind everything on this page, and the contract Lloyal's own code is held to:
+
+- [Thinking in Effection](https://frontside.com/effection/guides/v4/thinking-in-effection/) — the three guarantees, and why generators.
+- [Async Rosetta Stone](https://frontside.com/effection/guides/v4/async-rosetta-stone/) — every async/await form and its Effection equivalent.
+- [The Effection guides](https://frontside.com/effection) — scopes, resources, actions, events, collections and errors.
 
 ## Next {#next}
 

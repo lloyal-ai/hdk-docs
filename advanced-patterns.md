@@ -6,7 +6,7 @@ lede: "Programs the ownership model makes possible: adaptive topology, direct co
 
 <!-- Moved from Thinking in Lloyal's "Advanced patterns" section (2026-09-30), unchanged. -->
 
-This page assumes [Thinking in Lloyal](/thinking-in-lloyal). Every sample awaits a native write into the model with `waitUntilSettled` from `@lloyal-labs/lloyal-agents` — [why](/async-to-lloyal#wrapping-a-native-write-in-call).
+This page assumes [Thinking in Lloyal](/thinking-in-lloyal). Every sample awaits a native write into the model with `waitUntilSettled` from `@lloyal-labs/lloyal-agents` — [why](/structured-concurrency#wrapping-a-native-write-in-call).
 
 The preceding sections teach how to see a Lloyal execution. These patterns show what the same primitives can express when topology, observation, evidence flow, inference shaping, lifecycle policy, authority, and continuity are composed deliberately.
 

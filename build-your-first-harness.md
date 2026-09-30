@@ -145,7 +145,7 @@ Read it top to bottom:
 - **`pool.byKey`** reads each angle's result back by name, not by the order they happened to finish.
 
 ::: owns
-The spine, and every agent forked from it, belong to the `withSpine` callback. When it returns — or throws, or the reader presses Stop — they are released. Only **data** leaves: the notes, as strings. That is why there is no cleanup code here to write. Why this works is [Thinking in Lloyal](/thinking-in-lloyal); the forms, next to async/await, are [From async/await to Lloyal](/async-to-lloyal).
+The spine, and every agent forked from it, belong to the `withSpine` callback. When it returns — or throws, or the reader presses Stop — they are released. Only **data** leaves: the notes, as strings. That is why there is no cleanup code here to write. Why this works is [Thinking in Lloyal](/thinking-in-lloyal); the forms are Effection's structured concurrency, next to async/await on [Structured concurrency](/structured-concurrency).
 :::
 
 ## 5. Change what it looks for {#change-the-intent}
@@ -322,6 +322,6 @@ A key a template reads that was never given renders empty and is reported in the
 
 ## Next {#continue}
 
-- [From async/await to Lloyal](/async-to-lloyal) — the forms you just read, next to the ones you know.
+- [Structured concurrency](/structured-concurrency) — the Effection forms you just read, next to the async/await you know.
 - [Ship a desktop app](/ship) — turn it into a `.dmg`.
 - The project's own `README.md` has recipes: classify with the resident model, add a second model, write a tool, steer agents with hooks, add a live setting.

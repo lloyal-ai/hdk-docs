@@ -49,7 +49,7 @@ One command creates a working app: a desktop window, a browser app and a termina
 
 ## How it works {#how-it-works}
 
-Lloyal programs are generators with structured ownership: whatever a piece of work starts is finished or cleaned up when that work ends. If you write async/await, **[From async/await to Lloyal](/async-to-lloyal)** is the whole translation, on one page.
+Lloyal programs are built on [Effection](https://frontside.com/effection), Frontside's structured concurrency library: whatever a piece of work starts is finished or cleaned up when that work ends. If you write async/await, **[Structured concurrency](/structured-concurrency)** is the translation, on one page.
 
 Every agent is a branch of the model's live state — it forks from what the model has already read, rather than re-sending it — and the pool advances all of them together over one model. Why that changes what an application can do is **[Continuous Context](/continuous-context)**; how it is programmed is **[Thinking in Lloyal](/thinking-in-lloyal)**.
 

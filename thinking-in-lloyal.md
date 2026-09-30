@@ -273,7 +273,7 @@ The execution stack establishes the architectural boundary. From there, the guid
 4.  **[Exit cleanly](#exit-cleanly)** — completion, failure, halt, cleanup, and Promise integration.
 5.  **[Read it in code](#read-it-in-code)** — the basic harness with the ownership model annotated.
 
-The four lines that carry the model, the async/await translation and the common mistakes are on [From async/await to Lloyal](/async-to-lloyal). What the model makes possible once it is familiar is [Advanced patterns](/advanced-patterns).
+The four lines that carry the model, the async/await translation and the common mistakes are on [Structured concurrency](/structured-concurrency). What the model makes possible once it is familiar is [Advanced patterns](/advanced-patterns).
 
 ---
 
@@ -947,7 +947,7 @@ Adaptive harness patterns, programming the inference trajectory, and acceptance 
 
 ## Reference {#reference}
 
-The operator reference, the async-to-Lloyal translation, common mistakes and the repository invariants are on [From async/await to Lloyal](/async-to-lloyal).
+The operator reference, the async-to-Lloyal translation, common mistakes and the repository invariants are on [Structured concurrency](/structured-concurrency).
 
 ---
 

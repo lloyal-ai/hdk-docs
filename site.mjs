@@ -66,7 +66,7 @@ export const TABS = [
     id: 'understand',
     label: 'Understand',
     pages: [
-      { slug: 'async-to-lloyal', label: 'From async/await' },
+      { slug: 'structured-concurrency', label: 'Structured concurrency' },
       { slug: 'thinking-in-lloyal', label: 'Thinking in Lloyal' },
       { slug: 'advanced-patterns', label: 'Advanced patterns' },
       { slug: 'continuous-context', label: 'Continuous Context' },
