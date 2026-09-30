@@ -23,14 +23,31 @@ export const TABS = [
     id: 'build',
     label: 'Build',
     pages: [
+      { slug: 'agents', label: 'Agents and orchestration' },
+      { slug: 'tools', label: 'Tools' },
+      { slug: 'tool-hooks', label: 'Tool hooks and guards' },
+      { slug: 'structured-output', label: 'Structured output' },
+      { slug: 'agent-policy', label: 'Agent policy' },
+      { slug: 'human-approval', label: 'Human approval' },
+      { slug: 'prompts', label: 'Prompts' },
+      { slug: 'settings', label: 'Settings' },
+      { slug: 'models', label: 'Models' },
       { slug: 'services', label: 'Services' },
+      { slug: 'retrieval', label: 'Retrieval' },
+      { slug: 'attachments', label: 'Attachments and documents' },
+      { slug: 'interface', label: 'The interface' },
+      { slug: 'testing', label: 'Testing' },
     ],
   },
   {
     id: 'abilities',
     label: 'Abilities',
     pages: [
-      { slug: 'abilities', label: 'Abilities' },
+      { slug: 'abilities', label: 'Overview' },
+      { slug: 'build-an-ability', label: 'Build an ability' },
+      { slug: 'publish-and-install', label: 'Publish and install' },
+      { slug: 'ability-security', label: 'Security model' },
+      { slug: 'first-party-abilities', label: 'First-party abilities' },
     ],
   },
   {
@@ -39,13 +56,19 @@ export const TABS = [
     pages: [
       { slug: 'where-a-harness-runs', label: 'Where a harness runs' },
       { slug: 'ship', label: 'Ship a desktop app' },
+      { slug: 'serve', label: 'Serve to many users' },
+      { slug: 'project-root', label: 'Choose where the work lives' },
+      { slug: 'traces', label: 'Debug with traces' },
+      { slug: 'troubleshooting', label: 'Troubleshooting' },
     ],
   },
   {
     id: 'understand',
     label: 'Understand',
     pages: [
+      { slug: 'async-to-lloyal', label: 'From async/await' },
       { slug: 'thinking-in-lloyal', label: 'Thinking in Lloyal' },
+      { slug: 'advanced-patterns', label: 'Advanced patterns' },
       { slug: 'continuous-context', label: 'Continuous Context' },
       { slug: 'agent-policy-and-context-pressure', label: 'Adaptive compute' },
       { slug: 'focal-lens', label: 'Focus' },
@@ -55,8 +78,10 @@ export const TABS = [
     id: 'reference',
     label: 'Reference',
     pages: [
+      { slug: 'cli', label: 'CLI' },
       { slug: 'harness-yml', label: 'harness.yml' },
       { slug: 'lookup', label: 'Lookup' },
+      { slug: 'service-kinds', label: 'Adding a service kind' },
     ],
   },
 ];

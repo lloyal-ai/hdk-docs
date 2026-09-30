@@ -1,8 +1,9 @@
 ---
 title: "Services"
-description: "Composition of models — one reasoning model and, beside it, every model an agent's work needs, composed as services: named once in harness.yml, read with one call from an ability or a harness, acquired, bound and refused by one contract. What a service is, the lifecycle every one goes through, what a bound one exposes, and how a new kind is added."
-lede: "Composition of models. One reasoning model and, beside it, every model an agent’s work needs — a judge, a projector, an encoder, a classifier — composed as services for agents. Naming a model is enabling it; reading it is one line."
+description: "The models beside the reasoning model — a reranker, a vision projector, an embedder — named once in harness.yml and read with one call. What a service is, how a block enables it, what a bound one exposes, and what the boot does."
+lede: "Composition of models: name a second model in harness.yml and read it with one line — no endpoint, no client, no API key."
 ---
+
 
 An application is rarely one model. The model that reasons is not the model that judges whether a passage answers the question, nor the one that turns pixels into something it can attend over, nor the one that indexes a corpus ahead of the question. In an API-wrapper framework each of those is another endpoint, another client, another place the working state has to be serialised to and read back from. Here they are **resident together**, named in one place, and reached by one call: a harness composes the models its work needs by writing their blocks in `harness.yml`, an ability declares the ones it cannot function without, and every one of them goes through one lifecycle — *declare, configure, acquire, bind, reach, refuse* — that the framework runs for every kind alike, without looking inside. What a bound model exposes is its own; what it costs to add a kind is a row.
 
@@ -21,7 +22,7 @@ There are two shapes a service can take, and the difference is what a consumer g
 -   **An instance of its own.** The reranker runs on a context of its own, and a bound reranker is an object with methods: score, tokenize, dispose. It lives as long as the scope that bound it.
 -   **A capability of the trunk.** The vision projector is not an object anything calls: it goes onto the resident context so the trunk can see, and every agent forked from that trunk sees with it. What a consumer reads back is a marker that says the projector is there, and nothing to call. Sight is the context’s, not an object’s.
 
-The framework treats both through the same contract. It never asks a service what it can do; it asks the service’s *provider* how the artifact reaches the run, and a provider answers with one of two cells — `bind` for an instance, `trunk` for a capability — described under [the provider](#the-provider).
+The framework treats both through the same contract. It never asks a service what it can do; it asks the service’s *provider* how the artifact reaches the run, and a provider answers with one of two cells — `bind` for an instance, `trunk` for a capability — described under [the provider](/service-kinds#the-provider).
 
 ### The set today {#the-set-today}
 
@@ -143,29 +144,7 @@ Every score the reranker returns is in logits: the log-odds of its yes/no judgem
 
 ## Requiring a service {#requiring-a-service}
 
-An ability declares only what it cannot function without, by name, in its manifest. The names are checked against the closed set when the ability module is imported: an unknown name is a malformed manifest and never reaches a registry.
-
-```json label="ability.json"
-{
-  "name": "corpus",
-  "abilityProtocolVersion": "3.0",
-  "services": ["reranker"],
-  "protocol": { "name": "corpus_research", "useWhen": "…", "tools": ["grep", "read_file", "search"] }
-}
-```
-
-A declaration is a requirement and a governed disclosure, not a request: the harness never provisions something because an ability asked. What it provisions is what its own `model` blocks name, and an ability whose requirement is not among them does not enable. There is no optional service: an ability that can degrade without one does not declare it, and reads nothing.
-
-### The two gates {#the-two-gates}
-
-Declared means required, and two gates hold it — the accessor enforces nothing.
-
-| Gate | Asks | When | On failure |
-| --- | --- | --- | --- |
-| **install** | can this service be *selected* from the resolved configuration? | `lloyal install` and `lloyal new`, after the bundle is verified and before any file is written | names the missing key and **offers** to write it — `model.reranker.id: qwen3-reranker-0.6b-q8`, the catalog’s — in a terminal; declining leaves `harness.yml` byte-identical, and a pipe with nobody to ask refuses. A present block passes: whether it selects is the boot’s to settle. |
-| **enable** | did the service *bind*? | `registry.enable`, before the ability’s factory runs | refuses the ability, naming the block: ``corpus requires `reranker`, which is not configured — add `model.reranker` to harness.yml``. The harness starts either way. |
-
-Four things can go wrong here and each has its own message, because “add a declaration” is the wrong advice for three of them: a *missing declaration* (the install gate’s offer), an *unsupported service* (refused at import, outright), a *failed model load* (the boot’s, with the loader’s reason), and *no compatible projector* (a `vision` block under a `path:` llm, refused at the install’s plan).
+An Ability declares the services it cannot work without, in its manifest, and is refused at enable — by name — when the harness does not name them. That is the ability author's half of the contract: [Build an ability](/build-an-ability#require-a-service).
 
 ## What the boot does {#what-the-boot-does}
 
@@ -188,70 +167,8 @@ With every artifact on disk, the boot builds the resident context. The trunk pro
 
 The bound set is put in reach as one context, `Services`, and the registry seeds that same context into every ability’s scope as it enables it. That is the whole mechanism behind `service(name)`: a read of a bag the platform filled.
 
-## Adding a kind {#adding-a-kind}
+## Related {#related}
 
-Adding a service touches four places, and the compiler names whichever you skip. None of them is the installer, a boot, the registry, the config layering or the view.
-
-| Place | What you add | What the build checks |
-| --- | --- | --- |
-| the contract | a key in `ServiceMap` naming what a consumer gets, and the name in `SERVICES` | the two are held exhaustive against each other in both directions |
-| the configuration | `model.<name>.id`, `model.<name>.path`, and the service’s tuning keys in `modelSettings` | the provider’s block is typed from these; a row whose keys are missing does not compile |
-| the provider | one row in the provider table: how the artifact reaches the run | the table is a mapped type over `ServiceMap`; a missing row is a compile error |
-| the catalog | an entry per model the service can name, with its digest | the CLI’s mirror of the set and the catalog is held to the platform’s by a test |
-
-### The provider {#the-provider}
-
-A provider row is what a contributor writes, from the contract alone. Three optional cells; a row has one of the two binding cells, and `derive` only when a block can mean something without naming a model.
-
-```ts label="packages/rig/src/providers/index.ts"
-export const providers: { [K in Service]: ProviderRow<K> } = {
-  reranker: {
-    bind: (artifact, block) =>
-      createReranker(artifact, { nCtx: block.context, instruction: block.instruction }),
-  },
-  vision: {
-    derive: ({ llm }) => {
-      if (llm.path || !llm.id) return undefined;               // bytes the catalog cannot pair
-      const paired = catalogEntry("llm", llm.id)?.vision;
-      return paired ? { id: paired } : undefined;
-    },
-    trunk: (artifact, block) =>
-      ({ mmprojPath: artifact, imageMinTokens: block.minTokens, imageMaxTokens: block.maxTokens }),
-  },
-  embedding: {
-    bind: (artifact, block) =>
-      createEmbedder(artifact, { nCtx: block.context, pooling: embeddingPooling(block) }),
-  },
-};
-```
-
-| Cell | Says |
-| --- | --- |
-| `derive(of)` | which model backs the service when its block names none, given the llm’s selection; `undefined` refuses, naming `model.<name>.id` |
-| `bind(artifact, block)` | the artifact as the instance `service(name)` answers — an Effection resource, so the instance lives as long as the scope that bound it and is torn down with it |
-| `trunk(artifact, block)` | the options the artifact contributes to the resident context; typed only for a service whose map entry is a `Trunk`, so an instance service cannot accidentally be folded into the trunk |
-
-`block` is the service’s `model.<name>` as the layering resolved it, typed from its keys, so a provider reads its tuning without parsing anything. The reranker row is one line; the binding it calls, `createReranker`, is one of the two files in the framework that open a second native context (the embedder’s, `createEmbedder`, is the other) and compose a runtime primitive over it, and each is its own file so a test can stand a fake at that boundary and prove the walk without loading a model. A new kind whose binding needs a different acquirer — a model that is not a `.gguf` in a slot — would add one more optional cell then; nothing today needs it, so it is not in the contract.
-
-### The two halves of a new kind {#two-halves}
-
-The promise at the top of this page ends in a dash — a judge, a projector, an encoder, a classifier, and whatever comes next — and it is worth being exact about what the contract buys for the next one. A new kind of model has two halves, which the contract keeps separate:
-
--   **The service layer** — configuration, acquisition, binding, the accessor, the installer’s step, the gates. After this contract, a map line, a set of keys, a row and a catalog entry, compiler-guided.
--   **The native substrate** — the model actually running in the runtime. Unchanged by the contract, and the part that decides whether the kind exists at all.
-
-Embedding is the evidence for the first half: its substrate was finished first — the encoder, its pooling modes and a worked recipe in the runtime, proven against a real model — and its service came after, as a row, a binding and four keys, with nothing else in the framework touched. It is the worked example precisely because it isolates the layer this contract is about. It does *not* establish that a Whisper encoder costs a row, because Whisper’s substrate is the part embedding already had. The honest claim is this: a new kind used to be an arc whichever half you looked at; now the service half is a row, and the remaining question for any model is only whether it runs.
-
-## Where it lives {#where-it-lives}
-
-The contract and the platform are two sides in one package, split at the one boundary that matters: whether the code reaches the native runtime.
-
-| Entry | Holds | Who imports it |
-| --- | --- | --- |
-| `@lloyal-labs/rig` | the contract: `ServiceMap`, `SERVICES`, the `Services` context, `service()`; beside it the retrieval contract (`Reranker`, `Chunk`, `Source`, `admitChunks`) and the ability contract (the manifest types, `AbilityConfigStoreCtx`). Browser-safe, node-free. | abilities and harnesses |
-| `@lloyal-labs/rig/node` | the providers (`providers/`: the table, and the reranker’s native binding in its own file), the walk over them, the install, the catalog and the machine gate. | the boots; a contributor adding a row |
-| `@lloyal-labs/lloyal-agents` | nothing of this. The agent runtime’s one reach into retrieval is the `EntailmentScorer` a source builds from its reranker and hands over on the tool context. | — |
-
-The split is a dependency fact, not a convention: an ability that imported the providers would drag the native addon into every context that merely constructs it — `lloyal describe`, a browser, a unit test — so the contract lives where those can reach and the providers where only a boot does.
-
-> **A harness and its abilities draw on the same set of models, named once in `harness.yml`, reached by the same call, with no consumer needing to know how any of them was acquired.**
+- [Models](/models) — choose, swap and verify the model behind each block.
+- [Retrieval](/retrieval) — what the reranker is for.
+- [Adding a service kind](/service-kinds) — for contributors: how a new kind is added.

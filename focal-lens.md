@@ -4,6 +4,12 @@ description: "Every candidate admitted through a reranked path got there by answ
 lede: "You choose the plane that comes up sharp, and everything else falls away"
 ---
 
+<!--
+Corrected 2026-09-30: the exploit sample now matches packages/rig/src/admission.ts (scoreRelevanceBatch no
+longer exists; EntailmentScorer has scoreEntailmentBatch, scoreSimilarityBatch, shouldProceed); the embedding
+paragraph now matches the shipped embedding service (candidates, never admission).
+-->
+
 ::: proof The squeeze
 
 **On a laptop you have 32k, and a dozen agents that all want it.**
@@ -68,11 +74,12 @@ const chunks = yield* call(() =>
   chunkHtml(fetched.articleHtml, url, fetched.title),
 );
 
-// 2. ask the judge once per chunk, in one batched pass
-let scored: ScoredChunk[] = [];
-for await (const batch of reranker.score(args.query, chunks)) {
-  scored = batch.results;
-}
+// 2. ask the judge once per chunk, in one batched pass (progress streams as it goes)
+const scored: ScoredChunk[] = yield* call(async () => {
+  let last: ScoredChunk[] = [];
+  for await (const batch of reranker.score(args.query, chunks)) last = batch.results;
+  return last;
+});
 
 // 3. admit verbatim: top-K, inside a token budget
 const topChunks = selectTopChunks(scored, chunks, topK, tokenBudget);
@@ -87,10 +94,10 @@ A corpus admits on the same shape, with one addition. The judge is linear in can
 const candidates = bm25.topK(query, 100);
 
 // the judge scores those in groups of available leaves
-const scored = await reranker.score(query, candidates);
+const scores = yield* call(() => reranker.scoreBatch(query, candidates.map((c) => c.text)));
 
 // apply this source's configured threshold, or keep top-K
-const hits = scored.filter((s) => s.score >= threshold);
+const hits = candidates.filter((_, i) => scores[i] >= threshold);
 ```
 
 A corpus can apply a floor because its source policy owns one. That number is not intrinsic to the score: it becomes meaningful only after calibration against that corpus, instruction and model. Without that calibration, take top-K within the query. With it, the floor can do double duty — above it the agent has admitted matches; below it the policy can expose the best rejected candidates and invite a different question rather than a longer list.
@@ -99,12 +106,12 @@ A corpus can apply a floor because its source policy owns one. That number is no
 
 ```ts label="ADMITTING WORK"
 // does this sub-task still follow from the original query?
-const onTopic = await scorer.scoreEntailmentBatch(subTasks);
+const onTopic = yield* call(() => scorer.scoreEntailmentBatch(subTasks));
 const surviving = subTasks.filter((_, i) => scorer.shouldProceed(onTopic[i]));
 
 // is someone further up the tree already asking it?
 const ancestors = callingAgent.walkAncestors((a) => (a.task ? [a.task] : []));
-const echo = await scorer.scoreSimilarityBatch(ancestors.join(" "), surviving);
+const echo = yield* call(() => scorer.scoreSimilarityBatch(ancestors.join(" "), surviving));
 if (Math.min(...echo) > echoThreshold) return { error: "already asked upstream" };
 ```
 
@@ -116,18 +123,18 @@ Same primitive, same shared instruction, a different query or reference string. 
 
 The default is wide. `AgentPolicy.shouldExplore()` narrows it as headroom disappears, at 40% of context and 50% of the time budget in the shipped policy. An investigating agent keeps its bridging content while there is room for it, and stops down when there is not.
 
-```ts label="THE POSTURE SWITCH"
-// Explore (default): score against what this agent asked for.
-// Exploit: demand both planes at once.
-if (!context?.explore && context?.scorer) {
-  const combined = yield* call(() =>
-    context.scorer.scoreRelevanceBatch(chunkTexts, args.query),
-  );  // min(toolQueryScore, originalQueryScore)
+```ts label="THE POSTURE SWITCH — inside admitChunks"
+// Explore (default): the chunks keep the scores they earned against what this agent asked.
+// Exploit: one more pass against the original question, and both must be high to rank.
+if (context?.explore === false && context.scorer && scored.length > 0) {
+  const originalScores = yield* call(() => context.scorer!.scoreEntailmentBatch(chunkTexts));
   scored = scored
-    .map((sc, i) => ({ ...sc, score: combined[i] }))
+    .map((sc, i) => ({ ...sc, score: Math.min(sc.score, originalScores[i]) }))
     .sort((a, b) => b.score - a.score);
 }
 ```
+
+A tool gets this by calling `admitChunks` — see [Retrieval](/retrieval) — rather than writing it.
 
 The reason explore is the default when reading a page is worth stating: the agent chose that page. Scoring its contents against the original task would demote exactly the bridging material that produces the next good hypothesis.
 
@@ -195,7 +202,7 @@ Each is a different yes-or-no question, so each needs its own `<Instruct>` line 
 
 **Raising the bar is not one of these.** A higher burden of proof is a floor, not a question, and the floor is already yours: `shouldProceed(score)` is part of the scorer contract, and the scorer is a plain option on the pool. A judge whose threshold rises with the stakes is a scorer you supply, not a sentence you rewrite.
 
-Moving between explore and exploit is a reference change too, not a sentence change. It is [above](#the-aperture-is-under-program-control), and as a policy pattern in [Thinking in Lloyal](/thinking-in-lloyal#dynamic-retrieval-phase-switching).
+Moving between explore and exploit is a reference change too, not a sentence change. It is [above](#the-aperture-is-under-program-control), and as a policy pattern in [Advanced patterns](/advanced-patterns#dynamic-retrieval-phase-switching).
 
 ## The shipped lens is one configuration {#the-shipped-lens-is-one-configuration}
 
@@ -206,8 +213,8 @@ Every element unscrews.
 | The judge | A shared `Rerank` instance with batched `scoreBatch` | Any object with a `scoreBatch` method satisfies the scorer contract |
 | The plane | `RETRIEVAL_INSTRUCTION` | Pass a `RerankInstruction` to `createReranker`; the sentence and its `smokeTest` travel together |
 | The resolution | `q4_0` for both KV cache types in the SDK’s `Rerank`; `q8_0` from the harness’s `createReranker` | Set `typeK` and `typeV` explicitly for the resolution and memory profile your policy requires |
-| The aperture | `DefaultAgentPolicy` implements all eleven hooks the pool calls | Subclass it and override the one decision you care about |
+| The aperture | `DefaultAgentPolicy` answers every decision the pool asks | Subclass it and override the one decision you care about |
 
 The scorer arrives with an [Ability](/abilities); the posture comes from [AgentPolicy](/agent-policy-and-context-pressure). Explore and exploit are one shape of one hook, not the axis itself. A policy that needs a different posture — a verification phase, a burden-of-proof that rises with the stakes — writes it.
 
-An embedding has none of this. Not a plane you can choose, not a posture to switch, not a hook to override. You get similarity, forever, and you find out at review time.
+An embedding on its own has none of this: no plane you can choose, no posture to switch, no hook to override — similarity is all it measures. That is why the platform's embedding service is used to **find candidates**, fast, ahead of the question, and never to admit them: the judge decides what enters. See [Services](/services).

@@ -26,12 +26,11 @@ packages/rig/src/models.ts
 
 ### Retrieval and scoring {#scoring}
 
-One cross-encoder serves four roles. Three different queries are in play — the per-call tool query, the per-agent task, and the original research query — and conflating them produces wrong scores.
+One cross-encoder serves three roles, and exploit mode is a fourth use of the first: `admitChunks` scores against the original query with `scoreEntailmentBatch` and ranks by `min(local, original)`. Three different queries are in play — the per-call tool query, the per-agent task, and the original research query — and conflating them produces wrong scores.
 
 ```ts label="TypeScript"
 interface EntailmentScorer {
   scoreEntailmentBatch(texts: string[]): Promise<number[]>;
-  scoreRelevanceBatch(texts: string[], localQuery: string): Promise<number[]>;
   scoreSimilarityBatch(reference: string, texts: string[]): Promise<number[]>;
   shouldProceed(score: number): boolean;
 }
@@ -44,7 +43,6 @@ interface ScorerReranker {
 | Method | Scores against | Used at |
 | --- | --- | --- |
 | `scoreEntailmentBatch` | the original query | content prefill boundaries |
-| `scoreRelevanceBatch` | `min(local, original)` | exploit mode, when pressure tightens focus |
 | `scoreSimilarityBatch` | an arbitrary reference | echo detection at delegation |
 | `shouldProceed` | the floor | the gate itself |
 
@@ -129,32 +127,25 @@ packages/agents/src/trace-types.ts — the full event union
 
 ### Six failure modes {#failures}
 
-Start from the symptom; the trace answers the rest.
-
-| Symptom | Start from |
-| --- | --- |
-| Agents not using tools | `tool:dispatch` — is anything dispatched at all? |
-| Early termination — reporting too soon | `agent:turn` — what did the model actually emit? |
-| Agents killed by pressure | `pool:agentDrop` — the drop reason |
-| Recovery extraction fails | `pool:recovery*` — every attempt ends in one outcome |
-| Synthesis ignores research findings | `spine:extend` — did the findings reach the spine? |
-| Plan produces poor sub-questions | `prompt:format` — the prompt the planner saw |
+From a symptom to the trace event that explains it: [Debug with traces](/traces#start-from-the-symptom).
 
 ### Where things live {#imports}
 
-Wrong import paths were the single most common staleness in older material. These are the current homes.
+The current home of each symbol a harness imports, checked against the packages' exports on 2026-09-30.
 
 | Symbol | Package |
 | --- | --- |
-| `withSpine` · `agentPool` · `dag` | `@lloyal-labs/lloyal-agents` |
-| `EntailmentScorer` | `@lloyal-labs/lloyal-agents` |
-| `Source` · `Reranker` · `Embedder` · `admitChunks` · `service` | `@lloyal-labs/rig` |
-| `GrantStore` · `GrantStoreCtx` | `@lloyal-labs/lloyal-agents` |
-| `composePrompt` · `renderPrompt` · `renderTemplate` | `@lloyal-labs/lloyal-agents` |
-| `renderSpine` | `@lloyal-labs/rig` |
-| `reportTool` | `@lloyal-labs/rig` |
+| `withSpine` · `agentPool` · `agent` · `useAgent` · `parallel` · `chain` · `fanout` · `dag` | `@lloyal-labs/lloyal-agents` |
+| `Tool` · `ToolRetryError` · `DefaultAgentPolicy` · `waitUntilSettled` · `renderTemplate` | `@lloyal-labs/lloyal-agents` |
+| `EntailmentScorer` · `GrantStore` · `GrantStoreCtx` · `CallingAgent` · `Trace` · `WindDown` · `CancelAgent` · `Pause` | `@lloyal-labs/lloyal-agents` |
+| `service` · `admitChunks` · `chunkHtml` · `Source` · `Reranker` · `Embedder` | `@lloyal-labs/rig` |
+| `defineOutput` · `citedReport` · `renderSpine` · `createGrantStore` · `admitted` · `defineConfig` | `@lloyal-labs/rig` |
+| `createReranker` · `bootEdge` · `bootServed` | `@lloyal-labs/rig/node` |
+| `runHarness` | `@lloyal-labs/rig/testing` |
+| `HarnessProvider` · `useProjection` · `useSend` · `useAvailability` · `useRecover` | `@lloyal-labs/ui` |
+| `foldAgents` | `@lloyal-labs/ui/fold` |
 
-Prompt templates live in `prompts/` beside the harness — `.eta` for templates with conditionals, loaded as raw strings at startup and rendered at call time.
+Prompt templates live in `src/harness/prompts/` — Eta files, read again on every render, so an edit reaches the next question with no restart. See [Prompts](/prompts).
 
 ### Continue
 

@@ -85,6 +85,8 @@ Say these plainly, so nothing surprises you:
 - **Your Node.js version.** Nothing stops you on an older one. npm prints an `EBADENGINE` warning during install and carries on, and the result is unsupported. Use Node 24 or newer.
 - **Free disk space.** Make sure you have room for the models before the first run.
 
+One warning you can ignore: recent versions of npm say some packages have *install scripts not yet covered by allowScripts* (esbuild, for example). The project does not need them — it builds and runs without them.
+
 ## First time? Install Node.js {#install-nodejs}
 
 Node.js is the free program that runs Lloyal on your computer. You install it once.

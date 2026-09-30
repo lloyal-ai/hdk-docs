@@ -40,6 +40,56 @@
     addEventListener('resize', function () { if (innerWidth > 820 && !drawer.hidden) setOpen(false); });
   }
 
+  /* Search. Pagefind's UI is fetched the first time the dialog opens; "/" or ⌘K opens it anywhere. */
+  var dialog = document.getElementById('search-dialog');
+  var searchBtn = document.querySelector('.search-button');
+  var loaded = false;
+  function loadSearch() {
+    if (loaded) return;
+    loaded = true;
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = '/pagefind/pagefind-ui.css';
+    document.head.appendChild(css);
+    var js = document.createElement('script');
+    js.src = '/pagefind/pagefind-ui.js';
+    js.onload = function () {
+      // The site's URLs have no `.html`; the index is built from files that do.
+      var clean = function (u) { return u.replace(/\/index\.html(?=$|#)/, '/').replace(/\.html(?=$|#)/, ''); };
+      new window.PagefindUI({
+        element: '#search', showSubResults: true, showImages: false, autofocus: true, resetStyles: false,
+        processResult: function (r) {
+          r.url = clean(r.url);
+          (r.sub_results || []).forEach(function (sr) { sr.url = clean(sr.url); });
+          return r;
+        },
+      });
+      var input = dialog.querySelector('input');
+      if (input) input.focus();
+    };
+    document.head.appendChild(js);
+  }
+  function openSearch() {
+    if (!dialog || dialog.open) return;
+    setOpen(false);
+    dialog.showModal();
+    loadSearch();
+    var input = dialog.querySelector('input');
+    if (input) input.focus();
+  }
+  if (searchBtn && dialog) {
+    searchBtn.addEventListener('click', openSearch);
+    dialog.querySelector('.search-close').addEventListener('click', function () { dialog.close(); });
+    dialog.addEventListener('click', function (e) {
+      if (e.target === dialog) dialog.close();                        // a click on the backdrop
+      else if (e.target.closest && e.target.closest('a')) dialog.close();
+    });
+    addEventListener('keydown', function (e) {
+      var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+      if ((e.key === '/' && !typing) || (e.key === 'k' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); openSearch(); }
+    });
+  }
+
   /* Copy buttons on code frames. */
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('.code-copy');

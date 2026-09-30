@@ -31,7 +31,7 @@ The analogy continues into the serving layer. Rails separated the application fr
 | Rack | `@lloyal-labs/binding` | One interface between every harness and every surface or transport. |
 | `config.ru` | Generated placement driver | The harness and host do not need to import or understand one another. |
 | Puma | `@lloyal-labs/host` | Multiple Sessions share one resident weight set while retaining isolated context and lifecycle. |
-| Unicorn | Process-isolated serving shape | Stronger OS-process isolation in exchange for duplicated residency. |
+| Unicorn | `@lloyal-labs/relay` | Stronger OS-process isolation in exchange for duplicated residency. |
 | Gems | Signed Abilities | Installable capabilities composed into the harness. |
 | `rails new` | `npx lloyal-ai new` | Scaffold the application and its conventional wiring. |
 
@@ -117,7 +117,7 @@ clients ─ WSS ─ host
 
 The host loads a model once and gives each admitted Session its own context, KV/recurrent state, configuration, Agent population, and structured lifetime.
 
-The host is the **Puma** side of the analogy: density through multiplexing. A process-isolated shape is the **Unicorn** side: stronger kernel isolation, but each process pays its own residency. The harness contract remains unchanged either way.
+The host is the **Puma** side of the analogy: density through multiplexing — [Serve to many users](/serve) runs it. The relay is the **Unicorn** side: stronger kernel isolation, but each process pays its own residency. The harness contract remains unchanged either way.
 
 ## Shifting the harness left {#shifting-the-harness-left}
 
@@ -167,13 +167,13 @@ Placement portability, trace-based Session rehydration, and mid-execution recove
 | A browser over compute on the same machine | Local host + web target |
 | A browser over private or on-prem compute | Shared-residency host over WSS |
 | Several Sessions sharing a large model | Shared-residency host |
-| Maximum OS-process isolation | Process-isolated serving shape |
+| Maximum OS-process isolation | `@lloyal-labs/relay`, mounted in your own server — [Isolate by process](/serve#relay) |
 | Frontier open-weight models | Multi-GPU host |
 | On-device mobile inference | Planned React Native / JSI placement |
 | One-command managed or BYOC deployment | Planned `lloyal deploy` |
 
 ## Current and planned {#current-and-planned}
 
-<div class="status-columns"><section><div class="status-title"><span class="status current">Current</span> Available now</div><ul><li><code>lloyal-ai new</code> with CLI, desktop, and web targets;</li><li>one headless harness contract across those surfaces;</li><li>native render, IPC, NDJSON, and WSS binding shapes;</li><li>local resident-model execution;</li><li>shared-residency hosting with per-Session state isolation;</li><li>signed Abilities composed into the harness.</li></ul></section><section><div class="status-title"><span class="status planned">Planned</span> Not yet paved</div><ul><li>on-device mobile through <code>@lloyal-labs/lloyal-react-native</code>;</li><li>a first-class <code>lloyal deploy</code> workflow;</li><li>managed and BYOC provisioning as developer-facing modes;</li><li>complete served output reattachment;</li><li>live-state checkpointing (<code>checkpointLive</code>) and agent-shaped rebase — reconstruction <em>without</em> a trace;</li><li>binary resume-after-restart as a paved path;</li><li>process-isolated serving as an equally paved front door.</li></ul></section></div>
+<div class="status-columns"><section><div class="status-title"><span class="status current">Current</span> Available now</div><ul><li><code>lloyal-ai new</code> with CLI, desktop, and web targets;</li><li>one headless harness contract across those surfaces;</li><li>native render, IPC, NDJSON, and WSS binding shapes;</li><li>local resident-model execution;</li><li>shared-residency hosting with per-Session state isolation;</li><li>signed Abilities composed into the harness.</li></ul></section><section><div class="status-title"><span class="status planned">Planned</span> Not yet paved</div><ul><li>on-device mobile through <code>@lloyal-labs/lloyal-react-native</code>;</li><li>a first-class <code>lloyal deploy</code> workflow;</li><li>managed and BYOC provisioning as developer-facing modes;</li><li>complete served output reattachment;</li><li>live-state checkpointing (<code>checkpointLive</code>) and agent-shaped rebase — reconstruction <em>without</em> a trace;</li><li>binary resume-after-restart as a paved path;</li><li>process-isolated serving as a paved front door — <code>@lloyal-labs/relay</code> ships today as a bridge you mount in your own server, with no scaffold command for it yet.</li></ul></section></div>
 
 > **The harness is the application. Placement wraps it; placement does not redefine it.**

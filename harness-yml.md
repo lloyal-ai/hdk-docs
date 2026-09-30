@@ -183,7 +183,7 @@ Two rules the declaration enforces: `version` and the `abilities` family are the
 | `defaults.reasoningMode` | research | `flat` · `deep` | `flat` | flat surveys the plan’s tasks side by side; deep investigates them one after another, each reading what the last found. |
 | `defaults.guards` | research | a map of gate name to `false` or `{ scope: lineage \| cohort }` | — | The harness’s overrides for the agents’ guards: which repeated searches and re-fetched URLs are refused, and at what scope. |
 
-`defaults.guards` is the harness’s side of a gate an ability declared: `url_dedup: { scope: cohort }` widens the gate to every agent in the pool; `url_dedup: false` switches it off. [The life of a tool call](/abilities#beforedispatch-may-this-call-run) has the ability’s side.
+`defaults.guards` is the harness’s side of a gate an ability declared: `url_dedup: { scope: cohort }` widens the gate to every agent in the pool; `url_dedup: false` switches it off. [The life of a tool call](/tool-hooks#guards) has the ability’s side.
 
 ## The abilities family {#the-abilities-family}
 

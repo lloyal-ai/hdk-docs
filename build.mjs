@@ -20,6 +20,7 @@ import container from 'markdown-it-container';
 import frontMatter from 'markdown-it-front-matter';
 import { parse as parseYaml } from 'yaml';
 import { createHighlighter, createCssVariablesTheme } from 'shiki';
+import * as pagefind from 'pagefind';
 import { TABS, HIDDEN } from './site.mjs';
 
 const OUT = 'dist';
@@ -64,7 +65,7 @@ const missing = [...LISTED].filter((s) => !SOURCES.includes(s));
 if (missing.length) throw new Error(`build: site.mjs lists pages with no .md file — ${missing.join(', ')}`);
 
 // ── Markdown ───────────────────────────────────────────────────────────────
-const LANGS = ['ts', 'sh', 'yaml', 'json', 'md', 'css', 'dotenv', 'html', 'js'];
+const LANGS = ['ts', 'tsx', 'sh', 'yaml', 'json', 'md', 'css', 'dotenv', 'html', 'js'];
 const theme = createCssVariablesTheme({ name: 'css-variables', variablePrefix: '--shiki-', fontStyle: true });
 const highlighter = await createHighlighter({ themes: [theme], langs: LANGS });
 
@@ -125,7 +126,7 @@ md.renderer.rules.fence = (tokens, idx) => {
   const label = m?.[2] ?? '';
   if (lang !== 'text' && !LANGS.includes(lang)) throw new Error(`build: fence language "${lang}" is not loaded — add it to LANGS`);
   const code = highlighter.codeToHtml(t.content.replace(/\n$/, ''), { lang, theme: 'css-variables' });
-  return `<div class="code-frame"><div class="code-head"><span class="code-label">${esc(label || lang)}</span><button type="button" class="code-copy" aria-label="Copy code">Copy</button></div>${code}</div>\n`;
+  return `<div class="code-frame"><div class="code-head" data-pagefind-ignore><span class="code-label">${esc(label || lang)}</span><button type="button" class="code-copy" aria-label="Copy code">Copy</button></div>${code}</div>\n`;
 };
 md.renderer.rules.table_open = () => '<div class="table-wrap"><table>\n';
 md.renderer.rules.table_close = () => '</table></div>\n';
@@ -167,6 +168,7 @@ const topbar = (tab) => `<header class="topbar">
 <a class="wordmark" href="/"><strong>Lloyal</strong><span>docs</span></a>
 <nav class="tabs" aria-label="Sections">${TABS.map((t) => `<a href="${hrefOf(t.pages[0].slug)}"${t === tab ? ' class="is-current" aria-current="true"' : ''}>${esc(t.label)}</a>`).join('')}</nav>
 <div class="topbar-tools">
+<button type="button" class="search-button" aria-haspopup="dialog" aria-controls="search-dialog"><span>Search</span><kbd>/</kbd></button>
 <button type="button" class="theme-toggle" aria-label="Switch to light theme" title="Switch theme"><span aria-hidden="true">◐</span></button>
 <a class="topbar-out" href="${HOME}">lloyal.ai <span aria-hidden="true">↗</span></a>
 <a class="topbar-out" href="${GITHUB}">GitHub <span aria-hidden="true">↗</span></a>
@@ -224,6 +226,10 @@ ${url ? `<link rel="canonical" href="${url}">
 <link rel="stylesheet" href="/assets/${CSS.name}">`;
 }
 
+/** Search: a dialog the top bar opens. Pagefind's UI is loaded into it on first open, so a page that is never
+ *  searched never pays for it. */
+const searchDialog = `<dialog class="search-dialog" id="search-dialog" aria-label="Search the docs"><div class="search-head"><span>Search</span><button type="button" class="search-close" aria-label="Close search">Esc</button></div><div id="search"></div></dialog>`;
+
 function layout({ slug, meta, html, toc }) {
   const tab = tabOf(slug);
   const title = `${meta.title} — Lloyal docs`;
@@ -252,22 +258,23 @@ ${topbar(tab)}
 ${drawer(slug)}
 <div class="shell">
 ${sidebar(tab, slug)}
-<main class="main" id="main">
+<main class="main" id="main" data-pagefind-body>
 <header class="page-head">
-${tab ? `<div class="crumb">${esc(tab.label)}</div>` : ''}
+${tab ? `<div class="crumb" data-pagefind-meta="section">${esc(tab.label)}</div>` : ''}
 <h1${meta.id ? ` id="${esc(meta.id)}"` : ''}>${esc(meta.title)}</h1>
 <p class="lede">${esc(meta.lede ?? meta.description)}</p>
 </header>
-${c.inline}
+<div data-pagefind-ignore>${c.inline}</div>
 <article class="article">
 ${html}
 </article>
-${prevNext(slug)}
-<footer class="footer"><span>Lloyal Labs</span><a href="${HOME}">lloyal.ai</a><a href="${GITHUB}">GitHub</a><a href="/llms.txt">llms.txt</a></footer>
+<div data-pagefind-ignore>${prevNext(slug)}</div>
+<footer class="footer" data-pagefind-ignore><span>Lloyal Labs</span><a href="${HOME}">lloyal.ai</a><a href="${GITHUB}">GitHub</a><a href="/llms.txt">llms.txt</a></footer>
 </main>
 ${c.rail}
 </div>
 <a class="back-to-top" href="#main" aria-label="Back to top">↑</a>
+${searchDialog}
 <script src="/assets/${JS.name}" defer></script>
 </body>
 </html>
@@ -370,6 +377,7 @@ ${drawer('')}
 </main>
 <aside class="toc-rail"></aside>
 </div>
+${searchDialog}
 <script src="/assets/${JS.name}" defer></script>
 </body>
 </html>
@@ -400,4 +408,17 @@ Allow: /
 Sitemap: ${SITE}/sitemap.xml
 `);
 
-console.log(`\n  ${pages.length} pages · ${redirects.length} redirects · ${CSS.name} · ${JS.name} → ${OUT}/`);
+/**
+ * The search index, built from the pages just written: only each page's main column (marked
+ * `data-pagefind-body`), without the navigation around it. Pagefind writes a static index into
+ * dist/pagefind/, which the browser fetches in fragments as a reader types — no server.
+ */
+const { index, errors } = await pagefind.createIndex({});
+if (!index) throw new Error(`build: pagefind could not start — ${errors.join('; ')}`);
+const added = await index.addDirectory({ path: OUT });
+if (added.errors.length) throw new Error(`build: pagefind — ${added.errors.join('; ')}`);
+const written = await index.writeFiles({ outputPath: join(OUT, 'pagefind') });
+if (written.errors.length) throw new Error(`build: pagefind — ${written.errors.join('; ')}`);
+await pagefind.close();
+
+console.log(`\n  ${pages.length} pages · ${added.page_count} indexed · ${redirects.length} redirects · ${CSS.name} · ${JS.name} → ${OUT}/`);

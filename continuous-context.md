@@ -17,6 +17,8 @@ Continuous Context is the architectural consequence of preserving that distincti
 
 The quickest way into the model is to follow one lineage from kernel state to vertical application behaviour.
 
+![Same model, different degree of control: without Lloyal application policy acts around model calls; with Lloyal it governs reasoning while it is underway.](/assets/guides/index-01.png)
+
 ## Context is not the context window {#context-is-not-the-context-window}
 
 **Every other system rebuilds the model’s state from a transcript. Continuous Context keeps the execution itself.** A message history can reconstruct what was said. It cannot establish that a new execution carries the same processed state as the one it replaces.
@@ -179,24 +181,7 @@ live Branch
 = Agent
 ```
 
-At the pool layer, Agents become a managed execution cohort. The scheduler runs a stable lifecycle around each decode tick:
-
-```text label="Structure"
-SPAWN + EXTEND
-    create pending Agents · prefill task suffixes · activate
-
-PRODUCE
-    only lifecycle-eligible Agents sample one token
-
-COMMIT
-    accept and decode the cohort in one batch
-
-DRAIN + SETTLE
-    collect completed external work · prefill results where they belong
-
-DISPATCH
-    execute new Tool calls · remove waiting Agents from later decode cohorts
-```
+At the pool layer, Agents become a managed execution cohort, advanced together one decode tick at a time — spawn, produce, commit, settle, dispatch; the phases, and what is decided in each, are in [Adaptive compute](/agent-policy-and-context-pressure#the-pools-decision-cycle).
 
 The architectural contract is single ownership: while a pool owns a model context, changes to its Branch tree enter through the pool's lifecycle. That is what makes batching and branching compatible with cancellation, waiting, Tool settlement and cleanup. A Branch is not handed out as unmanaged mutable state; it remains part of an owned execution scope.
 
@@ -228,8 +213,6 @@ orchestration graph     what depends on what
 The harness operates a control loop over all three. The kernel makes live ancestry real. Effection makes its lifetime accountable. The Agent runtime determines which Branches advance, wait, reactivate, delegate, recover and conclude.
 
 > **The runtime-level deduction:** live inference state becomes useful to a product only when its ownership survives the whole Agent lifecycle. Structured concurrency turns exact Branch continuations into scoped intelligent work that can wait on reality, recruit specialists, recover locally and end without leaking state or work.
-
-> **liblloyal gives inference a tree of live states. Effection gives application work a tree of owned lifetimes. The HDK aligns the two.**
 
 The result is not merely forkable KV. It is a lifecycle-managed tree of intelligent work:
 
@@ -509,20 +492,7 @@ Together, the research explains why the distinction matters. The Lloyal runtime 
 
 ## The design test {#the-design-test}
 
-Before introducing Agents or branches, ask:
-
-> **What must remain true while this application observes, reasons, delegates, acts and continues?**
-
-Then make the contract explicit:
-
-1.  **State** — which live interpretations or decision states must exist?
-2.  **Contact** — which Abilities let the procedure observe or act on reality?
-3.  **Applicability** — which evidence governs which lineage, time, place or subject?
-4.  **Inheritance** — what exact state should delegated or alternative work receive?
-5.  **Intervention** — what may the harness admit, constrain, expand, recover or prune?
-6.  **Authority** — what separates a model proposal from an accepted or permitted consequence?
-7.  **Continuity** — which state, findings and trace survive this scope?
-8.  **Proof** — what demonstrates that the invariant held, even if the final prose looks plausible?
+Before introducing agents or branches, ask what must remain true while the application observes, reasons, delegates, acts and continues — then make the state, contact, applicability, inheritance, intervention, authority, continuity and proof explicit. The worksheet is in [Advanced patterns](/advanced-patterns#design-your-own-advanced-pattern).
 
 Do not begin with the number of Agents. Begin with the application invariant and the live states required to preserve it.
 

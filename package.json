@@ -9,6 +9,7 @@
     "markdown-it-anchor": "^10.0.0",
     "markdown-it-container": "^4.0.0",
     "markdown-it-front-matter": "^0.2.4",
+    "pagefind": "^1.5.2",
     "puppeteer": "^23.11.1",
     "shiki": "^4.4.3",
     "yaml": "^2.9.1"
