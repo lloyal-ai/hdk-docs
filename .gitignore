@@ -6,3 +6,6 @@ website/contact-apps-script.gs
 
 # static build output
 dist/
+
+# wrangler pages dev (local preview) state
+.wrangler/

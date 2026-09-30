@@ -1,16 +1,16 @@
 {
   "scripts": {
     "build": "node build.mjs",
-    "css:selftest": "node tools/css-gate/selftest.mjs",
-    "css:pagesets": "node tools/css-gate/pagesets.mjs assets/guides/guides-theme.css",
-    "css:volatility": "node tools/css-gate/volatility.mjs",
-    "css:matchsets": "node tools/css-gate/matchsets.mjs",
-    "css:merge": "node tools/css-gate/merge.mjs"
+    "capture": "node tools/capture.mjs"
   },
   "devDependencies": {
     "@mermaid-js/mermaid-cli": "^11.12.0",
-    "postcss": "^8.5.8",
-    "postcss-selector-parser": "^6.1.2",
-    "puppeteer": "^23.11.1"
+    "markdown-it": "^15.0.2",
+    "markdown-it-anchor": "^10.0.0",
+    "markdown-it-container": "^4.0.0",
+    "markdown-it-front-matter": "^0.2.4",
+    "puppeteer": "^23.11.1",
+    "shiki": "^4.4.3",
+    "yaml": "^2.9.1"
   }
 }
