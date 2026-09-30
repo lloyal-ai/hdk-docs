@@ -232,7 +232,7 @@ const searchDialog = `<dialog class="search-dialog" id="search-dialog" aria-labe
 
 function layout({ slug, meta, html, toc }) {
   const tab = tabOf(slug);
-  const title = `${meta.title} — Lloyal docs`;
+  const title = meta.title === 'Lloyal docs' ? meta.title : `${meta.title} — Lloyal docs`;
   const url = canonical(slug);
   // Escaped for a <script> context: a literal `</script>` in any string would end the block.
   const jsonld = JSON.stringify({
