@@ -506,7 +506,7 @@
             <code>/scan PATH</code> grounds it against files on your disk;
             <code>/web</code> researches online, keyless by default. The runtime
             makes no outbound calls and needs no keys; capabilities arrive as
-            AgentApps that run in-process.
+            Abilities that run in-process.
           </p>
           <a href="https://reasoning.run/" class="demo-cta"
             >reasoning.run &nearr;</a
@@ -719,7 +719,7 @@
             <!-- Beat 2 — add a capability in one line -->
             <div class="accordion-item">
               <button class="accordion-header" onclick="toggleAccordion(this)">
-                <span class="icon">[+]</span> 2 &middot; add a capability &mdash; one line per AgentApp
+                <span class="icon">[+]</span> 2 &middot; add a capability &mdash; one line per Ability
               </button>
               <div class="accordion-body">
                 <pre><code><span class="keyword">import</span> { RerankerCtx } <span class="keyword">from</span> <span class="string">'@lloyal-labs/lloyal-agents'</span>;
@@ -728,7 +728,7 @@
 <span class="keyword">import</span> { createWebApp } <span class="keyword">from</span> <span class="string">'@lloyal-labs/web-app'</span>;
 <span class="keyword">import</span> { createCorpusApp } <span class="keyword">from</span> <span class="string">'@lloyal-labs/corpus-app'</span>;
 
-<span class="comment">// One cross-encoder reranker feeds every AgentApp's in-the-loop retrieval.</span>
+<span class="comment">// One cross-encoder reranker feeds every Ability's in-the-loop retrieval.</span>
 <span class="keyword">const</span> reranker = <span class="keyword">yield*</span> <span class="function">createReranker</span>(<span class="string">'reranker.gguf'</span>);
 <span class="keyword">yield*</span> RerankerCtx.<span class="function">set</span>(reranker);
 
@@ -740,7 +740,7 @@
 <span class="comment">// …or install a signed one from the channel first:</span>
 <span class="comment">//   npx harness.dev install lloyal/wikipedia</span>
 
-<span class="comment">// The pool reads the enabled AgentApps from context — their catalog decodes</span>
+<span class="comment">// The pool reads the enabled Abilities from context — their catalog decodes</span>
 <span class="comment">// once into the shared spine; every forked agent inherits the toolset at O(1).</span>
 <span class="comment">// No vector DB, no embedding pipeline, no retrieval service to run.</span></code></pre>
               </div>
@@ -757,7 +757,7 @@
 <span class="keyword">import</span> { readFileSync } <span class="keyword">from</span> <span class="string">'node:fs'</span>;
 
 <span class="comment">// Implement a Source (your data + tools), point at a skill + manifest,</span>
-<span class="comment">// and defineApp returns a validated AgentApp anyone can registry.enable.</span>
+<span class="comment">// and defineApp returns a validated Ability anyone can registry.enable.</span>
 <span class="comment">// Same reranker, same in-the-loop admission — no vector DB, no embedding ETL.</span>
 <span class="keyword">export</span> <span class="keyword">function*</span> <span class="function">createCustomerApp</span>() {
   <span class="keyword">const</span> manifest = <span class="class">JSON</span>.<span class="function">parse</span>(<span class="function">readFileSync</span>(<span class="string">'app.json'</span>, <span class="string">'utf8'</span>));
