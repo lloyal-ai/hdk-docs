@@ -26,7 +26,7 @@ export const TABS = [
       { slug: 'agents', label: 'Agents and orchestration' },
       { slug: 'tools', label: 'Tools' },
       { slug: 'tool-hooks', label: 'Tool hooks and guards' },
-      { slug: 'structured-output', label: 'Structured output' },
+      { slug: 'structured-output', label: 'Typed Decisions from LLMs' },
       { slug: 'agent-policy', label: 'Agent policy' },
       { slug: 'human-approval', label: 'Human approval' },
       { slug: 'prompts', label: 'Prompts' },

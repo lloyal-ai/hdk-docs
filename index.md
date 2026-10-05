@@ -23,7 +23,7 @@ One command creates a working app: a desktop window, a browser app and a termina
 | **An app people download** — the model built in, working offline, no account. | [Ship a desktop app](/ship) |
 | **AI inside your product for many users** — one model on your own machine or GPU box, a session per user, no per-token bill. | [Serve to many users](/serve) |
 | **Research you can hand someone** — agents that read in parallel from one shared context and settle on a cited answer. | The `research` template · [Agents and orchestration](/agents) |
-| **Classification and extraction** — a label, a number, a choice from a list, from the model you already have, with nothing to parse. | [Structured output](/structured-output) |
+| **Classification and extraction** — a label, a number, a choice from a list, from the model you already have, with nothing to parse. | [Typed Decisions from LLMs](/structured-output) |
 | **Reasoning with specialists beside it** — a judge that ranks what agents read, vision, embeddings, named in one line each. | [Services](/services) · [Retrieval](/retrieval) |
 | **Tools that work inside live inference** — tools that know what the calling agent has read, and can start agents that inherit it. | [Tools](/tools) |
 | **Answers from your documents** — PDFs and images attached by a reader, searched and shown to the model only where it needs them. | [Attachments and documents](/attachments) |

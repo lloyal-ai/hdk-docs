@@ -24,7 +24,7 @@ A tool is an action an agent can take. You write it as a class; the model sees o
 | An action or a lookup specific to this app — a glossary, your own database, an internal API | A **tool in your harness** (this page) |
 | A capability other harnesses can install, with its own instructions and settings, signed | An [Ability](/abilities), which ships tools |
 | A second model — a judge, a classifier, vision | A [service](/services) — a tool can then read it |
-| A structured final answer from an agent | A **terminal** tool — see [Structured output](/structured-output) |
+| A structured final answer from an agent | A **terminal** tool — see [Typed Decisions from LLMs](/structured-output) |
 
 ## Quickstart {#quickstart}
 

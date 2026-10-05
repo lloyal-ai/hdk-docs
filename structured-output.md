@@ -1,5 +1,5 @@
 ---
-title: "Structured output"
+title: "Typed Decisions from LLMs"
 description: "Get a typed value back from the resident model — a number, an enum, an object — constrained by grammar so there is nothing to parse, and classify many items against one option list at the cost of one."
 lede: "Make the model answer in exactly the shape you asked for: a number in range, one of a list, an object — nothing to parse, nothing else it can say."
 ---
