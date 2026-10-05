@@ -144,5 +144,5 @@ A pool seats as many agents as the context and its sequences hold. `capacity: n`
 ## Related {#related}
 
 - [Agent policy](/agent-policy) — the budget every agent obeys.
-- [Typed Decisions from LLMs](/structured-output) — agents that answer with a value.
+- [Typed Decisions from LLMs](/typed-decisions) — agents that answer with a value.
 - [Thinking in Lloyal](/thinking-in-lloyal) — why agents are branches, and what owns what.

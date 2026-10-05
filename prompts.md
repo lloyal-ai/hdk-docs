@@ -93,4 +93,4 @@ A top-level key a template reads that its input does not give renders as **empty
 ## Related {#related}
 
 - [Build your first harness](/build-your-first-harness#write-its-prompts) — edit a prompt and ask again.
-- [Typed Decisions from LLMs](/structured-output) — when the answer should be a value, not prose.
+- [Typed Decisions from LLMs](/typed-decisions) — when the answer should be a value, not prose.
