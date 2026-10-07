@@ -21,7 +21,7 @@ The quickest way into the model is to follow one lineage from kernel state to ve
 
 ## Context is not the context window {#context-is-not-the-context-window}
 
-**Every other system rebuilds the model’s state from a transcript. Continuous Context keeps the execution itself.** A message history can reconstruct what was said. It cannot establish that a new execution carries the same processed state as the one it replaces.
+Agent frameworks that access a model only through an HTTP API without live-state controls depend on the inference backend for reuse of processed context. When the backend supports prefix caching—for example, SGLang’s RadixAttention—that reuse is opportunistic and backend-managed. Continuous Context gives application code explicit control over which live state to retain, fork, extend, prune and promote.
 
 Which matters because the word *context* is overloaded. It can mean:
 
