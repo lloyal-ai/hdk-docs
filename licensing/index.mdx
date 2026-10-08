@@ -1,12 +1,12 @@
 ---
 title: "Licensing"
-description: "FSL-1.1-Apache-2.0 and the Developer Grant across the Lloyal runtime stack."
+description: "FSL-1.1-MIT and the Developer Grant across the Lloyal runtime stack."
 ---
 
 **You can build and sell commercial products using Lloyal.**
 
-The runtime packages use **FSL-1.1-Apache-2.0**, together with the
-[Developer Grant](https://github.com/lloyal-ai/hdk/blob/8678ebcd02c425b9e569d97e58063e2af143ffb7/GRANT.md). Each version becomes available under Apache 2.0
+New runtime versions use **FSL-1.1-MIT**, together with the
+[Developer Grant](https://github.com/lloyal-ai/hdk/blob/d9112692d592f73e3922d096a4cdf2edcc889089/GRANT.md). Each version carrying this license becomes available under MIT
 two years after it is first made available.
 
 The grant expressly permits building, distributing, selling, licensing and
@@ -19,23 +19,27 @@ substitute developer frameworks or runtimes, runtime-as-a-service for third-part
 developers, and general alternative ability registries for third-party harness
 developers. Hosting your own product for its end users is permitted.
 
+Earlier versions carrying **FSL-1.1-Apache-2.0** retain their original terms,
+irrevocable future Apache 2.0 rights, conversion dates and grant permissions.
+The license shipped with a version determines its future license.
+
 ## Start here
 
 - [Licensing FAQ](https://docs.lloyal.ai/licensing/faq): permissions, boundaries,
   covered packages and the grant's protection for already-published versions.
-- [Developer Grant](https://github.com/lloyal-ai/hdk/blob/8678ebcd02c425b9e569d97e58063e2af143ffb7/GRANT.md): the governing additional permissions and covenants.
-- [FSL license](https://github.com/lloyal-ai/hdk/blob/main/LICENSE): the governing
+- [Developer Grant](https://github.com/lloyal-ai/hdk/blob/d9112692d592f73e3922d096a4cdf2edcc889089/GRANT.md): the governing additional permissions and covenants.
+- [FSL license](https://github.com/lloyal-ai/hdk/blob/d9112692d592f73e3922d096a4cdf2edcc889089/LICENSE): the governing
   license text.
 
 ## License-by-package summary
 
 | Component | License |
 |---|---|
-| `liblloyal`, `@lloyal-labs/lloyal.node` | FSL-1.1-Apache-2.0 + Developer Grant |
-| `@lloyal-labs/sdk`, `@lloyal-labs/lloyal-agents`, `@lloyal-labs/rig` | FSL-1.1-Apache-2.0 + Developer Grant |
-| `@lloyal-labs/binding`, `@lloyal-labs/host`, `@lloyal-labs/relay`, `@lloyal-labs/desktop`, `@lloyal-labs/ui`, `@lloyal-labs/dev-tools` | FSL-1.1-Apache-2.0 + Developer Grant |
-| `@lloyal-labs/media`, `@lloyal-labs/web-ability`, `@lloyal-labs/corpus-ability`, `@lloyal-labs/documents-ability`, `@lloyal-labs/wikipedia-ability` | FSL-1.1-Apache-2.0 + Developer Grant |
-| `lloyal-ai` CLI | MIT |
+| `liblloyal`, `@lloyal-labs/lloyal.node` | FSL-1.1-MIT + Developer Grant |
+| `@lloyal-labs/sdk`, `@lloyal-labs/lloyal-agents`, `@lloyal-labs/rig` | FSL-1.1-MIT + Developer Grant |
+| `@lloyal-labs/binding`, `@lloyal-labs/host`, `@lloyal-labs/relay`, `@lloyal-labs/desktop`, `@lloyal-labs/ui`, `@lloyal-labs/dev-tools` | FSL-1.1-MIT + Developer Grant |
+| `@lloyal-labs/media`, `@lloyal-labs/web-ability`, `@lloyal-labs/corpus-ability`, `@lloyal-labs/documents-ability`, `@lloyal-labs/wikipedia-ability` | FSL-1.1-MIT + Developer Grant |
+| `lloyal-ai` CLI, Fieldnote application source | MIT |
 | `@lloyal-labs/channel-verify` | Apache 2.0 |
 | `llama.cpp` (vendored dependency) | MIT |
 
@@ -43,8 +47,9 @@ Previously covered package names remain covered under Section 1 of the grant.
 The canonical FAQ source is `licensing/faq.md` in this repository. HDK's
 `scripts/sync-license-faq.sh` synchronizes it into `LICENSE-FAQ.md` copies and
 copies the canonical HDK `GRANT.md` into the applicable runtime repositories
-and packages. Edit the canonical sources and run the sync script instead of
-editing generated copies.
+and packages. The root HDK `LICENSE` is the canonical runtime license.
+Edit the canonical sources and run the sync script instead of editing
+generated copies. See HDK's `scripts/LICENSING.md` for the full workflow.
 
 ## Questions?
 

@@ -3,9 +3,9 @@ title: "Why FSL"
 description: "How FSL and the Developer Grant distinguish applications built with Lloyal from competing developer platforms."
 ---
 
-Lloyal's runtime uses **FSL-1.1-Apache-2.0** with the
-[Developer Grant](https://github.com/lloyal-ai/hdk/blob/8678ebcd02c425b9e569d97e58063e2af143ffb7/GRANT.md). The license provides access to the source and
-an irrevocable Apache 2.0 license for each version on the second anniversary
+New versions of Lloyal's runtime use **FSL-1.1-MIT** with the
+[Developer Grant](https://github.com/lloyal-ai/hdk/blob/d9112692d592f73e3922d096a4cdf2edcc889089/GRANT.md). The license provides access to the source and
+an irrevocable MIT license for each version on the second anniversary
 of the date that version is made available. The grant adds explicit permissions
 for application and ability developers during the FSL period.
 
@@ -30,12 +30,17 @@ alternative ability registries offered to third-party harness developers.
 This boundary protects Lloyal's developer-platform business while preserving
 the right to build and commercialize applications on it.
 
-## Each version converts to Apache 2.0
+## Each new version becomes MIT after two years
 
 The two-year transition is in the license. It applies separately to each
 released version; a new release does not reset the clock on an earlier one.
 The Developer Grant is also irrevocable for versions published while it is in
 effect. Future grant revisions do not remove their existing permissions.
+
+Versions previously published under **FSL-1.1-Apache-2.0** keep their existing
+terms, future Apache 2.0 rights and conversion dates. The migration does not
+replace their existing grant permissions. Each version's bundled `LICENSE`
+identifies the future license that applies to it.
 
 ## The grant supplements the standard license
 
@@ -43,13 +48,14 @@ Lloyal keeps the FSL text unmodified and carries the additional permissions in
 `GRANT.md`. The grant only adds permissions. If the grant and license can be
 read differently, the reading more permissive to the developer controls.
 
-The CLI uses MIT and `@lloyal-labs/channel-verify` uses Apache 2.0. Neither
-needs the Developer Grant. Third-party dependencies and model weights retain
+The CLI and Fieldnote application source use MIT, while
+`@lloyal-labs/channel-verify` uses Apache 2.0. They do not need the Developer
+Grant for their own code. Third-party dependencies and model weights retain
 their own licenses.
 
 ## See also
 
 - [Licensing FAQ](https://docs.lloyal.ai/licensing/faq)
-- [Developer Grant](https://github.com/lloyal-ai/hdk/blob/8678ebcd02c425b9e569d97e58063e2af143ffb7/GRANT.md)
-- [FSL license](https://github.com/lloyal-ai/hdk/blob/main/LICENSE)
+- [Developer Grant](https://github.com/lloyal-ai/hdk/blob/d9112692d592f73e3922d096a4cdf2edcc889089/GRANT.md)
+- [FSL license](https://github.com/lloyal-ai/hdk/blob/d9112692d592f73e3922d096a4cdf2edcc889089/LICENSE)
 - [FSL official site](https://fsl.software)
