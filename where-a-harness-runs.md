@@ -31,7 +31,7 @@ The analogy continues into the serving layer. Rails separated the application fr
 | Rack | `@lloyal-labs/binding` | One interface between every harness and every surface or transport. |
 | `config.ru` | Generated placement driver | The harness and host do not need to import or understand one another. |
 | Puma | `@lloyal-labs/host` | Multiple Sessions share one resident weight set while retaining isolated context and lifecycle. |
-| Unicorn | `@lloyal-labs/relay` | Stronger OS-process isolation in exchange for duplicated residency. |
+| Unicorn | `@lloyal-labs/relay` | A separate harness process per connection, each owning its model objects and context. |
 | Gems | Signed Abilities | Installable capabilities composed into the harness. |
 | `rails new` | `npx lloyal-ai new` | Scaffold the application and its conventional wiring. |
 
@@ -117,7 +117,7 @@ clients ─ WSS ─ host
 
 The host loads a model once and gives each admitted Session its own context, KV/recurrent state, configuration, Agent population, and structured lifetime.
 
-The host is the **Puma** side of the analogy: density through multiplexing — [Serve to many users](/serve) runs it. The relay is the **Unicorn** side: stronger kernel isolation, but each process pays its own residency. The harness contract remains unchanged either way.
+The host is the **Puma** side of the analogy: separate native `llama_context` instances share one resident `llama_model`, while each session retains its own KV/recurrent state and compute buffers. [Serve to many users](/serve#session-memory) explains this memory model. The relay is the **Unicorn** side: a separate Node process per connection, with a process-local model registry. See [Isolate by process](/serve#relay) for that boundary. The harness contract remains unchanged either way.
 
 ## Shifting the harness left {#shifting-the-harness-left}
 
