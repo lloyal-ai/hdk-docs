@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="590" viewBox="0 0 760 590" role="img" aria-labelledby="title desc">
+  <title id="title">Shared model weights, private session KV trees</title>
+  <desc id="desc">One host process holds read-only model weights shared by two sessions. Each session owns a separate llama_context and KV tree. Two agents in each tree inherit that session's processed prefix. Dotted lines show shared weight access; solid arrows show attention inheritance within a session.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 1 1 L 8 5 L 1 9" fill="none" stroke="#475569" stroke-width="1.6" />
+    </marker>
+  </defs>
+  <style>
+    text { font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #17202b; }
+    .mono { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; font-size: 14px; }
+    .host { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.5; }
+    .session { fill: #fff; stroke: #94a3b8; stroke-width: 1.5; }
+    .prefix { fill: #edf1f5; stroke: #94a3b8; stroke-width: 1.2; }
+    .agent { fill: #fff; stroke: #94a3b8; stroke-width: 1.2; }
+    .access { fill: none; stroke: #64748b; stroke-width: 2; stroke-dasharray: 5 5; }
+    .fork { fill: none; stroke: #475569; stroke-width: 2; marker-end: url(#arrow); }
+    .note { font-size: 14px; fill: #64748b; }
+    .label { font-size: 17px; font-weight: 600; }
+  </style>
+
+  <rect class="host" x="12" y="12" width="736" height="566" rx="12" />
+  <text x="36" y="40" font-size="14" font-weight="600" letter-spacing="1.2">LLOYAL HOST · ONE OS PROCESS</text>
+
+  <rect x="128" y="65" width="504" height="95" rx="8" fill="#17202b" />
+  <text x="380" y="89" text-anchor="middle" class="mono" style="fill:#cbd5e1">llama_model</text>
+  <text x="380" y="119" text-anchor="middle" font-size="23" font-weight="600" style="fill:#fff">Resident model weights</text>
+  <text x="380" y="144" text-anchor="middle" font-size="16" style="fill:#cbd5e1">Read-only · shared across sessions</text>
+
+  <path class="access" d="M 380 160 V 188 H 199 V 232" />
+  <path class="access" d="M 380 188 H 561 V 232" />
+  <text x="380" y="213" text-anchor="middle" class="note">Shared weight access</text>
+
+  <g aria-label="Session A has its own context and KV tree">
+    <rect class="session" x="38" y="232" width="322" height="288" rx="8" />
+    <text x="60" y="263" font-size="20" font-weight="600">Session A</text>
+    <text x="60" y="287" class="mono">Private llama_context · KV tree</text>
+    <rect class="prefix" x="90" y="312" width="218" height="48" rx="5" />
+    <text x="199" y="342" text-anchor="middle" class="label">Processed prefix A</text>
+    <path class="fork" d="M 199 360 V 386 H 123 V 413" />
+    <path class="fork" d="M 199 386 H 275 V 413" />
+    <rect class="agent" x="62" y="415" width="122" height="47" rx="5" />
+    <rect class="agent" x="214" y="415" width="122" height="47" rx="5" />
+    <text x="123" y="445" text-anchor="middle" class="label">Agent A1</text>
+    <text x="275" y="445" text-anchor="middle" class="label">Agent A2</text>
+    <text x="199" y="493" text-anchor="middle" class="note">Both inherit A's processed prefix</text>
+  </g>
+
+  <g aria-label="Session B has its own context and KV tree">
+    <rect class="session" x="400" y="232" width="322" height="288" rx="8" />
+    <text x="422" y="263" font-size="20" font-weight="600">Session B</text>
+    <text x="422" y="287" class="mono">Private llama_context · KV tree</text>
+    <rect class="prefix" x="452" y="312" width="218" height="48" rx="5" />
+    <text x="561" y="342" text-anchor="middle" class="label">Processed prefix B</text>
+    <path class="fork" d="M 561 360 V 386 H 485 V 413" />
+    <path class="fork" d="M 561 386 H 637 V 413" />
+    <rect class="agent" x="424" y="415" width="122" height="47" rx="5" />
+    <rect class="agent" x="576" y="415" width="122" height="47" rx="5" />
+    <text x="485" y="445" text-anchor="middle" class="label">Agent B1</text>
+    <text x="637" y="445" text-anchor="middle" class="label">Agent B2</text>
+    <text x="561" y="493" text-anchor="middle" class="note">Both inherit B's processed prefix</text>
+  </g>
+
+  <text x="380" y="553" text-anchor="middle" font-size="15" fill="#475569">Weight access spans sessions. Attention inheritance stays within each session.</text>
+</svg>

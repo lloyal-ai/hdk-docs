@@ -14,6 +14,12 @@ Checked against source and a 1.13.0 basic scaffold, 2026-09-30:
   lloyal-sdk  packages/binding/src/projection.ts  Availability states
   scaffold    targets/web/serve.ts, web-bridge.ts (VITE_WSS_URL, ?server=, ws://127.0.0.1:8787), package.json scripts
   harness-yml.md "When a change applies": a served session saves in memory only and cannot reload the runtime
+
+Model/context ownership checked against source, 2026-10-08:
+  hdk         packages/rig/src/boot.ts, resident-context.ts  one native context per admitted session
+  lloyal.node src/SessionContext.cpp                       ModelRegistry::acquire followed by llama_init_from_model
+  liblloyal   include/lloyal/model_registry.hpp             process-local shared llama_model cache
+  hdk         packages/relay/src/index.ts                  child_process.fork per connection; separate Node processes
 -->
 
 The same harness that runs as a desktop app can serve a room full of people. A **host** loads the model once and runs one **session** per browser, each with its own context, its own agents and its own memory, over the one resident copy of the weights. You pay for the machine, not per token.
@@ -24,7 +30,7 @@ The same harness that runs as a desktop app can serve a room full of people. A *
 |---|---|
 | Several people using one model on one machine — an office appliance, a GPU box | The **host** (this page): `npm run serve` |
 | One person, offline, on their own machine | The desktop app — [Ship a desktop app](/ship) |
-| Every connection isolated in its own OS process, with its own copy of the model | `@lloyal-labs/relay` — see [Isolate by process](#relay) |
+| Every connection isolated in its own OS process | `@lloyal-labs/relay` — see [Isolate by process](#relay) |
 
 ## Quickstart {#quickstart}
 
@@ -39,6 +45,23 @@ npm run dev:web:client
 ```
 
 `npm run dev:web` starts both together, which is what you want while developing.
+
+## Shared weights, separate session state {#session-memory}
+
+`npm run serve` runs sessions in one host process. Each reader gets a separate native **`llama_context` over the same resident `llama_model`**. Creating another context reuses the model's weights.
+
+The OS analogy is direct: resident weights play the role of shared, read-only pages; each session's KV tree is its private address space. The host multiplexes sessions over those weights, and agents fork within their session's space.
+
+[![One host process shares read-only model weights between Session A and Session B. Each session has a separate llama_context and KV tree, with two agents inheriting only that session's processed prefix.](/assets/serving-memory.svg)](/assets/serving-memory.svg)
+
+| Resource | Ownership in the host |
+|---|---|
+| Model weights (`llama_model`) | Shared by contexts using the same model file and model-loading settings |
+| KV cache and model-specific recurrent state | Separate for each session's `llama_context` |
+| Context compute buffers | Allocated for each context |
+| Service instances | Each session binds its own reranker and projector instances |
+
+Additional readers consume context and service memory while reusing the resident reasoning-model weights. Sharing weights does not share a reader's attention history with other readers. Agents can inherit attention within their own session's lineage, as described in [Continuous Context](/continuous-context).
 
 ## Configure the box {#configure-the-box}
 
@@ -58,7 +81,7 @@ HOST=0.0.0.0 PORT=8787 MAX_SESSIONS=8 npm run serve
 
 ## Size `MAX_SESSIONS` {#size-max-sessions}
 
-A session holds its context, and its own reranker and projector, for as long as its browser tab is open — even when the reader is idle. So the cap is how many **open** sessions the machine can hold, not how many can work at once. Four is a cautious default for one machine, not a measurement. Measure with the model, context length and vision settings you actually deploy, with the sessions idle, and set it on the box.
+A session holds its context, and its own reranker and projector, for as long as its browser tab is open — even when the reader is idle. Budget for the shared model weights plus each session's KV/recurrent state, compute buffers and service allocations. The cap is how many **open** sessions the machine can hold, not how many can work at once. Four is a cautious default for one machine, not a measurement. Measure with the model, context length and vision settings you actually deploy, with the sessions idle, and set it on the box.
 
 ## What a reader sees {#what-a-reader-sees}
 
@@ -79,9 +102,11 @@ The web app connects to `ws://127.0.0.1:8787` unless told otherwise:
 
 ## Isolate by process {#relay}
 
-`@lloyal-labs/relay` is the other shape: **one harness process per connection**, each with its own residency, so the operating system is the boundary between readers. The price is memory — every connection loads its own copy of the model.
+`@lloyal-labs/relay` provides **one harness process per connection**. It starts your harness's bin in a separate Node process and relays its frames over the socket, putting an OS-process boundary between readers.
 
-It ships as a bridge you mount in your own server (Express, Hono, Koa…): it forks your harness's bin for each connection and relays its frames over the socket. No scaffold command wires it up yet, so choose it when process isolation matters more than density, and expect to write the server around it.
+The model registry is process-local. Relay children therefore own separate model objects and context allocations; the relay does not share one `llama_model` or GPU allocation across those processes. The OS may share memory-mapped model-file pages, but that is separate from the host's shared model residency. Multiple `llama_context` instances **within the host process** reuse the same weights as described [above](#session-memory).
+
+The relay ships as a bridge you mount in your own server (Express, Hono, Koa…). No scaffold command wires it up yet. Use it when you need an OS-process boundary, and expect to write the server around it. Use `npm run serve` for the shared-residency host.
 
 ## Related {#related}
 
