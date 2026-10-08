@@ -20,6 +20,9 @@ Model/context ownership checked against source, 2026-10-08:
   lloyal.node src/SessionContext.cpp                       ModelRegistry::acquire followed by llama_init_from_model
   liblloyal   include/lloyal/model_registry.hpp             process-local shared llama_model cache
   hdk         packages/relay/src/index.ts                  child_process.fork per connection; separate Node processes
+  hdk         packages/rig/src/provision.ts, providers/reranker.ts  artifacts resolved once; service contexts bound per session
+  lloyal.node src/SessionContext.cpp                       mmproj initialized per context, outside ModelRegistry
+  llama.cpp   d6d0ce8 tools/mtmd/mtmd.cpp, clip.cpp          each projector instance allocates and loads its own weights
 -->
 
 The same harness that runs as a desktop app can serve a room full of people. A **host** loads the model once and runs one **session** per browser, each with its own context, its own agents and its own memory, over the one resident copy of the weights. You pay for the machine, not per token.
@@ -54,14 +57,17 @@ The OS analogy is direct: resident weights play the role of shared, read-only pa
 
 [![One host process shares read-only model weights between Session A and Session B. Each session has a separate llama_context and KV tree, with two agents inheriting only that session's processed prefix.](/assets/serving-memory.svg)](/assets/serving-memory.svg)
 
+At boot, the host prepares the model and service files on disk before it listens. Native contexts and service bindings are created as sessions are admitted.
+
 | Resource | Ownership in the host |
 |---|---|
-| Model weights (`llama_model`) | Shared by contexts using the same model file and model-loading settings |
-| KV cache and model-specific recurrent state | Separate for each session's `llama_context` |
+| Model weights (`llama_model`), including the reranker | Shared by contexts using the same model file and model-loading settings |
+| KV cache and model-specific recurrent state | Separate for each reasoning or service context |
 | Context compute buffers | Allocated for each context |
-| Service instances | Each session binds its own reranker and projector instances |
+| Service bindings | Created and owned per session, using the files prepared at boot |
+| Vision projector (`mtmd_context`) | Loaded per session, with its own projector weights and working buffers |
 
-Additional readers consume context and service memory while reusing the resident reasoning-model weights. Sharing weights does not share a reader's attention history with other readers. Agents can inherit attention within their own session's lineage, as described in [Continuous Context](/continuous-context).
+Additional readers consume context, service and projector memory while reusing the resident reasoning-model and reranker weights. Sharing weights does not share a reader's attention history with other readers. Agents can inherit attention within their own session's lineage, as described in [Continuous Context](/continuous-context).
 
 ## Configure the box {#configure-the-box}
 
@@ -81,7 +87,9 @@ HOST=0.0.0.0 PORT=8787 MAX_SESSIONS=8 npm run serve
 
 ## Size `MAX_SESSIONS` {#size-max-sessions}
 
-A session holds its context, and its own reranker and projector, for as long as its browser tab is open — even when the reader is idle. Budget for the shared model weights plus each session's KV/recurrent state, compute buffers and service allocations. The cap is how many **open** sessions the machine can hold, not how many can work at once. Four is a cautious default for one machine, not a measurement. Measure with the model, context length and vision settings you actually deploy, with the sessions idle, and set it on the box.
+A session holds its context and its service bindings for as long as its browser tab is open, even when the reader is idle. Budget for shared reasoning-model and reranker weights plus each session's KV/recurrent state, compute buffers and service working memory. When vision is configured, include each session's projector weights and working buffers too.
+
+The cap is how many **open** sessions the machine can hold, not how many can work at once. Four is a cautious default for one machine, not a measurement. Measure with the model, context length and vision settings you actually deploy, with the sessions idle, and set it on the box.
 
 ## What a reader sees {#what-a-reader-sees}
 
