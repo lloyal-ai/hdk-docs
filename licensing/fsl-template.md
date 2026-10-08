@@ -1,23 +1,20 @@
 # FSL-1.1-Apache-2.0 — canonical template
 
-This is the canonical FSL-1.1-Apache-2.0 LICENSE text used across the lloyal
-runtime stack (`liblloyal`, `lloyal-node`, `lloyal-sdk` and its FSL packages).
-Each repo's `LICENSE` file is this template with the four parameters below
-substituted in.
+This is the FSL-1.1-Apache-2.0 license text used across the Lloyal runtime stack.
+Lloyal's additional application-building permissions live in the separate
+[Developer Grant](https://github.com/lloyal-ai/hdk/blob/8678ebcd02c425b9e569d97e58063e2af143ffb7/GRANT.md).
 
 ## Parameters
 
 | Marker | Value at instantiation |
 |---|---|
-| `\<Year>` | Year of release (e.g. `2026`) |
-| `\<Licensor>` | The party offering the Software (`Lloyal Labs`) |
-| `\<Software>` | The name of the software (`liblloyal`, `lloyal-node`, or the lloyal-sdk package name) |
-| `\<Change Date>` | Two years from the version's release date (e.g. release `2026-06-01` → Change Date `2028-06-01`). **Per-release**: every new published version sets its own Change Date at release time. Do not use a single global Change Date across versions. |
+| `\<Year>` | The applicable copyright year |
+| `\<Licensor>` | The party offering the Software (`Lloyal Labs Pty Ltd`) |
 
 ## Template
 
-> Copy everything below the divider into the repo's `LICENSE` file and
-> substitute the four parameters above. Do not modify the operative text.
+> Copy the license between the dividers into the repo's `LICENSE` file and
+> substitute the copyright notice parameters above. Do not modify the operative text.
 
 ---
 
@@ -133,26 +130,21 @@ limitations under the License.
 
 ## Notes for repo maintainers
 
-- **`\<Change Date>` calculation**: Take the version's release date and add
-  exactly two years. Format as ISO-8601 (`YYYY-MM-DD`). The Change Date is
-  expressed in the "Grant of Future License" section above as "the second
-  anniversary of the date we make the Software available" — the date itself
-  is not interpolated into the template text but is implied by the
-  Effective Date (which is the release date). Some forks of FSL prefer to
-  state the Change Date explicitly; the canonical Sentry template uses
-  "second anniversary" wording. We follow Sentry's canonical wording.
-
-- **Per-release scheme**: Each new published version of a package gets a
-  fresh `LICENSE` file with the release year and (implicitly) the release
-  date as its Effective Date. Do not carry a single LICENSE file across
-  versions with a single global Change Date.
-
-- **Apache 2 conversion**: After the Change Date passes, downstream
-  consumers can use that specific version under Apache 2 by their own
-  election. Lloyal Labs does not need to take any action at the Change
-  Date — the conversion is automatic per the irrevocable grant above.
-
-- Source: this is the standard FSL-1.1-Apache-2.0 template published by
-  Sentry at https://github.com/getsentry/fsl.software. We use the
-  template unmodified — see [the FAQ](./faq) for why we did not add a
-  bespoke channel restriction or other modifications.
+- **Conversion date:** Each version becomes available under Apache 2.0 on the
+  second anniversary of the date it is first made available. There is no
+  `\<Change Date>`, `\<Software>` or Effective Date placeholder in this template.
+  A copyright year is not a version's release date.
+- **Per-version history:** Keep release history identifying when each version
+  was first made available. The same unmodified license text can accompany
+  successive versions; each version has its own two-year clock.
+- **Apache 2.0 conversion:** The additional license is irrevocable and takes
+  effect automatically. Lloyal Labs need not change the published artifact
+  when that anniversary arrives.
+- **Additional permissions:** Include `GRANT.md` alongside `LICENSE`. HDK's
+  `GRANT.md` is the canonical grant and `licensing/faq.md` in this docs repository
+  is the canonical FAQ. Use HDK's `scripts/sync-license-faq.sh` to update copies
+  and its `--check` mode to detect drift.
+- **Source:** The standard FSL text is published at
+  https://github.com/getsentry/fsl.software. Lloyal's grant supplements it without
+  modifying the operative text. See the
+  [Licensing FAQ](https://docs.lloyal.ai/licensing/faq).

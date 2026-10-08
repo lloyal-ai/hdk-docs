@@ -269,7 +269,7 @@ ${tab ? `<div class="crumb" data-pagefind-meta="section">${esc(tab.label)}</div>
 ${html}
 </article>
 <div data-pagefind-ignore>${prevNext(slug)}</div>
-<footer class="footer" data-pagefind-ignore><span>Lloyal Labs</span><a href="${HOME}">lloyal.ai</a><a href="${GITHUB}">GitHub</a><a href="/llms.txt">llms.txt</a></footer>
+<footer class="footer" data-pagefind-ignore><span>Lloyal Labs</span><a href="${HOME}">lloyal.ai</a><a href="${GITHUB}">GitHub</a><a href="/licensing/faq">Licensing</a><a href="/llms.txt">llms.txt</a></footer>
 </main>
 ${c.rail}
 </div>

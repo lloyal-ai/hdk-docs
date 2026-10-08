@@ -1,64 +1,52 @@
 ---
 title: "Licensing"
-description: "FSL-1.1-Apache-2.0 across the lloyal runtime stack — what it means, why we chose it, what you can build."
+description: "FSL-1.1-Apache-2.0 and the Developer Grant across the Lloyal runtime stack."
 ---
 
-**You can build and sell commercial products using HDK.**
+**You can build and sell commercial products using Lloyal.**
 
-> HDK is free to build products with; it is not free to become the
-> replacement HDK platform.
+The runtime packages use **FSL-1.1-Apache-2.0**, together with the
+[Developer Grant](https://github.com/lloyal-ai/hdk/blob/8678ebcd02c425b9e569d97e58063e2af143ffb7/GRANT.md). Each version becomes available under Apache 2.0
+two years after it is first made available.
 
-HDK 3.0 runtime packages are **[Fair Source](https://fair.io)** under
-**FSL-1.1-Apache-2.0** and convert to Apache 2.0 two
-years after each release. The restriction during those two years is narrow:
-you cannot offer a competing HDK runtime, managed HDK service, or alternative
-HDK Ability distribution channel. The canonical Ability distribution channel is
-`apps.lloyal.ai` — every Ability listed there is reviewed by Lloyal Labs for
-tool-safety and manifest conformance before publication, so consumers can
-rely on a single AI-safety boundary across every HDK harness.
+The grant expressly permits building, distributing, selling, licensing and
+hosting applications and abilities, including products that compete with
+Lloyal's own applications. Your application's own plugin system and private
+ability distribution within your organization or to your customers are permitted.
 
-The `lloyal-ai` CLI is MIT. The `hdk-create-app` scaffolder is
-Apache 2.0. Both are unrestricted.
+During a version's FSL period, the grant limits competing-use restrictions to
+substitute developer frameworks or runtimes, runtime-as-a-service for third-party
+developers, and general alternative ability registries for third-party harness
+developers. Hosting your own product for its end users is permitted.
 
 ## Start here
 
-<CardGroup cols={2}>
-  <Card title="FAQ" icon="circle-question" href="/licensing/faq">
-    What FSL means in practice, with concrete examples of what's permitted
-    and what's restricted. **Start here if you're evaluating HDK for a
-    commercial product.**
-  </Card>
-  <Card title="The FSL template" icon="file-lines" href="/licensing/fsl-template">
-    The canonical FSL-1.1-Apache-2.0 text used across the lloyal runtime
-    stack, with the parameter substitutions explained.
-  </Card>
-  <Card title="Why FSL?" icon="compass" href="/licensing/why-fsl">
-    What FSL protects, why protocol integrity matters for Ability developers,
-    and why we chose FSL over alternatives.
-  </Card>
-  <Card title="Permitted uses, illustrated" icon="check" href="/licensing/permitted-uses-examples">
-    Concrete commercial scenarios that fall under Permitted Use.
-  </Card>
-</CardGroup>
+- [Licensing FAQ](https://docs.lloyal.ai/licensing/faq): permissions, boundaries,
+  covered packages and the grant's protection for already-published versions.
+- [Developer Grant](https://github.com/lloyal-ai/hdk/blob/8678ebcd02c425b9e569d97e58063e2af143ffb7/GRANT.md): the governing additional permissions and covenants.
+- [FSL license](https://github.com/lloyal-ai/hdk/blob/main/LICENSE): the governing
+  license text.
 
 ## License-by-package summary
 
 | Component | License |
 |---|---|
-| `liblloyal`, `lloyal-node` | FSL-1.1-Apache-2.0 |
-| `@lloyal-labs/lloyal-agents`, `@lloyal-labs/lloyal-sdk`, `@lloyal-labs/rig` | FSL-1.1-Apache-2.0 |
-| `@lloyal-labs/corpus`, `@lloyal-labs/web` | FSL-1.1-Apache-2.0 |
-| `lloyal-ai` (the CLI) | **MIT** |
-| `hdk-create-app` (when shipped) | **Apache 2.0** |
-| `llama.cpp` (vendored dependency) | MIT (unchanged) |
+| `liblloyal`, `@lloyal-labs/lloyal.node` | FSL-1.1-Apache-2.0 + Developer Grant |
+| `@lloyal-labs/sdk`, `@lloyal-labs/lloyal-agents`, `@lloyal-labs/rig` | FSL-1.1-Apache-2.0 + Developer Grant |
+| `@lloyal-labs/binding`, `@lloyal-labs/host`, `@lloyal-labs/relay`, `@lloyal-labs/desktop`, `@lloyal-labs/ui`, `@lloyal-labs/dev-tools` | FSL-1.1-Apache-2.0 + Developer Grant |
+| `@lloyal-labs/media`, `@lloyal-labs/web-ability`, `@lloyal-labs/corpus-ability`, `@lloyal-labs/documents-ability`, `@lloyal-labs/wikipedia-ability` | FSL-1.1-Apache-2.0 + Developer Grant |
+| `lloyal-ai` CLI | MIT |
+| `@lloyal-labs/channel-verify` | Apache 2.0 |
+| `llama.cpp` (vendored dependency) | MIT |
 
-Each component's repo carries an in-tree copy of the licensing FAQ next to
-the LICENSE file (`LICENSE-FAQ.md`) so the explanation is at the point of
-contact. This page is the canonical version; the in-repo copies are
-synchronized to it.
+Previously covered package names remain covered under Section 1 of the grant.
+The canonical FAQ source is `licensing/faq.md` in this repository. HDK's
+`scripts/sync-license-faq.sh` synchronizes it into `LICENSE-FAQ.md` copies and
+copies the canonical HDK `GRANT.md` into the applicable runtime repositories
+and packages. Edit the canonical sources and run the sync script instead of
+editing generated copies.
 
 ## Questions?
 
-If you have a use case and aren't sure whether it falls under Permitted
-Purpose or Competing Use, email [legal@lloyal.ai](mailto:legal@lloyal.ai) or open a discussion in
-the repo. We'd rather give you a quick yes than have you worry about it.
+For questions about the boundaries in the grant, contact
+[legal@lloyal.ai](mailto:legal@lloyal.ai).
