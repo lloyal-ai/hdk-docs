@@ -91,4 +91,5 @@ export const TABS = [
  * `licensing/publisher-tos` is linked from the publisher console's terms
  * checkbox, at `#publisher-terms-of-service`, and from nowhere a reader browses.
  */
-export const HIDDEN = ['licensing/publisher-tos'];
+// The FAQ is discoverable from the shared footer without adding a product-docs tab.
+export const HIDDEN = ['licensing/publisher-tos', 'licensing/faq'];
