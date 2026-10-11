@@ -76,7 +76,7 @@ export const createCorpusAbility = defineAbility(manifest, function* () {
 | `protocol.useWhen` | One sentence, read by the planner at execution time to route work here. |
 | `protocol.tools[]` | Tool names. Must equal the setup's tool map keys as a set — no missing, no extras. |
 | `configSchema` | Optional JSON Schema for operator-supplied config — read in the setup or at a tool’s call, see [The setup](/build-an-ability#the-setup). |
-| `services` | Optional. The services the Ability requires — `reranker`, `vision`, `embedding`. A service exists when the harness carries its block in `harness.yml` and the block resolves to a model — one it names, or for `vision` the projector paired with the reasoning model; the harness never provisions one because an Ability asked, and an Ability whose requirement the file does not name is refused at enable. The trunk model is never listed. |
+| `services` | Optional. The services the Ability requires — `reranker`, `vision`, `embedding`, `transcription`. A service exists when the harness carries its block in `harness.yml` and the block resolves to a model — one it names, or for `vision` the projector paired with the reasoning model; the harness never provisions one because an Ability asked, and an Ability whose requirement the file does not name is refused at enable. The trunk model is never listed. |
 
 ## Next {#next}
 

@@ -52,7 +52,7 @@ export const providers: { [K in Service]: ProviderRow<K> } = {
 | Cell | Says |
 | --- | --- |
 | `derive(of)` | which model backs the service when its block names none, given the llm’s selection; `undefined` refuses, naming `model.<name>.id` |
-| `bind(artifact, block)` | the artifact as the instance `service(name)` answers — an Effection resource, so the instance lives as long as the scope that bound it and is torn down with it |
+| `bind(artifact, block, projector?)` | the artifact as the instance `service(name)` answers — an Effection resource, so the instance lives as long as the scope that bound it and is torn down with it; a row with a `projector` cell receives that artifact third |
 | `trunk(artifact, block)` | the options the artifact contributes to the resident context; typed only for a service whose map entry is a `Trunk`, so an instance service cannot accidentally be folded into the trunk |
 | `projector` | a second artifact the service binds beside its model, with the role it is slotted under and how it is selected from the block: paired from the catalog by the decoder’s id, or named by `projector.id` or `projector.path`. The installer gives it a step of its own, and `bind` receives it as its third argument. |
 
