@@ -77,7 +77,7 @@ A terminal output is **not** a tool to add to `tools`: calling it ends the turn,
 
 ## Cited findings {#cited-report}
 
-`citedReport` is the same primitive with a capture: its schema is `{ result, sources: [{ title, url }] }`, forced by the grammar, and at capture the sources are woven into the findings as inline citations. `citedReport.read(outcome)` returns the finished text. It is the one citation mechanism — don't add a second.
+`citedReport` is the same primitive with a capture: its schema is `{ result, sources: [{ title, url }] }`, forced by the grammar, and at capture the sources are woven into the findings as inline citations. `citedReport.read(outcome)` returns the finished text. It is the one citation mechanism — don't add a second. Its findings are a document, so it declares `grammarOrder: 'sampleFirst'`: the grammar still guarantees the envelope and the sources list, and the prose streams at the decode's own speed. See [Sampling under the grammar](/tools#grammar-order) for the trade and for when an output of your own should declare it.
 
 ```ts label="src/harness/wiki.ts"
 import { citedReport } from "@lloyal-labs/rig";
