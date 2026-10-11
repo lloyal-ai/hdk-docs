@@ -1,6 +1,6 @@
 ---
 title: "Tools"
-description: "A tool is a class with a name, a description, a JSON schema and an execute generator. What the model sees of it, what it can read about the agent calling it, what it may return, and the one flag that decides whether it runs beside other agents."
+description: "A tool is a class with a name, a description, a JSON schema and an execute generator. What the model sees of it, what it can read about the agent calling it, what it may return, the flag that decides whether it runs beside other agents, and the one that decides how its grammar is sampled."
 lede: "Give agents an action: a class with a name, a schema and an execute — and, unlike an endpoint tool, the agent's live state within reach."
 ---
 
@@ -65,7 +65,27 @@ The tools are written into the shared spine once, so every agent that forks from
 | `*execute(args, context?)` | An Effection generator. Its return value is serialised to JSON and placed in the calling agent's context as the result. |
 | `protected` | Open by default. `true` marks a consequential action: it is refused unless the session holds a grant. See [Human approval](/human-approval). |
 | `fanout` | Inline by default. `true` lets it run beside other agents' work — see below. |
+| `grammarOrder` | Mask first by default. `'sampleFirst'` for a tool whose arguments are mostly prose — see [Sampling under the grammar](#grammar-order). |
 | `hooks` | What this tool says about the life of its own calls: its guards, its view of a completion or a result. See [Tool hooks and guards](/tool-hooks). |
+
+## Sampling under the grammar {#grammar-order}
+
+Once the model starts calling a tool, every token of the call is sampled under a grammar built from the tool's schema: the call cannot misspell a field, leave the envelope open or wander back into prose. How the engine consults that grammar is the tool's to declare, and the two orders trade exactness for cost.
+
+**Mask first**, the default. Every vocabulary entry is tested against the grammar before the sampler picks, so the pick is exact under top-k, top-p and min-p: the model's relative preferences among legal tokens are kept, including a legal token that is globally weak. It costs a walk over the whole vocabulary per token, about 50 ms per agent per token on an Apple M2 Pro, paid in series across the agents sampled in one step. Right for a call whose arguments are structure: a search query, a plan, extracted JSON. Thirty tokens of structure cost a second and a half; nobody notices.
+
+**Sample first**, `grammarOrder: 'sampleFirst'`. The sampler picks from the raw candidates and the grammar checks that one token, masking the whole vocabulary only when the pick is refused. Inside free text the two orders agree, and the cost is the unconstrained cost. At a token where the model wants something the grammar forbids, truncation has already run, so a legal token that is popular overall is favoured over one popular only among legal tokens. Right for a call whose arguments are mostly prose: a report, a draft, a long explanation. The envelope, the field names and any structured fields are still guaranteed; only the forty structural tokens of a thousand-token report are sampled under the other order.
+
+Choose by the length of the free text inside the call, because the cost is per token and the difference is per structural token. A thousand-token report under mask first is a minute of sampling per agent, and with three agents in parallel it streams at two tokens per second; the same report under sample first streams at the decode's own speed. `citedReport` declares sample first for that reason. The pool switches the branch the moment it identifies the call as the tool, so the envelope and the name are always sampled mask first, and an agent recovering into the terminal tool gets the terminal tool's declaration with its grammar.
+
+```ts
+import { defineOutput } from "@lloyal-labs/rig";
+
+const draft = defineOutput("draft", z.object({ text: z.string() }), {
+  description: "Submit the draft.",
+  grammarOrder: "sampleFirst", // the value is a document, not a record
+});
+```
 
 ## Return a result {#return-a-result}
 
