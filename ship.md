@@ -36,7 +36,7 @@ Nothing else about packaging enters your project. The entitlements, the archive 
 
 They meet the same provisioning screen you did on your first `dev:desktop` run. There is no separate end-user path, because there is no separate code.
 
--   one row per model named in `harness.yml` — the reasoning model, and whichever of reranker, vision and embedding that harness declares;
+-   one row per model named in `harness.yml` — the reasoning model, and whichever of reranker, vision, embedding and transcription that harness declares, the transcription decoder and its audio projector as two rows;
 -   each fetched and **digest-verified** against the SHA the catalogue pins, from the upstream source or the Lloyal mirror, whichever answers;
 -   the bytes, the rate and the time remaining, per row;
 -   a weight the reader already has, offered as an alternative to downloading it;
@@ -49,6 +49,14 @@ Every launch after that opens at once. A download that is truncated or tampered 
 The manifest ships inside the application as its default and becomes the installation's own the first time it launches. That copy happens once.
 
 So changing a model in `harness.yml` reaches a **fresh** installation. An existing one keeps the manifest it seeded, along with every edit its reader has made to it since — which is the point, because that file now holds their choices, not yours. An update brings new code, never a rewrite of a file the reader owns.
+
+## The microphone {#microphone}
+
+A harness that names a transcription service dictates into its composer, so the build declares the microphone. The usage string macOS shows on the first press is written into the application's `Info.plist`:
+
+> The microphone is used to dictate into the composer. Audio stays on this machine unless the harness is served elsewhere.
+
+A notarized build keeps audio input among its hardened-runtime entitlements, without which a signed application cannot ask at all. The application is listed under its own name in System Settings, Privacy & Security, Microphone, and a refusal is reversed there. Only the packaged application has that row: under `dev:desktop` the decision belongs to the terminal that launched it ([Troubleshooting](/troubleshooting#desktop)).
 
 ## Two roots, and why they differ {#two-roots}
 
@@ -127,7 +135,7 @@ One assignment per line: a dotenv file reads the rest of a line as the value. Ru
 
 ### What `--notarize` guarantees {#what-notarize-guarantees}
 
--   the **hardened runtime**, with the three exemptions a resident model needs: JIT and unsigned executable memory for the inference runtime, and library validation off so the addon's sibling libraries load at all;
+-   the **hardened runtime**, with the three exemptions a resident model needs: JIT and unsigned executable memory for the inference runtime, and library validation off so the addon's sibling libraries load at all; and audio input, so a harness that dictates may ask for the microphone;
 -   **signing is mandatory** — a certificate that cannot be found fails the build instead of producing an unsigned application while you believe otherwise;
 -   a **distribution** certificate, stated rather than left to the default, because the identity search otherwise falls back to a development certificate with only a warning;
 -   the application notarized and stapled, and then **the disk image notarized and stapled in its own right**, because that is the file a browser downloads.
