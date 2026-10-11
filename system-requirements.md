@@ -22,7 +22,7 @@ Checked against source, 2026-09-30:
 |---|---|---|
 | Node.js | **24 or newer** — the current LTS | The CLI, both templates and the native runtime declare `node >=24`. |
 | Memory (RAM, or unified memory on a Mac) | **10 GB total** for the default model; 16 GB recommended | The installer refuses a machine below the model's floor — see below. |
-| Disk | About **3 GB** free for the `basic` template, **4.5 GB** for `research`, plus the project's npm dependencies | The model files are downloaded once, on the first run. Free space is **not** checked for you. |
+| Disk | About **3 GB** free for the `basic` template, **5.5 GB** for `research`, plus the project's npm dependencies | The model files are downloaded once, on the first run. Free space is **not** checked for you. |
 | Operating system | macOS, Linux or Windows, on x64 or arm64 | Prebuilt native binaries ship for 13 platform and GPU combinations. |
 | A GPU | Not required | CPU works everywhere. Metal is used on Apple silicon; CUDA and Vulkan are available on Linux and Windows. |
 | An API key, Docker, a database | Not needed | The model runs inside your application. |

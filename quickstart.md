@@ -26,7 +26,7 @@ npm run dev:desktop
 
 The first command creates `my-app/`, installs its dependencies and prints how to run each surface. Leave out the name and the flags and it asks for them instead: name, surfaces, model, template. (Run from a script or CI, where there is no terminal, it skips the install — run `npm install` in the folder.)
 
-The first launch downloads and verifies the models the template names; `research` needs three — a 4B reasoning model, a reranker and a vision projector. The app shows each download with its bytes, rate and time left. Every launch after that opens at once.
+The first launch downloads and verifies the models the template names; `research` needs five — a 4B reasoning model, a reranker, a vision projector, and a transcription model with its audio projector. The app shows each download with its bytes, rate and time left. Every launch after that opens at once.
 
 Then ask it something worth investigating.
 
