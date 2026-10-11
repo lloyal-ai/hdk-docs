@@ -51,7 +51,7 @@ Three ways, each one command. The commands write `harness.yml` for you; the chan
 | A `.gguf` you already have | `npx lloyal-ai models:add ./models/llm/my-model.gguf` | `model.llm.path` — used where it is, trusted because you have it |
 | A `.gguf` from a URL | `npx lloyal-ai models:download <url> --sha256 <hex>` | Streams it into `models/llm/` and pins it as `model.llm.path`. Pass `--sha256`: without it the file is trusted by its source; with it, a mismatch deletes the file and fails. |
 
-Add `--role reranker`, `--role vision` or `--role embedding` to set a [service](/services)'s model instead of the reasoning model.
+Add `--role reranker`, `--role vision`, `--role embedding` or `--role transcription` to set a [service](/services)'s model instead of the reasoning model.
 
 A catalog model's `id` and a `path` replace each other: `path` wins if both are present.
 

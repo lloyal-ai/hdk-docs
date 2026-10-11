@@ -60,7 +60,7 @@ If you give a local file with `path:` instead, it is used where it is, without a
 
 ### 3. Each service the harness names {#each-service}
 
-Then one step per extra model the harness asks for — the reranker, the vision projector, the embedding model — each fetched and verified the same way. The `basic` template names none; `research` names a reranker (630 MB) and vision (672 MB). See [Services](/services) for what each one does.
+Then one step per extra model the harness asks for — the reranker, the vision projector, the embedding model, the transcription decoder and its audio projector — each fetched and verified the same way. The `basic` template names none; `research` names a reranker (630 MB), vision (672 MB) and transcription (805 MB, with a 214 MB projector). See [Services](/services) for what each one does.
 
 ### When a step fails {#when-a-step-fails}
 

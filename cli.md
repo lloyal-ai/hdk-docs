@@ -43,7 +43,7 @@ A working Ability — a manifest, a source, search and fetch tools against Wikip
 
 ## Models {#models}
 
-In a project. `--role` is `llm` (default), `reranker`, `vision` or `embedding`.
+In a project. `--role` is `llm` (default), `reranker`, `vision`, `embedding` or `transcription`.
 
 | Command | Does |
 |---|---|

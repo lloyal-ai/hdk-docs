@@ -42,6 +42,10 @@ export const providers: { [K in Service]: ProviderRow<K> } = {
     bind: (artifact, block) =>
       createEmbedder(artifact, { nCtx: block.context, pooling: embeddingPooling(block) }),
   },
+  transcription: {
+    projector: { role: "transcription.projector", name: "audio projector", select: transcriptionProjector },
+    bind: (artifact, block, projector) => createTranscriber(artifact, projector, block),
+  },
 };
 ```
 
@@ -50,6 +54,7 @@ export const providers: { [K in Service]: ProviderRow<K> } = {
 | `derive(of)` | which model backs the service when its block names none, given the llm’s selection; `undefined` refuses, naming `model.<name>.id` |
 | `bind(artifact, block)` | the artifact as the instance `service(name)` answers — an Effection resource, so the instance lives as long as the scope that bound it and is torn down with it |
 | `trunk(artifact, block)` | the options the artifact contributes to the resident context; typed only for a service whose map entry is a `Trunk`, so an instance service cannot accidentally be folded into the trunk |
+| `projector` | a second artifact the service binds beside its model, with the role it is slotted under and how it is selected from the block: paired from the catalog by the decoder’s id, or named by `projector.id` or `projector.path`. The installer gives it a step of its own, and `bind` receives it as its third argument. |
 
 `block` is the service’s `model.<name>` as the layering resolved it, typed from its keys, so a provider reads its tuning without parsing anything. The reranker row is one line; the binding it calls, `createReranker`, is one of the two files in the framework that open a second native context (the embedder’s, `createEmbedder`, is the other) and compose a runtime primitive over it, and each is its own file so a test can stand a fake at that boundary and prove the walk without loading a model. A new kind whose binding needs a different acquirer — a model that is not a `.gguf` in a slot — would add one more optional cell then; nothing today needs it, so it is not in the contract.
 
