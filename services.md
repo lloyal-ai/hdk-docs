@@ -31,7 +31,8 @@ The framework treats both through the same contract. It never asks a service wha
 | `reranker` | instance | The pointwise judge the abilities score with: a cross-encoder on its own context, answering how well a passage meets a query as a logit difference. The judgement behind [context admission](/focal-lens). | Exposed today |
 | `vision` | trunk | The projector through which the reasoning model sees an image. Paired from the catalog with the llm when the block names no id, so switching the llm switches the projector. | Exposed today |
 | `embedding` | instance | An encoder answering one unit vector per text, in input order, for retrieval that indexes ahead of the question. Serialized on a context of its own; a text longer than its context is refused, never truncated. | Exposed today |
-| audio, classification, … | — | The kinds the contract is built to take: a Whisper encoder, a classifier, a speech sanitizer. | Design pattern — the service layer costs a row; the native substrate is separate work |
+| `transcription` | instance | A speech decoder and its audio projector on a context of their own, answering the raw text of one bounded recording. The composer's dictation; it never submits, and it never calls another service. | Exposed today |
+| classification, normalization, … | — | The kinds the contract is built to take: a classifier, a transcript cleaner. | Design pattern — the service layer costs a row; the native substrate is separate work |
 
 The set is closed and lives in the framework: a service is added by a contribution, not by a package registering one at runtime. That is a decision about governance rather than a limit of the design — a signed ability that declared a third-party service would reopen the question of who vouches for what it loads — and it is held open for later.
 

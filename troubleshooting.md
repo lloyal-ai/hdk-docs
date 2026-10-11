@@ -69,6 +69,7 @@ Nothing checks free disk space before a download, so make sure you have room. A 
 |---|---|---|
 | A dialog: **`<App> cannot start`** with a reason | The app failed before its window could open — a folder it cannot write, a manifest it cannot read, a broken installation. It exits with code 1. | Act on the reason. Launched from a terminal, the full error is on stderr. |
 | `… harness.json is version 1, written before alpha.10 — delete it and relaunch.` | A settings overlay from a much older version. | Delete that file; your committed `harness.yml` is untouched. |
+| A dialog: **Microphone access is off for this app** | macOS keeps one microphone decision per application, and under `npm run dev:desktop` the application is a child of your shell, so the decision belongs to the terminal that launched it: Terminal, iTerm, or your editor's own. The app has no row of its own in System Settings, and a refusal once recorded is never asked again. | Open System Settings, Privacy & Security, Microphone, and allow the terminal. macOS quits and reopens it, which ends the dev session; run `npm run dev:desktop` again. A packaged app ([Ship a desktop app](/ship#microphone)) is listed and asked under its own name. |
 
 ## The GPU {#gpu}
 

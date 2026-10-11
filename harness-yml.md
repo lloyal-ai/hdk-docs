@@ -37,6 +37,8 @@ model:
   reranker:
     id: qwen3-reranker-0.6b-q8
   vision: {}
+  transcription:
+    id: qwen3-asr-0.6b-q8
 
 sources:
   outputDir: reports
@@ -110,6 +112,25 @@ The encoder a harness indexes with, one vector per text. A model’s pooling is 
 
 Unset, `context` is 2048, which is the batch too: a text is encoded whole. A `path:` model with no `pooling` is refused at bind, naming the key. `nomic-embed-text-v1.5-q4` is the one to reach for on an edge box: a tenth of the memory and a quarter of the latency of the Qwen encoder; Qwen recalls more of what the reranker would confirm and suits an appliance-class box.
 
+### transcription {#transcription}
+
+The speech decoder the composer dictates through, with the audio projector that feeds it. A catalog `id` brings its projector with it; a `path:` decoder has no pairing and needs `projector.id` or `projector.path`. The block's presence is what puts the microphone in the composer; without it there is nothing to press.
+
+| Key | Takes | Applies | What it is |
+| --- | --- | --- | --- |
+| `model.transcription.id` | a catalog id | reload | The catalog id of the speech transcription model. |
+| `model.transcription.path` | a path to a `.gguf` | reload | A local transcription decoder; outranks the catalog id. |
+| `model.transcription.projector.id` | a catalog id | reload | The audio projector; otherwise paired from the transcription decoder in the catalog. |
+| `model.transcription.projector.path` | a path to a `.gguf` | reload | A local audio projector; outranks its catalog id. |
+| `model.transcription.context` | a positive integer | boot | The context budget shared by one transcription and its generated text. |
+| `model.transcription.maxTokens` | a positive integer | boot | The output token ceiling; an unfinished transcript is refused. |
+| `model.transcription.maxBytes` | a positive integer | boot | The largest encoded recording admitted for transcription. |
+| `model.transcription.maxDurationSeconds` | a positive integer | boot | The maximum recording duration. |
+| `model.transcription.maxChannels` | a positive integer | boot | The maximum number of channels in a recording. |
+| `model.transcription.maxSampleRate` | a positive integer | boot | The maximum input sample rate before native resampling. |
+
+Unset, `context` is 4096 and `maxTokens` 512. The recording bounds default to what the content plane admits. The decoder returns the raw transcript; whether a harness cleans it up is the harness's own composition, on a text service of its own.
+
 ### The catalog and the slots {#the-catalog}
 
 A catalog `id` is fetched on first launch into the project’s `models/<block>/<id>.gguf` slot and verified against the catalog’s digest, fail-closed: a truncated or tampered download is deleted, never loaded. A `path` is trusted by possession and never copied.
@@ -124,8 +145,10 @@ A catalog `id` is fetched on first launch into the project’s `models/<block>/<
 | `qwen3.8-27b-mmproj` · F16 | vision | 928 MB | — |
 | `nomic-embed-text-v1.5-q4` · Q4\_K\_M | embedding | 84 MB | pools `mean` |
 | `qwen3-embedding-0.6b-q8` · Q8\_0 | embedding | 639 MB | pools `last` |
+| `qwen3-asr-0.6b-q8` · Q8\_0 | transcription | 805 MB | `qwen3-asr-0.6b-mmproj-q8` |
+| `qwen3-asr-0.6b-mmproj-q8` · Q8\_0 | transcription projector | 214 MB | — |
 
-The CLI writes the selection for you: `lloyal models:use <id> [--role llm|reranker|vision|embedding]` writes the block’s `id`, `lloyal models:add <path> [--role]` its `path`, each replacing the other; `lloyal models:list` shows the catalog, your pins and what is on disk. An `llm` block that names neither and has exactly one `.gguf` in its slot adopts it; two is refused as ambiguous.
+The CLI writes the selection for you: `lloyal models:use <id> [--role llm|reranker|vision|embedding|transcription]` writes the block’s `id`, `lloyal models:add <path> [--role]` its `path`, each replacing the other; `lloyal models:list` shows the catalog, your pins and what is on disk. An `llm` block that names neither and has exactly one `.gguf` in its slot adopts it; two is refused as ambiguous.
 
 ## When a change applies {#when-a-change-applies}
 

@@ -6,7 +6,7 @@ lede: "Pick the model inside your app, change it with one command, or bring a fi
 
 <!--
 Checked against source, 2026-09-30:
-  lloyal      src/commands/models.ts     models:use / models:add / models:download (--sha256) / models:list; --role llm|reranker|vision|embedding
+  lloyal      src/commands/models.ts     models:use / models:add / models:download (--sha256) / models:list; --role llm|reranker|vision|embedding|transcription
   lloyal      src/commands/backends.ts   backends:install (linux-x64 pack, once per lloyal.node version, ~/.cache/lloyal/backends/)
   lloyal-sdk  packages/rig/src/models.ts MODEL_CATALOG (urls: upstream then the Lloyal mirror; sha256; machineClass), resolveModel
   lloyal-sdk  packages/rig/src/machine.ts floors: edge 10 GB, appliance 24 GB
@@ -30,6 +30,7 @@ Catalog (fetched + digest-verified on first run — no API key):
   reranker  qwen3-reranker-0.6b-q8   Qwen3 Reranker 0.6B · Q8_0
   embedding nomic-embed-text-v1.5-q4 nomic-embed-text v1.5 · Q4_K_M
   embedding qwen3-embedding-0.6b-q8  Qwen3 Embedding 0.6B · Q8_0
+  transcription qwen3-asr-0.6b-q8    Qwen3-ASR 0.6B · Q8_0
 
 Active (harness.yml, with harness.json over it):
   llm       id: qwen3.5-4b

@@ -50,6 +50,14 @@ The manifest ships inside the application as its default and becomes the install
 
 So changing a model in `harness.yml` reaches a **fresh** installation. An existing one keeps the manifest it seeded, along with every edit its reader has made to it since — which is the point, because that file now holds their choices, not yours. An update brings new code, never a rewrite of a file the reader owns.
 
+## The microphone {#microphone}
+
+A harness that names a transcription service dictates into its composer, so the build declares the microphone. The usage string macOS shows on the first press is written into the application's `Info.plist`:
+
+> The microphone is used to dictate into the composer. Audio stays on this machine unless the harness is served elsewhere.
+
+A notarized build keeps audio input among its hardened-runtime entitlements, without which a signed application cannot ask at all. The application is listed under its own name in System Settings, Privacy & Security, Microphone, and a refusal is reversed there. Only the packaged application has that row: under `dev:desktop` the decision belongs to the terminal that launched it ([Troubleshooting](/troubleshooting#desktop)).
+
 ## Two roots, and why they differ {#two-roots}
 
 A packaged harness has two locations rather than one, and they are two because of what the operating system allows rather than by design.
@@ -127,7 +135,7 @@ One assignment per line: a dotenv file reads the rest of a line as the value. Ru
 
 ### What `--notarize` guarantees {#what-notarize-guarantees}
 
--   the **hardened runtime**, with the three exemptions a resident model needs: JIT and unsigned executable memory for the inference runtime, and library validation off so the addon's sibling libraries load at all;
+-   the **hardened runtime**, with the three exemptions a resident model needs: JIT and unsigned executable memory for the inference runtime, and library validation off so the addon's sibling libraries load at all; and audio input, so a harness that dictates may ask for the microphone;
 -   **signing is mandatory** — a certificate that cannot be found fails the build instead of producing an unsigned application while you believe otherwise;
 -   a **distribution** certificate, stated rather than left to the default, because the identity search otherwise falls back to a development certificate with only a warning;
 -   the application notarized and stapled, and then **the disk image notarized and stapled in its own right**, because that is the file a browser downloads.
