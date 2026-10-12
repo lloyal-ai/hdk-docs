@@ -65,7 +65,7 @@ Every field is optional; the framework's default stands where the row is silent.
 | `nudge` | The words an agent is told when it must wind up, given `{ reason, terminal, words }`. **Without it nothing is said**: an agent over budget goes idle, and a result that will not fit is dropped | none |
 | `recovery` | For an agent stopped before it reported: `prompt` (its words, given the report's word budget), and the floors `minTokens` (100) and `minToolCalls` (2) below which it is not worth asking | pruned |
 | `recoveryShape` | `"staggered"` recovers one agent at a time, each with all the room freed so far; `"parallel"` recovers them together inside the loop, each capped | `"staggered"` |
-| `recoveryBudget` | The token cap for a `"parallel"` recovery report and for a voluntary report in flight; a `"staggered"` recovery has no cap and ends at its stop token or the floor | adaptive |
+| `recoveryBudget` | The token cap for a `"parallel"` recovery report and for a voluntary report in flight; a `"staggered"` recovery has no cap and ends at its stop token or the floor. Unset, cohort shares are adaptive and a voluntary report is never capped; a row that sets a number should tell the model the same number | unset |
 | `shouldExplore` | When retrieval tightens from explore to exploit: `context` (fraction of context still free) and `time` (fraction of the time limit used) | 0.4 / 0.5 |
 | `maxToolRetries` | Retries of a transient tool failure before the call fails | 1 |
 
