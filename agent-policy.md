@@ -60,7 +60,7 @@ Every field is optional; the framework's default stands where the row is silent.
 | Field | What it decides | Default |
 |---|---|---|
 | `maxTurns` | Tool-use turns before the hard cut | 100 |
-| `context` | `softLimit`: tokens remaining at which agents are nudged to report and new work stops. `hardLimit`: the floor at which an agent must stop — at least 512, the decode batch, or the pool refuses to start | 1024 / 512 |
+| `context` | `softLimit`: tokens remaining at which agents are nudged to report and new work stops. `hardLimit`: tokens remaining below which a working turn must stop and report — at least the decode batch size (512 by default), or the pool refuses to start | 1024 / 512 |
 | `time` | The same two limits in milliseconds since the agent started | none |
 | `nudge` | The words an agent is told when it must wind up, given `{ reason, terminal, words }`. **Without it nothing is said**: an agent over budget goes idle, and a result that will not fit is dropped | none |
 | `recovery` | For an agent stopped before it reported: `prompt` (its words, given the report's word budget), and the floors `minTokens` (100) and `minToolCalls` (2) below which it is not worth asking | pruned |
@@ -72,7 +72,7 @@ Every field is optional; the framework's default stands where the row is silent.
 The framework speaks no words of its own to the model: the nudge and the recovery prompt are always yours. A row may also carry numbers of your own beside these — the research template keeps `maxTasks` in the same row.
 
 ::: owns
-The soft and hard limits are not a weaker and a stronger version of one cutoff. **Soft** stops new work and asks agents to report. **Hard** is the floor below which an agent may not decode another token — and recovery is budgeted from the space above it, so raising `softLimit` nudges earlier but never shortens a recovery report. [Adaptive compute](/agent-policy-and-context-pressure#the-two-limits-are-not-symmetric) is the whole account.
+The soft and hard limits are not a weaker and a stronger version of one cutoff. **Soft** stops new work and asks agents to report. **Hard** is the line below which a working turn may not decode another token. A report is budgeted from the room above the decode floor, the context's batch size, so raising either limit never shortens a report. [Adaptive compute](/agent-policy-and-context-pressure#the-two-limits-are-not-symmetric) is the whole account.
 :::
 
 ## Keep a table of rows {#keep-a-table}
@@ -182,8 +182,8 @@ The dev pane (`LLOYAL_DEV=1`) already has a Wrap up button and a cancel on every
 
 ## Common mistakes {#common-mistakes}
 
-- **Treating the soft limit as a kill line.** It is the new-work and nudge boundary; recovery may use the reserve down to the hard limit.
-- **Raising the soft limit to get longer recovery reports.** It nudges earlier; recovery stays bounded by the hard-limit reserve.
+- **Treating the soft limit as a kill line.** It is the new-work and nudge boundary; a report may use everything down to the decode floor.
+- **Raising the soft limit to get longer recovery reports.** It nudges earlier; a report is bounded by the floor, not by either limit.
 - **Leaving out `nudge` and expecting agents to be told to report.** Without it the framework says nothing: an over-budget agent goes idle.
 - **Conflating exploit with exit.** `shouldExplore() === false` narrows retrieval; it does not end the agent.
 - **Using a halt for "wrap up".** A halt removes the owner. Use `wrap_up` (`run.wrapUp()`) when the reader wants the best available result.
@@ -246,8 +246,8 @@ Policy should reflect the product’s meaning of **done**.
 - Do not mutate branches, prune KV, or call native decode from a policy hook.
 - Treat ContextPressure as an immutable decision-boundary snapshot.
 - `softLimit` is the new-work and nudge boundary.
-- `hardLimit` is the mechanical decode floor and recovery boundary.
-- Recovery budgets from `remaining - hardLimit`, not only from `headroom`.
+- `hardLimit` is the working-turn kill line; the decode floor is the context's batch size.
+- A report budgets from `remaining - floor`, not from `headroom`.
 - `shouldExplore` changes retrieval strategy; it does not terminate an Agent.
 - `shouldExit` stops an Agent but leaves its branch available for recovery.
 - `onRecovery` chooses extract or skip; AgentPool enforces grammar and budget.

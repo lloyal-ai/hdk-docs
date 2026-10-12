@@ -100,9 +100,9 @@ Three words and one latch say where an Agent is, and the scheduler reads nothing
 - **awaiting_tool**: its call went out, or its result is waiting for admission. It samples nothing and decides nothing until admission re-activates it; its branch stays resident, so its cells are still in use.
 - **idle**: its span is over. The next observe prunes its branch and returns the cells.
 - **disposed**: the branch is gone.
-- **extracting**, the latch: a one-way flag beside the status that says this Agent is writing its recovery report. We meet it in section 7.
+- **extracting**, the latch: a one-way flag beside the status that says this Agent is writing its recovery report. We meet it in section 8.
 
-Participation in the next tick is these rules and no others. An active Agent samples. An awaiting Agent returns only through admission. A dropped Agent never samples again. A recovering Agent is finished, never dropped. An Agent that became active during execute, from an admitted item or a spawn, samples from the next tick, after the scheduler has had its say on it.
+Participation in the next tick is these rules and no others. An active Agent samples. An awaiting Agent returns only through admission. A dropped Agent's working turn is over; it samples again only for its recovery report, under the extracting latch. A recovering Agent is finished, never dropped. An Agent that became active during execute, from an admitted item or a spawn, samples from the next tick, after the scheduler has had its say on it.
 
 ## 4. The first tool call {#a-tool-call}
 
@@ -185,7 +185,7 @@ A **recovery** is one of four:
 - **skip**: the policy declined, because the Agent had not done enough to be worth asking; it fails cleanly with a diagnostic;
 - **none**: a cancel; there is nothing to recover.
 
-An extract runs in one of two **shapes**, chosen per pool. **Serial** recovers one Agent at a time with no cap: the report owns the whole room, and the next waits for this one's prune. **Cohort** recovers every reaped Agent together, bin-packed with its live siblings, each under a **share** of the room: `room / alive − overhead`, never less than a minimum of 128 tokens and never more than a ceiling of 2,048. Wind-down forces cohort. The share is the number the recovery prompt is told, as a word count, so the model can conclude on its own before the pool's stop.
+An extract runs in one of two **shapes**, chosen per pool by the policy's `recoveryShape`. **Serial** (`'staggered'`, the default) recovers one Agent at a time with no cap: the report owns the whole room, and the next waits for this one's prune. **Cohort** (`'parallel'`) recovers every reaped Agent together, bin-packed with its live siblings, each under a **share** of the room: `room / alive − overhead`, never less than a minimum of 128 tokens and never more than a ceiling of 2,048. Wind-down forces cohort. The share is the number the recovery prompt is told, as a word count, so the model can conclude on its own before the pool's stop.
 :::
 
 The recovery prompt is a pending item like any other, admitted at the cost of its prompt plus its whole share, against the room. On admission the Agent is re-activated with the **extracting** latch set and the report grammar alone, and it samples again. Its tokens are counted from that moment.
@@ -222,7 +222,7 @@ Wind-down, cancel and pause reach the loop as Effection signals subscribed once,
 
 ## 11. The shapes a run can take {#run-shapes}
 
-The brief above took one shape: three Agents fetched pages, stalled together, were dropped in one tick and recovered under shares. A run can take many others, and a reader who cannot name the one in front of them concludes the machine is broken when it is doing exactly what this page describes. So this section names every shape. Each one is a transition the harness has to render, and the pool announces each on the bus a harness subscribes to. There are four families.
+The brief above took one shape: three Agents fetched pages, stalled together, were dropped in one tick and recovered under shares. A run can take many others, and a reader who cannot name the one in front of them concludes the machine is broken when it is doing exactly what this page describes. So this section names every shape. Each one is a transition the harness has to render. Most are announced on the bus a harness subscribes to; the few that are not, a nudge, a spawn waiting for room, a rerank, are named as such below, so the harness knows what it must infer. There are four families.
 
 [![Every shape a run can take: a turn ends by its own stop token, a verdict or the stall-break; the drop's recovery is salvage, extract, skip or none; and each path lands on one of four transitions the harness renders.](/assets/scheduler-shapes.svg)](/assets/scheduler-shapes.svg)
 
@@ -230,14 +230,14 @@ The brief above took one shape: three Agents fetched pages, stalled together, we
 - **Stopped, and kept what it wrote.** The Agent's own text is its result. The bus says `agent:return`, or `agent:done` followed at once by `agent:recovered`.
 - **Stopped, and now writing up.** The span ended and a recovery report is being produced. The bus says `agent:done`, then a stream of `agent:produce`, then `agent:recovered` or `agent:failed`. When a drop ended the span, `agent:done` carries the drop's reason, so the harness can say why where the text is; a return carries none.
 - **Could not finish.** The span ended with no result. The bus says `agent:failed` with a reason code.
-- **Delayed, not stuck.** The Agent is alive and will sample again; nothing ended. The bus says `agent:tool_retry`, `run:paused`, or, for some delays, nothing at all.
+- **Delayed, not stuck.** The work the reader is waiting for goes on. Usually the Agent is alive and will sample again; a spawn waiting for room has no Agent yet, and a heal ends one Agent so a replacement carries its task. The bus says `agent:tool_retry`, `run:paused`, or, for some delays, nothing at all.
 
 A harness that renders those four, and names the one it is in, never surprises its reader. The paragraphs below say, for each shape, what in the loop triggers it, what the pool does, what it leaves on the trace and the bus, and what a reader watching the Agent sees.
 :::
 
 ### Stopped, and kept what it wrote {#kept-what-it-wrote}
 
-- **It returned.** The Agent called the terminal tool and emitted its stop token. The policy's `onProduced` answers `return`; the tool's `onReturn`, the harness's, then the frame's are asked whether the call may end the turn, and the first concrete answer wins. Accepted, the result is set and the Agent idles. The bus sees `agent:tool_call` naming the terminal tool, then `agent:return` carrying the result, then `agent:done`. The reader sees the report end on the Agent's own stop token and stand. A rejected return is a nudge instead: the reason goes into the cache in the call's place and the Agent writes again. The frame allows one rejection per Agent, and none once the Agent is out of turns or headroom, because a rejected return costs a turn the Agent must have left.
+- **It returned.** The Agent called the terminal tool and emitted its stop token. The policy's `onProduced` answers `return`; the tool's `onReturn`, the harness's, then the frame's are asked whether the call may end the turn; any of them may reject, and otherwise the first accept stands. Accepted, the result is set and the Agent idles. The bus sees `agent:tool_call` naming the terminal tool, then `agent:return` carrying the result, then `agent:done`. The reader sees the report end on the Agent's own stop token and stand. A rejected return is a nudge instead: the reason goes into the cache in the call's place and the Agent writes again. The frame allows one rejection per Agent, and none once the Agent is out of turns or headroom, because a rejected return costs a turn the Agent must have left.
 - **It reported past the cap.** A voluntary report may run to `recoveryBudget` tokens, the ceiling of 2,048 when the harness sets none. At the cap the verdict is a drop with reason `terminal_cap` and a **salvage**: nothing more decodes, and what it wrote is parsed as its result. The trace records `pool:agentDrop` and `pool:recoveryProduce` with the raw text; the bus sees `agent:done` and at once `agent:recovered`. The reader sees the report stop at a fixed length and stand.
 - **It was killed mid-report at the hard line.** The critical-pressure verdict, on an Agent already emitting the terminal tool. The policy protects a voluntary report from `shouldExit` only while pressure is not critical; at critical, protection ends, and the drop's recovery is a salvage rather than an extract, because the Agent was already writing its report and a second prompt would ask it to write it again. The reason is `pressure_critical`; the bus sees `agent:done` and at once `agent:recovered`. The reader sees the report stop before its own end, and the kept text stand. This is the one shape where kept text can be shorter than streamed text; the callout at the end of this section says how.
 - **Its recovery report ended.** The finish of section 8, reached three ways: the Agent emitted its own stop token, its counter reached its share, or the room is gone. The bus sees `agent:recovered`; the reader, who saw `agent:done` at the drop, sees the write-up end.
