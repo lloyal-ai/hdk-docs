@@ -541,7 +541,7 @@ Properties:
 -   better batching and latency;
 -   suited to low/medium effort and graceful wind-down.
 
-An explicit `recoveryBudget` is a preference. The pool clamps it to what safely fits.
+An explicit `recoveryBudget` caps a parallel recovery report and a voluntary report in flight; the pool clamps it to what safely fits. A staggered recovery has no cap: it ends at its stop token or when the room reaches the floor.
 
 ### In-flight terminal-report salvage {#in-flight-terminal-report-salvage}
 
