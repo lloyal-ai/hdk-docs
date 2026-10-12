@@ -64,7 +64,7 @@ The pool is a loop, and one turn of the loop is a **tick**. Every tick has the s
 
 **`Schedule`** is everything this tick does, as fields: `hold`, `halts`, `drops`, `finishes`, `spawns`, `refusedSpawns`, `extends`, `prefills`, `stall`, `abandoned`, `dispatch`, `decode`, the post-admission `pressure`, `alive`, what is `remaining` for next tick, and `close`. The executor runs them in a fixed order; nothing in the schedule is advice.
 
-The **pending record** is what the loop carries between ticks: items waiting to enter the cache, parked retries, dispatch requests, spawn requests and spine extensions. It is the only state that crosses from one tick to the next.
+The **pending record** is what the loop carries between ticks: items waiting to enter the cache, parked retries, dispatch requests, spawn requests and spine extensions. It is the only queued work that crosses from one tick to the next; the Agents themselves, their branches, their histories and the clocks persist as the roster the next `TickState` is built from.
 :::
 
 ::: callout The operating-system analogy
@@ -97,7 +97,7 @@ Three words and one latch say where an Agent is, and the scheduler reads nothing
 [![An Agent moves from active to awaiting_tool on a tool call, back to active when its result is admitted, to idle when it returns or is dropped and recovered, and to disposed when the next observe prunes its branch.](/assets/scheduler-status.svg)](/assets/scheduler-status.svg)
 
 - **active**: it samples this tick unless a verdict removes it.
-- **awaiting_tool**: its call went out, or its result is waiting for admission. It costs nothing and decides nothing until admission re-activates it.
+- **awaiting_tool**: its call went out, or its result is waiting for admission. It samples nothing and decides nothing until admission re-activates it; its branch stays resident, so its cells are still in use.
 - **idle**: its span is over. The next observe prunes its branch and returns the cells.
 - **disposed**: the branch is gone.
 - **extracting**, the latch: a one-way flag beside the status that says this Agent is writing its recovery report. We meet it in section 7.
@@ -177,7 +177,7 @@ This is the moment the next word exists for.
 A drop ends an Agent's span, but not its obligation to report. Every drop carries a **recovery**, decided at the drop.
 
 ::: callout Drops and recoveries
-A **drop** is the decision to stop an Agent. It names a reason (`pressure_critical`, `pressure_settle_reject`, `policy_exit`, `terminal_cap`, `wind_down`, `user_cancel`) and carries the recovery. One drop per Agent per schedule: every step that could decide something consults the set of Agents already dropped in this schedule, and every drop goes through one `decide` call, so the list and the set cannot disagree.
+A **drop** is the decision to stop an Agent. It names a reason (`pressure_critical`, `pressure_settle_reject`, `policy_exit`, `terminal_cap`, `wind_down`, `maxTurns`, `pressure_softcut`, `user_cancel`; a stop on prose before any call names none) and carries the recovery. One drop per Agent per schedule: every step that could decide something consults the set of Agents already dropped in this schedule, and every drop goes through one `decide` call, so the list and the set cannot disagree.
 
 A **recovery** is one of four:
 - **salvage**: the Agent was mid-report when dropped; parse what it already emitted, no further decode;
@@ -200,7 +200,7 @@ Here the story has two endings, and the difference between them is why the next 
 
 It would be easier to decide as you go: sample an Agent, notice the cache is tight, drop it, move on. Most loops are written that way, and they are hard to reason about for a reason that has nothing to do with their size. The decision is spread across time and places. Whether an Agent is dropped depends on who was visited before it, on a cache that moved under it, on an event that arrived in the middle. Nobody can hold the rule in their head because there is no single place the rule is.
 
-Separating the value from the process puts the rule in one place. `TickState` is a snapshot; it does not change while it is read. `Schedule` is a description of what will happen; it can be printed, compared, and held against the state that produced it. The pressure sample is taken once, and every later number in the tick is derived from it by arithmetic, so two decisions in one tick cannot disagree about how much cache there is. Time is explicit: a tick is an epoch, and nothing crosses between epochs except the pending record.
+Separating the value from the process puts the rule in one place. `TickState` is a snapshot; it does not change while it is read. `Schedule` is a description of what will happen; it can be printed, compared, and held against the state that produced it. The pressure sample is taken once, and every later number in the tick is derived from it by arithmetic, so two decisions in one tick cannot disagree about how much cache there is. Time is explicit: a tick is an epoch, and nothing decided in one epoch reaches the next except as the pending record and the Agents' own state.
 
 That is also why the story above could be told from a trace and replayed in a test. The `pool:tick` record carries the pressure the schedule read; hand the same state to `schedule()` and it returns the same drops with the same shares. A production run is a sequence of values, and a value can be examined after the fact. The two endings of section 8 were found that way, and the second one was proven that way before it ran.
 
@@ -239,22 +239,22 @@ A harness that renders those four, and names the one it is in, never surprises i
 
 - **It returned.** The Agent called the terminal tool and emitted its stop token. The policy's `onProduced` answers `return`; the tool's `onReturn`, the harness's, then the frame's are asked whether the call may end the turn, and the first concrete answer wins. Accepted, the result is set and the Agent idles. The bus sees `agent:tool_call` naming the terminal tool, then `agent:return` carrying the result, then `agent:done`. The reader sees the report end on the Agent's own stop token and stand. A rejected return is a nudge instead: the reason goes into the cache in the call's place and the Agent writes again. The frame allows one rejection per Agent, and none once the Agent is out of turns or headroom, because a rejected return costs a turn the Agent must have left.
 - **It reported past the cap.** A voluntary report may run to `recoveryBudget` tokens, the ceiling of 2,048 when the harness sets none. At the cap the verdict is a drop with reason `terminal_cap` and a **salvage**: nothing more decodes, and what it wrote is parsed as its result. The trace records `pool:agentDrop` and `pool:recoveryProduce` with the raw text; the bus sees `agent:done` and at once `agent:recovered`. The reader sees the report stop at a fixed length and stand.
+- **It was killed mid-report at the hard line.** The critical-pressure verdict, on an Agent already emitting the terminal tool. The policy protects a voluntary report from `shouldExit` only while pressure is not critical; at critical, protection ends, and the drop's recovery is a salvage rather than an extract, because the Agent was already writing its report and a second prompt would ask it to write it again. The reason is `pressure_critical`; the bus sees `agent:done` and at once `agent:recovered`. The reader sees the report stop before its own end, and the kept text stand. This is the one shape where kept text can be shorter than streamed text; the callout at the end of this section says how.
 - **Its recovery report ended.** The finish of section 8, reached three ways: the Agent emitted its own stop token, its counter reached its share, or the room is gone. The bus sees `agent:recovered`; the reader, who saw `agent:done` at the drop, sees the write-up end.
 
 ### Stopped, and now writing up {#writing-up}
 
-Every shape here is a drop whose recovery is **extract**: a recovery prompt is admitted, the Agent is re-activated under the extracting latch, and a report decodes in-loop. The bus sees `agent:done` at the drop, `agent:produce` while the report streams, then `agent:recovered`. What differs is the trigger and the reason on the trace.
+Every shape here is a drop whose recovery is **extract**: a recovery prompt is admitted, the Agent is re-activated under the extracting latch, and a report decodes in-loop. A drop that finds the Agent already writing its report is a salvage instead, and belongs to the family above. The bus sees `agent:done` at the drop, `agent:produce` while the report streams, then `agent:recovered`. What differs is the trigger and the reason on the trace.
 
 - **Out of time.** The policy's `shouldExit` answers true because the Agent's run clock passed the time hard limit, and pressure is not critical. The drop reason is `policy_exit`. The reader sees a working Agent stop mid-search and begin its write-up.
 - **At the hard line, alone.** The post-admission pressure is critical and `shouldExit` abstains or agrees; the default policy also staggers this to one Agent per tick. The drop reason is `pressure_critical`. One Agent is sacrificed so that its siblings regain headroom when its branch is pruned. The reader sees one Agent stop while the others continue.
-- **At the hard line, mid-report.** The same verdict, on an Agent already emitting the terminal tool. The policy protects a voluntary report from `shouldExit` only while pressure is not critical; at critical, protection ends and the drop's recovery is a salvage rather than an extract, because the Agent was already writing its report and a second prompt would ask it to write it again. The reader sees the report stop before its own end, and the kept text stand. This is the one shape where kept text can be shorter than streamed text; the callout below says how.
 - **Together, at the stall.** Section 7: every deferred item decided in one tick, reason `pressure_settle_reject`, each recovery sized by a share of the room. The reader sees every Agent stop within milliseconds of each other and every write-up stream at once. There is no trailing stop on this path.
 - **Wind-down.** The harness sent a wrap-up. The pool halts the orchestrator first, so no new spawn can land against a draining pool, then raises the signal. The next schedule forces cohort shape, drops every working Agent with reason `wind_down`, and abandons every parked retry as an honest failure the model reads. An Agent already writing its report, voluntary or recovery, is left to finish. The bus sees `run:windingDown`, then one `agent:done` per working Agent. The reader sees every Agent begin its write-up together.
 - **Out of turns, or stopped without a call.** The policy's `onProduced` answers `idle` because the turn cap was reached, because the policy's soft cut fired, or because the Agent produced prose before any tool call where free text is not accepted as an answer. The drop reason is `maxTurns`, `pressure_softcut` or none, and the recovery is decided like any other. The reader sees a working Agent stop and begin its write-up, or fail, as the next family describes.
 
 ### Could not finish {#could-not-finish}
 
-Every shape here ends on the bus with `agent:failed` and a reason code. The text behind the code lives on the trace, never on the bus.
+Every shape here ends on the bus with `agent:failed` and a reason code, except the last, a spawn that never became an Agent, which ends as a refusal to the orchestrator and no event at all. The text behind a code lives on the trace, never on the bus.
 
 - **Too little to recover.** At a drop, the policy's `onRecovery` answers `skip`: by default an Agent with fewer than 100 tokens or two tool calls behind it is not worth a recovery prompt. The bus sees `agent:done`, then `agent:failed` with reason `recovery_skipped`. The reader sees an Agent stop and fail at once. One harness-visible example is the planner's own turn: a single Agent with no tools writes its plan as prose, stops, is dropped with no reason, and skips recovery, while the tool that ran it reads the raw output and succeeds. The harness sees done then failed on an Agent whose work stood.
 - **No report in the write-up.** The recovery report ended and its parse found no terminal call, or a terminal call with an empty result. The trace records `pool:recoveryFailed` with the first 200 characters of what the model wrote; the bus sees `agent:failed` with reason `no_terminal_call` or `empty_terminal_result`.
@@ -265,7 +265,7 @@ Every shape here ends on the bus with `agent:failed` and a reason code. The text
 
 ### Delayed, not stuck {#delayed}
 
-Nothing ends in this family. The Agent is alive and will sample again; the reader needs to know only that it is waiting, and on what.
+The work the reader is waiting for goes on. In most of these the Agent is alive and will sample again. Two are different in kind: a waiting spawn has no Agent yet, and a heal ends one Agent so that a replacement carries its task from the same point. The reader needs to know only what is being waited on.
 
 - **Nudged.** A call was refused by a gate, a result did not fit, or the policy wants the Agent to wrap up: an error in the call's place enters the cache and the Agent reads it next turn. The trace records `pool:agentNudge` with the message and the gate that decided; the bus sees nothing. The reader sees the Agent's next turn change course.
 - **Rate-limited.** The tool threw a retryable error inside the frame's attempt budget. The call is parked with a wall-clock due time and re-dispatched when due, under the same call id, with no new `agent:tool_call`. The bus sees `agent:tool_retry` with `retryAfterMs`. A park outlasting the budget becomes a result the model reads, saying the tool is unavailable.
@@ -288,7 +288,7 @@ The pool is an Effection resource, and every fiber above is inside it. That is w
 
 - **The tick loop is one spawned task** under the pool's scope, and it is the only fiber that writes to the cache. Fan-out children are spawned under the same scope with an `ensure` that releases their permit and clears their in-flight mark, whatever way they end.
 - **A cancel is a halt.** Cancelling an Agent with a tool in flight halts that child. The halt unwinds through `ensure`, not `catch`, so a halted child pushes no completion and the loop never sees a ghost result.
-- **Nothing outlives the pool.** When the orchestrator finishes, errors, or the harness stops, the scope ends: the loop, every child, every branch. The pool's own `ensure` releases unadmitted spawns and prunes every Agent. There is no teardown code to forget because nothing lives outside the scope.
+- **Nothing outlives the pool.** When the orchestrator errors or the harness stops, the scope ends: the loop, every child, every branch. When the orchestrator merely finishes, the pool closes only once every Agent is final and nothing is waiting, as the close rule in section 10 says. The pool's own `ensure` releases unadmitted spawns and prunes every Agent. There is no teardown code to forget because nothing lives outside the scope.
 - **An Agent is not a Task.** It is a branch owned by the pool; the pool is the Task. Stopping an Agent is a drop with a recovery; stopping the pool is a halt of the scope. [Structured concurrency](/structured-concurrency#treating-an-agent-as-a-task) explains why that distinction holds and what goes wrong when it is ignored.
 
 ::: owns
