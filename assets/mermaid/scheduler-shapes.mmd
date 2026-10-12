@@ -1,0 +1,21 @@
+flowchart TD
+    END["an Agent's turn ends"] --> HOW{"how?"}
+    HOW -->|"its own stop token"| STOP["policy.onProduced"]
+    HOW -->|"a verdict in the schedule"| VERD["wind_down · policy_exit\npressure_critical · terminal_cap"]
+    HOW -->|"the stall-break"| STALL["pressure_settle_reject"]
+    HOW -->|"a cancel"| CANCEL["user_cancel\nno recovery"]
+    STOP -->|"return accepted"| KEPT
+    STOP -->|"tool_call, a return rejected,\nor a gate refused"| WAIT["awaiting_tool\nresult, park or nudge\n(delayed, not stuck)"]
+    STOP -->|"idle: maxTurns, soft cut,\nprose before any call"| DROP
+    VERD -->|"already emitting the report"| SALV["salvage\nparse, no decode"]
+    VERD -->|"a working turn"| DROP["a drop, with its recovery"]
+    STALL --> DROP
+    DROP -->|"extract"| WRITE["recovery prompt admitted\nreport decodes under its share"]
+    DROP -->|"skip"| FAIL
+    WRITE -->|"stop token, share spent,\nor room gone"| KEPT
+    WRITE -->|"no terminal call in it"| FAIL
+    SALV --> KEPT
+    CANCEL --> FAIL
+    WAIT -->|"admitted: samples again"| END
+    KEPT["kept what it wrote\nagent:return · agent:recovered"]
+    FAIL["could not finish\nagent:failed"]
