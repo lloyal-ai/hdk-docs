@@ -96,7 +96,7 @@ Policy can request recovery or provide a preferred report budget. The pool compu
 1.  **Policy is a rulebook, not a scheduler.**
 2.  **Pressure is a snapshot, not a mutable global gauge.**
 3.  **The soft limit closes new work.**
-4.  **The hard limit prevents unsafe continuation and bounds recovery.**
+4.  **The hard limit ends working turns; the floor bounds what a report may write.**
 5.  **Policy requests recovery; the pool makes it mechanically safe.**
 
 ### The two axes {#the-two-axes}
@@ -316,7 +316,7 @@ The soft limit is advisory.
 
 Crossing it does not automatically make decode unsafe.
 
-### Hard limit: the safety and recovery boundary {#hard-limit-the-safety-and-recovery-boundary}
+### Hard limit: where working turns end {#hard-limit-the-safety-and-recovery-boundary}
 
 ```ts label="TypeScript"
 critical = remaining < hardLimit;
@@ -465,7 +465,7 @@ Recovery is not string extraction from hidden state.
 
 The pool injects a final instruction into the Agent’s live branch and constrains generation to the terminal result contract.
 
-### Why recovery uses the hard-limit reserve {#why-recovery-uses-the-hard-limit-reserve}
+### Why a report may write below the hard line {#why-recovery-uses-the-hard-limit-reserve}
 
 Near the soft boundary:
 
