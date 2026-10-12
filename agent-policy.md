@@ -60,7 +60,7 @@ Every field is optional; the framework's default stands where the row is silent.
 | Field | What it decides | Default |
 |---|---|---|
 | `maxTurns` | Tool-use turns before the hard cut | 100 |
-| `context` | `softLimit`: tokens remaining at which agents are nudged to report and new work stops. `hardLimit`: tokens remaining below which a working turn must stop and report — at least the decode batch size (512 by default), or the pool refuses to start | 1024 / 512 |
+| `context` | `softLimit`: tokens remaining at which agents are nudged to report and new work stops. `hardLimit`: tokens remaining below which a working turn must stop and report. It must be at least the decode batch size (512 by default), or the pool refuses to start | 1024 / 512 |
 | `time` | The same two limits in milliseconds since the agent started | none |
 | `nudge` | The words an agent is told when it must wind up, given `{ reason, terminal, words }`. **Without it nothing is said**: an agent over budget goes idle, and a result that will not fit is dropped | none |
 | `recovery` | For an agent stopped before it reported: `prompt` (its words, given the report's word budget), and the floors `minTokens` (100) and `minToolCalls` (2) below which it is not worth asking | pruned |
