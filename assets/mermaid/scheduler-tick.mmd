@@ -1,0 +1,9 @@
+flowchart TD
+    OBS["OBSERVE\nprune pass reclaims branches\none pressure sample"] --> SCH["SCHEDULE\nschedule(state) → Schedule\npure: no store, no wire"]
+    SCH --> APP["APPLY the schedule\ndrops, finishes, stall outcomes\nrecoveries booked as pending items"]
+    APP --> CLOSE{"Schedule.close?"}
+    CLOSE -->|yes| END["pool closes"]
+    CLOSE -->|no| EXE["EXECUTE\nhalts · settle prefills · dispatch\nspawns · one batched decode"]
+    EXE --> OUT["APPLY what came back\nstops parsed · policy.onProduced\ncalls booked for next tick"]
+    OUT --> OBS
+    FAN["fan-out tool children\n(own fibers, permits)"] -. completions .-> OBS

@@ -1,0 +1,8 @@
+flowchart LR
+    subgraph CACHE["one KV cache, nCtx cells"]
+        direction LR
+        USED["cells in use"] --- HEAD["headroom\nnew work admitted here"] --- SOFT["soft line\nworking turns nudged below it"] --- HARD["hard line\nworking turns killed below it"] --- FLOOR["floor\nthe next batch's workspace"]
+    end
+    ROOM["a report's room:\neverything above the floor"] -.-> HEAD
+    ROOM -.-> SOFT
+    ROOM -.-> HARD
