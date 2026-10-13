@@ -1,7 +1,7 @@
 ---
 title: "Attachments and documents"
-description: "Let readers attach images and PDFs: bytes go to a content-addressed store, never to the model or the wire; an image is projected once for every agent; a document is searched and read, and a page is shown to the model only when an agent asks to see it."
-lede: "Let a reader drop in a photo or a PDF — and pay for only the parts the agents actually need to see."
+description: "Let readers attach images, PDFs and video: bytes go to a content-addressed store, never to the model or the wire; an image is projected once for every agent; a document is searched and read, and a page is shown to the model only when an agent asks to see it; a video reaches the model as one video, its soundtrack as a transcript."
+lede: "Let a reader drop in a photo, a PDF or a clip — and pay for only the parts the agents actually need to see."
 ---
 
 <!--
@@ -16,7 +16,7 @@ Checked against source and a 1.13.0 research scaffold, 2026-09-30:
   lloyal-sdk  README.md                           the content plane (duplex: projection in, citation out)
 -->
 
-The research template takes attachments: drop a photo or a PDF on the composer and ask about it. This page is how that works, and what to copy into your own harness.
+The research template takes attachments: drop a photo, a PDF or a video on the composer and ask about it. This page is how that works, and what to copy into your own harness.
 
 ## Three rules {#three-rules}
 
@@ -81,11 +81,49 @@ export const abilities = [createCorpusAbility, createWebAbility, createDocuments
 
 It declares two services — `reranker` and `vision` — so the harness needs both blocks under `model:`, as the research template's `harness.yml` has them. Without them it is refused at enable, by name — see [Services](/services).
 
+## Video {#video}
+
+A video reaches the model as one video, the way llama.cpp's own server hands one over: its sampled frames in order, marked so that a projector with temporal merge (the Qwen-VL family) fuses neighbouring frames in pairs, with a timestamp every five seconds. It is one marker and one input, not a stack of separate pictures.
+
+The page does the decoding, because that is where a codec is: the browser's WebCodecs, with Mediabunny reading the container. The host never decodes video. Attaching one takes four steps, and `ingestVideo` from `@lloyal-labs/ui` runs them:
+
+1. **The original is pushed as a blob**, in chunks, over the [OCI distribution](https://github.com/opencontainers/distribution-spec) blob upload API the host serves at `/v2/…/blobs/uploads/`. A dropped chunk resumes from what the host reports it holds, and the blob is admitted only under the digest of the whole file. It is kept: it is what the reader brought.
+2. **Frames are sampled** at the host's rate (4 per second by default, fewer for a long clip, each at most 640 pixels on its longer edge) and each enters the store as an image.
+3. **The soundtrack is cut into windows** of about five seconds, each ending at a quiet moment, and each enters as audio, but only when the harness has a `transcription` service.
+4. **One `video:compose` command** names them all. The host checks every reference, transcribes each window with the transcription service, and commits one attachment: the frames, the transcript, the timeline and the original.
+
+The transcript reaches the model as text beside the frames, at the timestamp that ends each window, so what was said sits next to what was shown. Without a `transcription` block the video still arrives, with no transcript and no error.
+
+Serve the command and let the composer take video:
+
+```ts label="src/app.ts"
+import { useVideoCommands } from "@lloyal-labs/rig";
+
+const video = yield* useVideoCommands({ wire });
+yield* serveCommands<Command>(commands, [brief, library, voice, video /* , … */], serveDefaults({ wire, run }));
+```
+
+```ts label="src/ui/parts/Composer.tsx"
+import { ingestVideo, useHarness, useVideoCapabilities } from "@lloyal-labs/ui";
+import { isVideoContainer } from "@lloyal-labs/media";
+
+const { bridge } = useHarness();
+const video = useVideoCapabilities();
+// in the attach handler, the bytes decide:
+const root = isVideoContainer(new Uint8Array(await file.slice(0, 64).arrayBuffer()))
+  ? (await ingestVideo({ origin, bridge, file, capabilities: video, onProgress })).root
+  : await ingestMedia(origin, new Uint8Array(await file.arrayBuffer()));
+```
+
+From there a video is an attachment like any other: `admitted` checks it, and `seen.bitmaps` carries it as one input. `seen.videos` names the videos, so the question can tell the model each one's address, and a report can cite a moment as `attachment://<digest prefix>/t/0m5.00s`. `parseAttachmentMoment` reads that back in the view.
+
+The `Lightbox` plays the original with `video={{ src, frames, transcript }}`: the file as attached, seekable because the content plane answers range requests, beside the frames the model saw. On desktop, add `media-src attachment:` to the page's Content-Security-Policy; in development, proxy `/v2` to the host beside `/v1/media`.
+
 ## Tune what an image costs {#image-cost}
 
 How many tokens one image is projected into is yours: `model.vision.minTokens` for the detail floor, `model.vision.maxTokens` for the ceiling. Grounding tasks want detail; wide fan-outs want room. See [harness.yml](/harness-yml#vision).
 
 ## Related {#related}
 
-- [Services](/services) — vision, the projector behind every image.
+- [Services](/services) — vision, the projector behind every image and video, and transcription, behind every soundtrack.
 - [Abilities](/abilities) — the documents Ability is one.
