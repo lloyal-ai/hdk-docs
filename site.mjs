@@ -71,6 +71,7 @@ export const TABS = [
       { slug: 'advanced-patterns', label: 'Advanced patterns' },
       { slug: 'continuous-context', label: 'Continuous Context' },
       { slug: 'agent-policy-and-context-pressure', label: 'Adaptive compute' },
+      { slug: 'scheduler', label: 'The scheduler' },
       { slug: 'focal-lens', label: 'Focus' },
     ],
   },

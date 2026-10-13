@@ -96,7 +96,7 @@ Policy can request recovery or provide a preferred report budget. The pool compu
 1.  **Policy is a rulebook, not a scheduler.**
 2.  **Pressure is a snapshot, not a mutable global gauge.**
 3.  **The soft limit closes new work.**
-4.  **The hard limit prevents unsafe continuation and bounds recovery.**
+4.  **The hard limit ends working turns; the floor bounds what a report may write.**
 5.  **Policy requests recovery; the pool makes it mechanically safe.**
 
 ### The two axes {#the-two-axes}
@@ -316,7 +316,7 @@ The soft limit is advisory.
 
 Crossing it does not automatically make decode unsafe.
 
-### Hard limit: the safety and recovery boundary {#hard-limit-the-safety-and-recovery-boundary}
+### Hard limit: where working turns end {#hard-limit-the-safety-and-recovery-boundary}
 
 ```ts label="TypeScript"
 critical = remaining < hardLimit;
@@ -324,35 +324,35 @@ critical = remaining < hardLimit;
 
 The hard limit is mechanical:
 
--   an ordinary Agent must not continue into another unsafe decode;
--   the pool forces exit before the native crash floor;
--   recovery is budgeted from the space above this line;
--   the configured value must satisfy the runtime’s batch-safety invariant.
+-   an ordinary Agent must not continue into another working decode below it;
+-   the pool stops the working turn and turns it into a report;
+-   a report is budgeted from the room above the **floor**, the decode workspace the next batch needs, so the reserve between the hard line and the floor is the report’s to write into;
+-   the configured value must sit at or above the floor, the context’s batch size.
 
 ```text label="Structure"
-used KV       ordinary headroom       soft-to-hard reserve      hard floor
-█████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░│
-                                      ↑                         ↑
-                                  soft limit                hard limit
+used KV       ordinary headroom       soft-to-hard reserve      hard reserve     floor
+█████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░│▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│
+                                      ↑                         ↑                ↑
+                                  soft limit                hard limit    batch workspace
 ```
 
-> **Soft says “finish the work”. Hard says “you may not continue the work, but space was reserved to save what you found”.**
+> **Soft says “finish the work”. Hard says “you may not continue the work; write what you found into the space below”.**
 
 ### Raising `softLimit` does not reduce recovery to zero {#raising-softlimit-does-not-reduce-recovery-to-zero}
 
-Recovery uses:
+A report uses:
 
 ```text label="Structure"
-remaining - hardLimit
+room = remaining - floor
 ```
 
-not only:
+not:
 
 ```text label="Structure"
-remaining - softLimit
+headroom = remaining - softLimit
 ```
 
-Raising `softLimit` nudges earlier. It does not remove the reserved recovery band down to `hardLimit`.
+The floor is the context’s batch size, the one physical line. Raising `softLimit` nudges earlier, and raising `hardLimit` stops working turns earlier; neither shortens a report, which is sized, admitted and finished against the room. [The scheduler](/scheduler#the-cache-fills) walks the three lines in order.
 
 ## 4\. Decide in the loop {#4-the-pool-decision-cycle}
 
@@ -465,7 +465,7 @@ Recovery is not string extraction from hidden state.
 
 The pool injects a final instruction into the Agent’s live branch and constrains generation to the terminal result contract.
 
-### Why recovery uses the hard-limit reserve {#why-recovery-uses-the-hard-limit-reserve}
+### Why a report may write below the hard line {#why-recovery-uses-the-hard-limit-reserve}
 
 Near the soft boundary:
 
@@ -484,10 +484,10 @@ If recovery were budgeted only from `headroom`, the system would be unable to re
 Instead:
 
 ```text label="Structure"
-recovery capacity = remaining - hardLimit
+recovery capacity = remaining - floor
 ```
 
-The band between soft and hard limits is available for safely converting unfinished work into a result.
+Everything above the floor is available for converting unfinished work into a result: the soft-to-hard band and the hard reserve alike. The hard line is a working-turn line and plays no part in sizing a report.
 
 The soft boundary means:
 
@@ -541,7 +541,7 @@ Properties:
 -   better batching and latency;
 -   suited to low/medium effort and graceful wind-down.
 
-An explicit `recoveryBudget` is a preference. The pool clamps it to what safely fits.
+An explicit `recoveryBudget` caps a parallel recovery report and a voluntary report in flight; the pool clamps it to what safely fits. A staggered recovery has no cap: it ends at its stop token or when the room reaches the floor.
 
 ### In-flight terminal-report salvage {#in-flight-terminal-report-salvage}
 
@@ -598,7 +598,7 @@ The soft boundary is crossed:
 -   stop opening research;
 -   defer oversized ordinary results;
 -   nudge towards reporting;
--   recovery still has up to `1,868 - 512 = 1,356` cells above the hard line.
+-   a report still has up to `1,868 - 512 = 1,356` cells of room above the floor (here the hard line sits on the floor, at the batch size).
 
 Later:
 

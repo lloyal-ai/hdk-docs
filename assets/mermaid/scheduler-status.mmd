@@ -1,0 +1,17 @@
+stateDiagram-v2
+    [*] --> active : spawn admitted, suffix prefilled
+    active --> awaiting_tool : stop token, policy says tool_call
+    awaiting_tool --> active : result, nudge or recovery prompt admitted
+    active --> idle : returned, or dropped and recovered
+    awaiting_tool --> idle : dropped at the stall-break and recovered
+    idle --> disposed : next observe prunes the branch
+    disposed --> [*]
+    note right of active
+        in the decode set every tick
+        unless a verdict removes it
+    end note
+    note right of awaiting_tool
+        samples nothing, decides nothing,
+        until admission re-activates it;
+        its cells stay resident
+    end note
