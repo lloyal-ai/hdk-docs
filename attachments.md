@@ -140,7 +140,7 @@ const view = videoView(origin, digest, asset);            // asset from useAsset
 
 The player plays the file as attached, seekable because the content plane answers range requests. Hover or drag its time slider to see the frame the model saw at that moment; the transcript plays as captions. A cited moment opens like a video shared with a time: pass `videoView(origin, digest, asset, moment.tMs)` and it starts there, the time slider broken into a chapter that begins at the moment. Video.js loads only when a video is first opened.
 
-On desktop, add `media-src attachment: blob:` to the page's Content-Security-Policy (the player's tracks are `blob:` URLs); in development, proxy `/v2` to the host beside `/v1/media`.
+On desktop, add `media-src attachment: blob:` to the page's Content-Security-Policy (the player's tracks are `blob:` URLs); in development, proxy `/v2` to the host beside `/v1/media`, with `xfwd: true` on a proxy that rewrites `Host` (`changeOrigin`), so the host recognises the page's uploads as its own.
 
 ## Tune what an image costs {#image-cost}
 

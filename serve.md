@@ -85,6 +85,10 @@ What describes the machine comes from its environment, never from `harness.yml`:
 HOST=0.0.0.0 PORT=8787 MAX_SESSIONS=8 npm run serve
 ```
 
+::: callout Behind a proxy
+The host accepts uploads only from its own pages. A browser names the page's address in `Origin`, and the host matches it against the `Host` it was reached at, or the `X-Forwarded-Host` a proxy sets. A front door that rewrites `Host` without setting `X-Forwarded-Host` hides the page's address, and every upload is refused with 403. Keep the public `Host` (Caddy does by default; in nginx, `proxy_set_header Host $host`), have the proxy set `X-Forwarded-Host`, or name the page with `LLOYAL_CONTENT_ORIGIN=https://your-harness.example`.
+:::
+
 ## Size `MAX_SESSIONS` {#size-max-sessions}
 
 A session holds its context and its service bindings for as long as its browser tab is open, even when the reader is idle. Budget for shared reasoning-model and reranker weights plus each session's KV/recurrent state, compute buffers and service working memory. When vision is configured, include each session's projector weights and working buffers too.
