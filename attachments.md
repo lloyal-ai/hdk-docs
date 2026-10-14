@@ -16,6 +16,8 @@ Checked against source and a 1.13.0 research scaffold, 2026-09-30:
   lloyal-sdk  README.md                           the content plane (duplex: projection in, citation out)
 
 Video, checked against source, 2026-10-14:
+  lloyal-sdk  packages/ui/src/video-player.tsx     VideoPlayer: Video.js skin; thumbnails, captions and chapter tracks from videoTracks
+  lloyal-sdk  packages/ui/src/video-view.ts        videoView, videoTracks
   lloyal-sdk  packages/ui/src/video.ts            ingestVideo: push the original, sample frames, cut soundtrack windows, one video:compose
   lloyal-sdk  packages/rig/src/video.ts           useVideoCommands: video:describe / video:compose; transcription read from Services
   lloyal-sdk  packages/media/src/video.ts         composeVideo, resolveVideo, VideoMeta, the transcript representation
@@ -125,7 +127,20 @@ const root = isVideoContainer(new Uint8Array(await file.slice(0, 64).arrayBuffer
 
 From there a video is an attachment like any other: `admitted` checks it, and `seen.bitmaps` carries it as one input. `seen.videos` names the videos, so the question can tell the model each one's address, and a report can cite a moment as `attachment://<digest prefix>/t/0m5.00s`. `parseAttachmentMoment` reads that back in the view.
 
-The `Lightbox` plays the original with `video={{ src, frames, transcript }}`: the file as attached, seekable because the content plane answers range requests, beside the frames the model saw. On desktop, add `media-src attachment:` to the page's Content-Security-Policy; in development, proxy `/v2` to the host beside `/v1/media`.
+Show and play it with ui's video components, built on Video.js and themed from your `--harness-*` variables like the rest of `@lloyal-labs/ui`:
+
+```tsx
+import { Lightbox, VideoCard, videoView } from "@lloyal-labs/ui";
+import "@lloyal-labs/ui/video.css"; // once, in the page entry
+
+const view = videoView(origin, digest, asset);            // asset from useAssets
+<VideoCard video={view} onOpen={() => setOpen(view)} />   // poster, play mark, length
+<Lightbox video={view} onClose={() => setOpen(null)} />   // the player
+```
+
+The player plays the file as attached, seekable because the content plane answers range requests. Hover or drag its time slider to see the frame the model saw at that moment; the transcript plays as captions. A cited moment opens like a video shared with a time: pass `videoView(origin, digest, asset, moment.tMs)` and it starts there, the time slider broken into a chapter that begins at the moment. Video.js loads only when a video is first opened.
+
+On desktop, add `media-src attachment: blob:` to the page's Content-Security-Policy (the player's tracks are `blob:` URLs); in development, proxy `/v2` to the host beside `/v1/media`.
 
 ## Tune what an image costs {#image-cost}
 
@@ -143,7 +158,7 @@ attachments: { context: 0.5 },
 const seen = yield* admitted(attachments, BUDGETS.attachments);
 ```
 
-A turn over the share is refused with what it would cost and what is allowed, and the conversation is untouched. Without the limit, an attachment that does not fit fails while it is read in, and the session starts over. The research template sets half. Leave it out for no limit.
+A turn over the share is refused with what it would cost and what is allowed, and the conversation is untouched. So is a turn that fits the share but not what the context has free now, later in a long conversation. Without the limit, an attachment that does not fit fails while it is read in, and the session starts over. The research template sets half. Leave it out for no limit.
 
 ## Related {#related}
 
