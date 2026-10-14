@@ -70,7 +70,7 @@ export function HarnessApp({ surface }: { surface: string }) {
 | `useSend<Command>()` | A function that sends a command to the harness |
 | `useAvailability()` | Whether the harness can take work now: `connecting`, `queued`, `warming`, `ready`, `ended` or `lost`. Prefer it to `useConnection()`, which is only the transport's half of the answer. |
 | `useRecover()` | Ask the placement for a working harness again — a new connection in a browser, a new engine on the desktop — or `null` where the bridge cannot |
-| `useHarness()` | The bridge itself, for what the hooks do not cover |
+| `useHarness()` | The provider's `{ bridge, projection }`, for what the hooks do not cover |
 
 `queued` and `warming` are real states on a shared host: a reader may be waiting for a seat before their session starts. See [Serve to many users](/serve).
 
