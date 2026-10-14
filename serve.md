@@ -86,7 +86,7 @@ HOST=0.0.0.0 PORT=8787 MAX_SESSIONS=8 npm run serve
 ```
 
 ::: callout Behind a proxy
-The host accepts uploads only from its own pages. A browser names the page's address in `Origin`, and the host matches it against the `Host` it was reached at, or the `X-Forwarded-Host` a proxy sets. A front door that rewrites `Host` without setting `X-Forwarded-Host` hides the page's address, and every upload is refused with 403. Keep the public `Host` (Caddy does by default; in nginx, `proxy_set_header Host $host`), have the proxy set `X-Forwarded-Host`, or name the page with `LLOYAL_CONTENT_ORIGIN=https://your-harness.example`.
+The host accepts uploads only from its own pages. A browser names the page's address in `Origin`, its host and port, and the host matches it against the `Host` it was reached at, or the `X-Forwarded-Host` a proxy sets. A front door that passes neither with the public host and port hides the page's address, and every upload is refused with 403. Pass the public host and port in `Host` or `X-Forwarded-Host`, or name the page with `LLOYAL_CONTENT_ORIGIN=https://your-harness.example`.
 :::
 
 ## Size `MAX_SESSIONS` {#size-max-sessions}

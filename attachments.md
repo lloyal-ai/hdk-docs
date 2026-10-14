@@ -131,11 +131,13 @@ Show and play it with ui's video components, built on Video.js and themed from y
 
 ```tsx
 import { Lightbox, VideoCard, videoView } from "@lloyal-labs/ui";
+import type { VideoView } from "@lloyal-labs/ui";
 import "@lloyal-labs/ui/video.css"; // once, in the page entry
 
+const [open, setOpen] = useState<VideoView | null>(null);
 const view = videoView(origin, digest, asset);            // asset from useAssets
 <VideoCard video={view} onOpen={() => setOpen(view)} />   // poster, play mark, length
-<Lightbox video={view} onClose={() => setOpen(null)} />   // the player
+{open && <Lightbox video={open} onClose={() => setOpen(null)} />}   // the player, while open
 ```
 
 The player plays the file as attached, seekable because the content plane answers range requests. Hover or drag its time slider to see the frame the model saw at that moment; the transcript plays as captions. A cited moment opens like a video shared with a time: pass `videoView(origin, digest, asset, moment.tMs)` and it starts there, the time slider broken into a chapter that begins at the moment. Video.js loads only when a video is first opened.
