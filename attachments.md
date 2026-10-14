@@ -158,7 +158,7 @@ attachments: { context: 0.5 },
 const seen = yield* admitted(attachments, BUDGETS.attachments);
 ```
 
-A turn over the share is refused with what it would cost and what is allowed, and the conversation is untouched. So is a turn that fits the share but not what the context has free now, later in a long conversation. Without the limit, an attachment that does not fit fails while it is read in, and the session starts over. The research template sets half. Leave it out for no limit.
+A turn over the share is refused with what it would cost and what is allowed, and the conversation is untouched. So is a turn that fits the share but not what the context has free now, later in a long conversation. Without the limit, an attachment that does not fit fails while it is read in, and the session starts over. The research template sets 70%. Leave it out for no limit.
 
 ## Related {#related}
 
