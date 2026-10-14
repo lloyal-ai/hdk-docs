@@ -151,7 +151,7 @@ How many tokens one image is projected into is yours: `model.vision.minTokens` f
 A long video, or many images, can cost more of the context than a turn can spare: an hour-long recording brings 64 frames and an hour of transcript. Give `admitted` the largest fraction of the context the turn's attachments may fill, and it prices them exactly before anything is read in:
 
 ```ts label="src/harness/budgets.ts"
-attachments: { context: 0.5 },
+attachments: { context: 0.7 },
 ```
 
 ```ts label="src/harness/brief.ts"
