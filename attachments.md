@@ -6,7 +6,7 @@ lede: "Let a reader drop in a photo, a PDF or a clip — and pay for only the pa
 
 <!--
 Checked against source and a 1.13.0 research scaffold, 2026-09-30:
-  lloyal-sdk  packages/rig/src/admitted.ts        admitted(descriptors): shape (asAttachment) → store (materialize) → sight (service("vision"))
+  lloyal-sdk  packages/rig/src/admitted.ts        admitted(descriptors): shape (asAttachment) → store (materialize) → sight (service("vision")) → size (deltaCells, when a context share is given)
   lloyal-sdk  packages/rig/src/media-store.ts     media/ at the project root, OCI Image Layout, never dev-gated
   scaffold    research README.md                  "The media store", "Attach something" (the four laws)
   scaffold    research src/harness/brief.ts       admitted(attachments); waitUntilSettled(session.prefillUserMultimodal(text, bitmaps, { attachments }))
@@ -130,6 +130,20 @@ The `Lightbox` plays the original with `video={{ src, frames, transcript }}`: th
 ## Tune what an image costs {#image-cost}
 
 How many tokens one image is projected into is yours: `model.vision.minTokens` for the detail floor, `model.vision.maxTokens` for the ceiling. Grounding tasks want detail; wide fan-outs want room. See [harness.yml](/harness-yml#vision).
+
+## Cap what attachments take {#attachment-budget}
+
+A long video, or many images, can cost more of the context than a turn can spare: an hour-long recording brings 64 frames and an hour of transcript. Give `admitted` the largest fraction of the context the turn's attachments may fill, and it prices them exactly before anything is read in:
+
+```ts label="src/harness/budgets.ts"
+attachments: { context: 0.5 },
+```
+
+```ts label="src/harness/brief.ts"
+const seen = yield* admitted(attachments, BUDGETS.attachments);
+```
+
+A turn over the share is refused with what it would cost and what is allowed, and the conversation is untouched. Without the limit, an attachment that does not fit fails while it is read in, and the session starts over. The research template sets half. Leave it out for no limit.
 
 ## Related {#related}
 
