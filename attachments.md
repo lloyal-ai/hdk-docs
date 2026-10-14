@@ -14,6 +14,14 @@ Checked against source and a 1.13.0 research scaffold, 2026-09-30:
   scaffold    research src/app.ts                 createDocumentsAbility
   lloyal-sdk  packages/abilities/documents/ability.json  tools search_documents/read_document/view_page; services reranker + vision
   lloyal-sdk  README.md                           the content plane (duplex: projection in, citation out)
+
+Video, checked against source, 2026-10-14:
+  lloyal-sdk  packages/ui/src/video.ts            ingestVideo: push the original, sample frames, cut soundtrack windows, one video:compose
+  lloyal-sdk  packages/rig/src/video.ts           useVideoCommands: video:describe / video:compose; transcription read from Services
+  lloyal-sdk  packages/media/src/video.ts         composeVideo, resolveVideo, VideoMeta, the transcript representation
+  lloyal-sdk  packages/media/src/content-urls.ts  pushBlob (chunked, resumable), parseAttachmentMoment
+  lloyal-sdk  packages/rig/src/distribution.ts    BlobUploads: the /v2 blob upload sessions
+  lloyal-sdk  packages/rig/src/content-routes.ts  range reads of the original
 -->
 
 The research template takes attachments: drop a photo, a PDF or a video on the composer and ask about it. This page is how that works, and what to copy into your own harness.
