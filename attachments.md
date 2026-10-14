@@ -102,7 +102,7 @@ The page does the decoding, because that is where a codec is: the browser's WebC
 3. **The soundtrack is cut into windows** of about five seconds, each ending at a quiet moment, and each enters as audio, but only when the harness has a `transcription` service.
 4. **One `video:compose` command** names them all. The host checks every reference, transcribes each window with the transcription service, and commits one attachment: the frames, the transcript, the timeline and the original.
 
-The transcript reaches the model as text beside the frames, at the timestamp that ends each window, so what was said sits next to what was shown. Without a `transcription` block the video still arrives, with no transcript and no error.
+The transcript reaches the model as text beside the frames, at the timestamp that ends each window, so what was said sits next to what was shown. Without a `transcription` block the video still arrives, with no transcript and no error. With one, the host tells the page that service's limits, and the page cuts each window short enough, and writes it at a rate low enough, for the service to admit it.
 
 Serve the command and let the composer take video:
 
