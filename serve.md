@@ -78,7 +78,7 @@ What describes the machine comes from its environment, never from `harness.yml`:
 | `PORT` | `8787` | The port the host listens on |
 | `HOST` | `127.0.0.1` | The interface it binds. The host has no authentication of its own, so serving every interface (`0.0.0.0`) is an explicit choice — put it behind something that does authenticate. |
 | `MAX_SESSIONS` | `4` | How many sessions may be **resident** at once. The rest wait their turn. |
-| `LLOYAL_CONTENT_ORIGIN` | — | The one web origin allowed to upload files to the host |
+| `LLOYAL_CONTENT_ORIGIN` | — | A web origin on another host allowed to upload files. Pages the host serves itself, or reaches through a proxy that sets `X-Forwarded-Host`, upload without it; an upload from any other site is refused. |
 | `LLOYAL_DEV` | — | `1` turns on the trace and the dev pane per session |
 
 ```sh label="A GPU box on the office network"
