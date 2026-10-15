@@ -376,6 +376,8 @@ yield* waitUntilSettled(session.promote(winner.branch));
 
 Promotion is both a topological operation and a product decision. The candidate scope must remain alive until selection and promotion complete.
 
+**Keeping work in place.** `promote` makes the winner the trunk and releases every other branch. To keep a child's work in its parent's place while other branches run on, fork, work on the fork, then call `parent.fastForward(child)`: the parent takes the child's state and keeps its handle. `child.prune()` discards the work instead. A fast-forward is refused, with nothing changed, unless the child was forked from that parent, the parent has not changed since, and the child's own prefill did not fail partway. `Session.prefillUserMultimodal` writes each warm turn this way, so a failed image or video turn never costs the conversation.
+
 **Why it is different:** the accepted inference state itself becomes the basis for follow-up work. Continuity is not reconstructed later from a lossy prose summary.
 
 ---
