@@ -144,6 +144,8 @@ The player plays the file as attached, seekable because the content plane answer
 
 On desktop, add `media-src attachment: blob:` to the page's Content-Security-Policy (the player's tracks are `blob:` URLs); in development, proxy `/v2` to the host beside `/v1/media`, with `xfwd: true` on a proxy that rewrites `Host` (`changeOrigin`), so the host recognises the page's uploads as its own.
 
+The host's blob surface is not a general registry. By default it admits only the original of a video, recognised by its container signature, and serves no blob's bytes by digest: a pushed original is read back through the attachment that holds it. `BlobUploads(…, { registry: true })` makes it the full registry that the OCI distribution conformance suite runs against. A write, whether an upload or a dictation, is accepted only from the host's own pages, or the origin the host is configured to allow: a request whose `Origin` names another host is refused with 403. A production reverse proxy that rewrites `Host` must set `X-Forwarded-Host`.
+
 ## Tune what an image costs {#image-cost}
 
 How many tokens one image is projected into is yours: `model.vision.minTokens` for the detail floor, `model.vision.maxTokens` for the ceiling. Grounding tasks want detail; wide fan-outs want room. See [harness.yml](/harness-yml#vision).
@@ -174,8 +176,28 @@ const seen = yield* admitted(attachments, { ...BUDGETS.attachments, reserve });
 
 The refusal says what the attachments cost and the most they may take. Take the reserve from the same budget row the run will use, so the check and the pool agree: in the research template that is 2,048 cells at high effort and 8,192 at medium. A reserve of exactly `softLimit` keeps the pool's line clear but leaves nothing above it for the Agents' task prompts; add what they take to the reserve when a run must be able to start. Either way the check is about starting a run, not about room to finish it.
 
+### Judge against where the media lands {#attachment-free}
+
+`admitted` measures what is free in the context as it stands. A turn that starts a new conversation lets the current one go before its media is read in, so judge it against the whole context instead, with `free`:
+
+```ts label="src/harness/brief.ts"
+// A new brief lets the one on the canvas go first: its media lands in an empty context.
+const free = warm ? undefined : new ContextPressure(yield* Ctx.expect()).nCtx;
+const seen = yield* admitted(attachments, { ...BUDGETS.attachments, reserve, ...(free !== undefined ? { free } : {}) });
+```
+
+Without it, a long conversation on screen would refuse media that a new brief has room for.
+
+The three refusals, as the reader sees them:
+
+| When | The sentence |
+|---|---|
+| Over the share | That attachment would take *n* of the *m*-token context; this harness lets attachments fill up to *p*% of it. Try a shorter clip or fewer attachments. |
+| Over what is free | That attachment would take *n* tokens, but only *f* of the *m*-token context are free now. Try a shorter clip, fewer attachments, or a new brief. |
+| Into the reserve | Not enough space for work after attachments (*n* tokens). Try smaller attachments or adjust budgets (*k* max allowed for attachments). |
+
 ::: callout A run with no room says so
-In the research template, a run whose every inquiry was refused for room sends its answer with `unanswered: "no_room"`, and the view says the context had no room left, not that the sources found nothing.
+In the research template, a run whose every inquiry was refused for room sends its answer with `unanswered: "no_room"`, and the view says the context had no room left, not that the sources found nothing. A run whose inquiries finished but whose settling pass had no room keeps what they found: the answer is their findings as written, marked `unsettled: "no_room"`, saved with the brief, and said wherever the answer goes, on the canvas, in the terminal, in the saved report and in a copy.
 :::
 
 ## Related {#related}

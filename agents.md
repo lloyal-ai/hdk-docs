@@ -102,7 +102,7 @@ const untilSettled = (questions: string[]): Orchestrator => function* (ctx) {
 |---|---|
 | `spawn(spec)` | Requests an agent. It is seated when there is room — context, a free sequence, `capacity` — which may be several ticks later. Throws `SpawnRefused` when it can never be seated. |
 | `waitFor(agent)` | Waits until it has finished, and returns the final agent |
-| `extendSpine(user, assistant)` | Writes a turn onto the spine, so agents started after it inherit it |
+| `extendSpine(user, assistant)` | Writes a turn onto the spine, so agents started after it inherit it. Throws `ExtensionRefused` when the turn can never fit; the trace records `spine:refused`. `chain` and `fanout` keep that report off the spine and go on; in a `dag` the refusal reaches the node's dependents. |
 | `canFit(tokens)` | Whether another agent of that size would fit under the current pressure |
 
 ## Read the results {#results}
@@ -128,7 +128,7 @@ const planner = yield* agent({ systemPrompt: PLAN, content: query, terminal: pla
 const settle = yield* useAgent({ parent: spine, ...prompt, acceptFreeText: true });         // held open until the scope ends
 ```
 
-`agent` runs a single agent in its own scope and returns it finished. `useAgent` keeps its branch alive for the rest of the enclosing scope, so later work can fork from what it read.
+`agent` runs a single agent in its own scope and returns it finished. `useAgent` keeps its branch alive for the rest of the enclosing scope, so later work can fork from what it read. When its agent can never be seated, it throws `SpawnRefused` with the reason (`pressure_init`: no room above `softLimit` for its task; `no_sequence`: no free sequence), so a caller can keep what came before it.
 
 ## Trunk and spine {#trunk-and-spine}
 
