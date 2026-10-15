@@ -605,7 +605,7 @@ try {
 }
 ```
 
-`Session.prefillUserMultimodal` writes every warm turn this way. A failed image or video turn prunes the fork, and the conversation carries on.
+`Session.prefillUserMultimodal` writes a warm turn this way whenever a sequence slot is free. A failed image or video turn then prunes the fork, and the conversation carries on. With no slot free, the turn is written in place, and a failure there still releases the trunk (see [What it costs](#fast-forward-cost)).
 
 ### What it costs {#fast-forward-cost}
 
@@ -631,7 +631,7 @@ No native work may be in flight on either branch: await the child's work before 
 
 A fast-forward changes no pressure fact: `cellsUsed`, `remaining` and `headroom` are the same before and after it. What it changes is what a failure near the limit costs. A prefill that overflows the context fails on the fork, and pruning the fork returns its cells; the parent, and every sibling, keeps working.
 
-It does not make room. A turn that would leave the pool less than `softLimit` still starts a run that cannot spawn an Agent. Refuse such a turn before it is written; for attachments, `admitted` does this with a reserve (see [Attachments](/attachments#attachment-budget)).
+It does not make room. An Agent is spawned only when its task prompt fits above `softLimit`, so a turn that leaves the pool `softLimit` or less still starts a run that cannot spawn one. Refuse such a turn before it is written; for attachments, `admitted` does this with a reserve (see [Attachments](/attachments#attachment-budget)).
 
 ## 7\. A worked pressure example {#7-configuration-and-extension}
 

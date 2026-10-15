@@ -160,11 +160,11 @@ attachments: { context: 0.7 },
 const seen = yield* admitted(attachments, BUDGETS.attachments);
 ```
 
-A turn over the share is refused with what it would cost and what is allowed, and the conversation is untouched. So is a turn that fits the share but not what the context has free now, later in a long conversation. Without the limit, an attachment that does not fit fails while it is read in. The turn is written on a fork of the conversation, so only the fork is lost and the conversation carries on (see [fast-forward](/agent-policy-and-context-pressure#fast-forward)), but the reader has waited for nothing. The research template sets 70%. Leave it out for no limit.
+A turn over the share is refused with what it would cost and what is allowed, and the conversation is untouched. So is a turn that fits the share but not what the context has free now, later in a long conversation. Without the limit, an attachment that does not fit fails while it is read in. When a sequence slot is free, the turn is written on a fork of the conversation, so only the fork is lost and the conversation carries on (see [fast-forward](/agent-policy-and-context-pressure#fast-forward)), but the reader has waited for nothing. With no slot free, the turn is written in place and a failure releases the conversation. The research template sets 70%. Leave it out for no limit.
 
 ### Leave room for the run {#attachment-reserve}
 
-An attachment that fits can still leave the run nothing to work in. The agent pool starts an Agent only while `softLimit` cells stay free after it, so a turn whose media fills the context down to less than that starts a run in which every spawn is refused (`pressure_init`), and it ends with no answer. Give `admitted` a `reserve`, the cells that must stay free once the media lands, and it refuses that turn before anything is read in:
+An attachment that fits can still leave the run nothing to work in. The agent pool starts an Agent only when its task prompt fits above `softLimit`, so a turn whose media leaves `softLimit` or less free starts a run in which every spawn is refused (`pressure_init`), and it ends with no answer. Give `admitted` a `reserve`, the cells that must stay free once the media lands, and it refuses that turn before anything is read in:
 
 ```ts label="src/harness/brief.ts"
 // The pool's own line for the effort this run will use.
@@ -172,7 +172,7 @@ const reserve = BUDGETS.effort[config().defaults.effort].context.softLimit;
 const seen = yield* admitted(attachments, { ...BUDGETS.attachments, reserve });
 ```
 
-The refusal says what the attachments cost and the most they may take. Take the reserve from the same budget row the run will use, so the check and the pool agree: in the research template that is 2,048 cells at high effort and 8,192 at medium. The check promises that a run can start, not that it has room to finish.
+The refusal says what the attachments cost and the most they may take. Take the reserve from the same budget row the run will use, so the check and the pool agree: in the research template that is 2,048 cells at high effort and 8,192 at medium. A reserve of exactly `softLimit` keeps the pool's line clear but leaves nothing above it for the Agents' task prompts; add what they take to the reserve when a run must be able to start. Either way the check is about starting a run, not about room to finish it.
 
 ::: callout A run with no room says so
 In the research template, a run whose every inquiry was refused for room sends its answer with `unanswered: "no_room"`, and the view says the context had no room left, not that the sources found nothing.
