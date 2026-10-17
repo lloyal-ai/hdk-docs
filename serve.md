@@ -78,12 +78,16 @@ What describes the machine comes from its environment, never from `harness.yml`:
 | `PORT` | `8787` | The port the host listens on |
 | `HOST` | `127.0.0.1` | The interface it binds. The host has no authentication of its own, so serving every interface (`0.0.0.0`) is an explicit choice — put it behind something that does authenticate. |
 | `MAX_SESSIONS` | `4` | How many sessions may be **resident** at once. The rest wait their turn. |
-| `LLOYAL_CONTENT_ORIGIN` | — | The one web origin allowed to upload files to the host |
+| `LLOYAL_CONTENT_ORIGIN` | — | A web origin on another host allowed to upload files. Pages the host serves itself, or reaches through a proxy that sets `X-Forwarded-Host`, upload without it; an upload from any other site is refused. |
 | `LLOYAL_DEV` | — | `1` turns on the trace and the dev pane per session |
 
 ```sh label="A GPU box on the office network"
 HOST=0.0.0.0 PORT=8787 MAX_SESSIONS=8 npm run serve
 ```
+
+::: callout Behind a proxy
+The host accepts uploads only from its own pages. A browser names the page's address in `Origin`, its host and port, and the host matches it against the `Host` it was reached at, or the `X-Forwarded-Host` a proxy sets. A front door that passes neither with the public host and port hides the page's address, and every upload is refused with 403. Pass the public host and port in `Host` or `X-Forwarded-Host`, or name the page with `LLOYAL_CONTENT_ORIGIN=https://your-harness.example`.
+:::
 
 ## Size `MAX_SESSIONS` {#size-max-sessions}
 

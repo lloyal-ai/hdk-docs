@@ -562,7 +562,78 @@ Policy decides that the Agent should stop. The pool chooses the least-destructiv
 
 Wrap-up reaps every agent to recovery; cancelling one agent discards it with no recovery; a halt unwinds the scope with everything in it. How a harness sends each is on [Agent policy](/agent-policy#end-work-early).
 
-## 6\. A worked pressure example {#7-configuration-and-extension}
+## 6\. Keep work in place: fast-forward {#fast-forward}
+
+### The problem it solves {#fast-forward-the-problem}
+
+Some work is worth keeping only if it succeeds: a user turn carrying a long video, a large tool result, a trial continuation. Writing it straight onto the branch that needs it is a gamble near a full context.
+
+-   **A failed prefill leaves a branch damaged.** A long multimodal prefill is decoded in chunks. If one fails partway, the earlier chunks are already in the KV while the branch's position says they are not. On recurrent layers (Qwen3.5) the state cannot be rolled back by position at all. The only safe move is to prune the branch, and with it everything forked from it.
+-   **Keeping a child used to mean deleting everything else.** `prune` refuses a parent with live children. `promote` and `retainOnly` keep one branch by releasing every other one. So a child's work could take its parent's place only when nothing else was running.
+
+On a session's trunk, the first point means a failed media turn used to cost the whole conversation. Inside a pool, the second means one Agent could not keep a checkpoint without ending its siblings.
+
+### How it works {#fast-forward-how-it-works}
+
+A fork is a checkpoint any branch can keep or discard while the rest of the tree runs on:
+
+```text label="Structure"
+parent ──fork──→ child          the child shares the parent's cells; no copy
+                   │
+              work on the child
+                   │
+        ┌──────────┴──────────┐
+        ↓                     ↓
+parent.fastForward(child)   child.prune()
+the parent takes the        the work is discarded;
+child's state and keeps     the parent never saw it
+its handle
+```
+
+`parent.fastForward(child)` is git's `merge --ff-only`. The parent takes everything that follows the child's tokens: its KV and position, its logits, its sampler and grammar, its metrics and logit bias. The parent keeps its handle, its place in the tree, its own children and its steer. The child is disposed.
+
+Every reference to the parent stays valid: an SDK `Branch`, a session's trunk, a trace record. The parent's other children keep their cells.
+
+```ts label="TypeScript"
+const trial = parent.forkSync();
+try {
+  await trial.prefillMultimodal(prompt, inputs);
+  parent.fastForwardSync(trial);   // keep it
+} catch (e) {
+  trial.pruneSync();               // discard it; the parent is as it was
+  throw e;
+}
+```
+
+`Session.prefillUserMultimodal` writes a warm turn this way whenever a sequence slot is free. A failed image or video turn then prunes the fork, and the conversation carries on. With no slot free, the turn is written in place, and a failure there still releases the trunk (see [What it costs](#fast-forward-cost)).
+
+### What it costs {#fast-forward-cost}
+
+-   **No cells move.** The child's new tokens were counted when they were decoded, and are not counted again when they are kept. The parent's own cells were shared with the child, so letting the parent's old sequence go frees nothing.
+-   **Recurrent state survives**, because nothing is copied: the parent takes over a sequence whose state is already right.
+-   **One sequence slot per fork in flight.** When no slot is free, `Session.prefillUserMultimodal` writes the turn in place instead, and a failure there still releases the trunk.
+
+### When it is refused {#fast-forward-refusals}
+
+A fast-forward is refused, with nothing changed, unless all of these hold:
+
+| Condition | Why |
+| --- | --- |
+| The child was forked from this parent | Unrelated branches, siblings, grandchildren and the parent itself have no fast-forward |
+| The parent has not decoded since the fork | The child would overwrite tokens the parent wrote after it |
+| The parent has not changed since the fork | Accepting a token, setting logits, a grammar, sampler or bias, or reseeding changes state without moving position; each one bumps the branch's revision, and the child remembers the revision it was forked at |
+| The child has no children of its own | Its children would lose their parent |
+| The child is not poisoned | A prefill that failed partway marks its branch, and every fork of it, as poisoned; prune it instead |
+
+No native work may be in flight on either branch: await the child's work before keeping it, as before `prune`.
+
+### Fast-forward and pressure {#fast-forward-and-pressure}
+
+A fast-forward changes no pressure fact: `cellsUsed`, `remaining` and `headroom` are the same before and after it. What it changes is what a failure near the limit costs. A prefill that overflows the context fails on the fork, and pruning the fork returns its cells; the parent, and every sibling, keeps working.
+
+It does not make room. An Agent is spawned only when its task prompt fits above `softLimit`, so a turn that leaves the pool `softLimit` or less still starts a run that cannot spawn one. Refuse such a turn before it is written; for attachments, `admitted` does this with a reserve (see [Attachments](/attachments#attachment-budget)).
+
+## 7\. A worked pressure example {#7-configuration-and-extension}
 
 
 Assume:

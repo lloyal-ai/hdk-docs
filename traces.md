@@ -89,7 +89,7 @@ From the run behind this page, the last one shows a guard and the budget at work
 | The pool | `pool:open`, `pool:close`, `pool:tick`, `pool:pause`, `pool:resume`, `pool:windDown`, `pool:spawnRefused` |
 | Agents | `agent:spawn`, `agent:turn`, `agent:done`, `pool:agentNudge`, `pool:agentDrop`, `pool:agentDefer`, `pool:agentHeal` |
 | Recovery | `pool:recoveryProduce`, `pool:recoveryReturn`, `pool:recoveryFailed`, `pool:settleFailed` |
-| The spine | `spine:extend` |
+| The spine | `spine:extend`, `spine:refused` |
 | Tools | `tool:dispatch`, `tool:result`, `tool:error`, `tool:retry`, `tool:settle_order`, `tool:authReject` |
 | Retrieval | `rerank:start`, `rerank:end`, `entailment:search`, `entailment:search:reordered`, `entailment:delegate`, `entailment:delegate:echo`, `entailment:content:exploit` |
 

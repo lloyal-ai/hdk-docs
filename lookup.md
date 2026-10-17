@@ -120,6 +120,7 @@ Pass a writer to `initAgents` to capture the inference graph as newline-delimite
 | `pool:open` / `close` / `agentDrop` | agent count, pressure snapshot, findings, drop reason |
 | `pool:recovery*` | recovery extraction — every attempt ends in exactly one outcome |
 | `spine:extend` | orchestrator extensions, delta tokens, position after |
+| `spine:refused` | an extension the spine never had room for: its turn and token count |
 | `branch:create` / `prefill` / `prune` | KV lifecycle with token counts and roles |
 | `entailment:*` | scoring decisions at search, delegation, and content boundaries |
 

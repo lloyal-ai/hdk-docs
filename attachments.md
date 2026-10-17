@@ -1,12 +1,12 @@
 ---
 title: "Attachments and documents"
-description: "Let readers attach images and PDFs: bytes go to a content-addressed store, never to the model or the wire; an image is projected once for every agent; a document is searched and read, and a page is shown to the model only when an agent asks to see it."
-lede: "Let a reader drop in a photo or a PDF — and pay for only the parts the agents actually need to see."
+description: "Let readers attach images, PDFs and video: bytes go to a content-addressed store, never to the model or the wire; an image is projected once for every agent; a document is searched and read, and a page is shown to the model only when an agent asks to see it; a video reaches the model as one video, its soundtrack as a transcript."
+lede: "Let a reader drop in a photo, a PDF or a clip — and pay for only the parts the agents actually need to see."
 ---
 
 <!--
 Checked against source and a 1.13.0 research scaffold, 2026-09-30:
-  lloyal-sdk  packages/rig/src/admitted.ts        admitted(descriptors): shape (asAttachment) → store (materialize) → sight (service("vision"))
+  lloyal-sdk  packages/rig/src/admitted.ts        admitted(descriptors): shape (asAttachment) → store (materialize) → sight (service("vision")) → size (deltaCells, when a context share is given)
   lloyal-sdk  packages/rig/src/media-store.ts     media/ at the project root, OCI Image Layout, never dev-gated
   scaffold    research README.md                  "The media store", "Attach something" (the four laws)
   scaffold    research src/harness/brief.ts       admitted(attachments); waitUntilSettled(session.prefillUserMultimodal(text, bitmaps, { attachments }))
@@ -14,9 +14,19 @@ Checked against source and a 1.13.0 research scaffold, 2026-09-30:
   scaffold    research src/app.ts                 createDocumentsAbility
   lloyal-sdk  packages/abilities/documents/ability.json  tools search_documents/read_document/view_page; services reranker + vision
   lloyal-sdk  README.md                           the content plane (duplex: projection in, citation out)
+
+Video, checked against source, 2026-10-14:
+  lloyal-sdk  packages/ui/src/video-player.tsx     VideoPlayer: Video.js skin; thumbnails, captions and chapter tracks from videoTracks
+  lloyal-sdk  packages/ui/src/video-view.ts        videoView, videoTracks
+  lloyal-sdk  packages/ui/src/video.ts            ingestVideo: push the original, sample frames, cut soundtrack windows, one video:compose
+  lloyal-sdk  packages/rig/src/video.ts           useVideoCommands: video:describe / video:compose; transcription read from Services
+  lloyal-sdk  packages/media/src/video.ts         composeVideo, resolveVideo, VideoMeta, the transcript representation
+  lloyal-sdk  packages/media/src/content-urls.ts  pushBlob (chunked, resumable), parseAttachmentMoment
+  lloyal-sdk  packages/rig/src/distribution.ts    BlobUploads: the /v2 blob upload sessions
+  lloyal-sdk  packages/rig/src/content-routes.ts  range reads of the original
 -->
 
-The research template takes attachments: drop a photo or a PDF on the composer and ask about it. This page is how that works, and what to copy into your own harness.
+The research template takes attachments: drop a photo, a PDF or a video on the composer and ask about it. This page is how that works, and what to copy into your own harness.
 
 ## Three rules {#three-rules}
 
@@ -81,11 +91,116 @@ export const abilities = [createCorpusAbility, createWebAbility, createDocuments
 
 It declares two services — `reranker` and `vision` — so the harness needs both blocks under `model:`, as the research template's `harness.yml` has them. Without them it is refused at enable, by name — see [Services](/services).
 
+## Video {#video}
+
+A video reaches the model as one video, the way llama.cpp's own server hands one over: its sampled frames in order, marked so that a projector with temporal merge (the Qwen-VL family) fuses neighbouring frames in pairs, with a timestamp every five seconds. It is one marker and one input, not a stack of separate pictures.
+
+The page does the decoding, because that is where a codec is: the browser's WebCodecs, with Mediabunny reading the container. The host never decodes video. Attaching one takes four steps, and `ingestVideo` from `@lloyal-labs/ui` runs them:
+
+1. **The original is pushed as a blob**, in chunks, over the [OCI distribution](https://github.com/opencontainers/distribution-spec) blob upload API the host serves at `/v2/…/blobs/uploads/`. A dropped chunk resumes from what the host reports it holds, and the blob is admitted only under the digest of the whole file. It is kept: it is what the reader brought.
+2. **Frames are sampled** at the host's rate (4 per second by default, fewer for a long clip, each at most 640 pixels on its longer edge) and each enters the store as an image.
+3. **The soundtrack is cut into windows** of about five seconds, each ending at a quiet moment, and each enters as audio, but only when the harness has a `transcription` service.
+4. **One `video:compose` command** names them all. The host checks every reference, transcribes each window with the transcription service, and commits one attachment: the frames, the transcript, the timeline and the original.
+
+The transcript reaches the model as text beside the frames, at the timestamp that ends each window, so what was said sits next to what was shown. Without a `transcription` block the video still arrives, with no transcript and no error. With one, the host tells the page that service's limits, and the page cuts each window short enough, and writes it at a rate low enough, for the service to admit it.
+
+Serve the command and let the composer take video:
+
+```ts label="src/app.ts"
+import { useVideoCommands } from "@lloyal-labs/rig";
+
+const video = yield* useVideoCommands({ wire });
+yield* serveCommands<Command>(commands, [brief, library, voice, video /* , … */], serveDefaults({ wire, run }));
+```
+
+```ts label="src/ui/parts/Composer.tsx"
+import { ingestVideo, useHarness, useVideoCapabilities } from "@lloyal-labs/ui";
+import { isVideoContainer } from "@lloyal-labs/media";
+
+const { bridge } = useHarness();
+const video = useVideoCapabilities();
+// in the attach handler, the bytes decide:
+const root = isVideoContainer(new Uint8Array(await file.slice(0, 64).arrayBuffer()))
+  ? (await ingestVideo({ origin, bridge, file, capabilities: video, onProgress })).root
+  : await ingestMedia(origin, new Uint8Array(await file.arrayBuffer()));
+```
+
+From there a video is an attachment like any other: `admitted` checks it, and `seen.bitmaps` carries it as one input. `seen.videos` names the videos, so the question can tell the model each one's address, and a report can cite a moment as `attachment://<digest prefix>/t/0m5.00s`. `parseAttachmentMoment` reads that back in the view.
+
+Show and play it with ui's video components, built on Video.js and themed from your `--harness-*` variables like the rest of `@lloyal-labs/ui`:
+
+```tsx
+import { Lightbox, VideoCard, videoView } from "@lloyal-labs/ui";
+import type { VideoView } from "@lloyal-labs/ui";
+import "@lloyal-labs/ui/video.css"; // once, in the page entry
+
+const [open, setOpen] = useState<VideoView | null>(null);
+const view = videoView(origin, digest, asset);            // asset from useAssets
+<VideoCard video={view} onOpen={() => setOpen(view)} />   // poster, play mark, length
+{open && <Lightbox video={open} onClose={() => setOpen(null)} />}   // the player, while open
+```
+
+The player plays the file as attached, seekable because the content plane answers range requests. Hover or drag its time slider to see the frame the model saw at that moment; the transcript plays as captions. A cited moment opens like a video shared with a time: pass `videoView(origin, digest, asset, moment.tMs)` and it starts there, the time slider broken into a chapter that begins at the moment. Video.js loads only when a video is first opened.
+
+On desktop, add `media-src attachment: blob:` to the page's Content-Security-Policy (the player's tracks are `blob:` URLs); in development, proxy `/v2` to the host beside `/v1/media`, with `xfwd: true` on a proxy that rewrites `Host` (`changeOrigin`), so the host recognises the page's uploads as its own.
+
+The host's blob surface is not a general registry. By default it admits only the original of a video, recognised by its container signature, and serves no blob's bytes by digest: a pushed original is read back through the attachment that holds it. `BlobUploads(…, { registry: true })` makes it the full registry that the OCI distribution conformance suite runs against. A write, whether an upload or a dictation, is accepted only from the host's own pages, or the origin the host is configured to allow: a request whose `Origin` names another host is refused with 403. A production reverse proxy that rewrites `Host` must set `X-Forwarded-Host`.
+
 ## Tune what an image costs {#image-cost}
 
 How many tokens one image is projected into is yours: `model.vision.minTokens` for the detail floor, `model.vision.maxTokens` for the ceiling. Grounding tasks want detail; wide fan-outs want room. See [harness.yml](/harness-yml#vision).
 
+## Cap what attachments take {#attachment-budget}
+
+A long video, or many images, can cost more of the context than a turn can spare: an hour-long recording brings 64 frames and an hour of transcript. Give `admitted` the largest fraction of the context the turn's attachments may fill, and it prices them exactly before anything is read in:
+
+```ts label="src/harness/budgets.ts"
+attachments: { context: 0.7 },
+```
+
+```ts label="src/harness/brief.ts"
+const seen = yield* admitted(attachments, BUDGETS.attachments);
+```
+
+A turn over the share is refused with what it would cost and what is allowed, and the conversation is untouched. So is a turn that fits the share but not what the context has free now, later in a long conversation. Without the limit, an attachment that does not fit fails while it is read in. When a sequence slot is free, the turn is written on a fork of the conversation, so only the fork is lost and the conversation carries on (see [fast-forward](/agent-policy-and-context-pressure#fast-forward)), but the reader has waited for nothing. With no slot free, the turn is written in place and a failure releases the conversation. The research template sets 70%. Leave it out for no limit.
+
+### Leave room for the run {#attachment-reserve}
+
+An attachment that fits can still leave the run nothing to work in. The agent pool starts an Agent only when its task prompt fits above `softLimit`, so a turn whose media leaves `softLimit` or less free starts a run in which every spawn is refused (`pressure_init`), and it ends with no answer. Give `admitted` a `reserve`, the cells that must stay free once the media lands, and it refuses that turn before anything is read in:
+
+```ts label="src/harness/brief.ts"
+// The pool's own line for the effort this run will use.
+const reserve = BUDGETS.effort[config().defaults.effort].context.softLimit;
+const seen = yield* admitted(attachments, { ...BUDGETS.attachments, reserve });
+```
+
+The refusal says what the attachments cost and the most they may take. Take the reserve from the same budget row the run will use, so the check and the pool agree: in the research template that is 2,048 cells at high effort and 8,192 at medium. A reserve of exactly `softLimit` keeps the pool's line clear but leaves nothing above it for the Agents' task prompts; add what they take to the reserve when a run must be able to start. Either way the check is about starting a run, not about room to finish it.
+
+### Judge against where the media lands {#attachment-free}
+
+`admitted` measures what is free in the context as it stands. A turn that starts a new conversation lets the current one go before its media is read in, so judge it against the whole context instead, with `free`:
+
+```ts label="src/harness/brief.ts"
+// A new brief lets the one on the canvas go first: its media lands in an empty context.
+const free = warm ? undefined : new ContextPressure(yield* Ctx.expect()).nCtx;
+const seen = yield* admitted(attachments, { ...BUDGETS.attachments, reserve, ...(free !== undefined ? { free } : {}) });
+```
+
+Without it, a long conversation on screen would refuse media that a new brief has room for.
+
+The three refusals, as the reader sees them:
+
+| When | The sentence |
+|---|---|
+| Over the share | That attachment would take *n* of the *m*-token context; this harness lets attachments fill up to *p*% of it. Try a shorter clip or fewer attachments. |
+| Over what is free | That attachment would take *n* tokens, but only *f* of the *m*-token context are free now. Try a shorter clip, fewer attachments, or a new brief. |
+| Into the reserve | Not enough space for work after attachments (*n* tokens). Try smaller attachments or adjust budgets (*k* max allowed for attachments). |
+
+::: callout A run with no room says so
+In the research template, a run whose every inquiry was refused for room sends its answer with `unanswered: "no_room"`, and the view says the context had no room left, not that the sources found nothing. A run whose inquiries finished but whose settling pass had no room keeps what they found: the answer is their findings as written, marked `unsettled: "no_room"`, saved with the brief, and said wherever the answer goes, on the canvas, in the terminal, in the saved report and in a copy.
+:::
+
 ## Related {#related}
 
-- [Services](/services) — vision, the projector behind every image.
+- [Services](/services) — vision, the projector behind every image and video, and transcription, behind every soundtrack.
 - [Abilities](/abilities) — the documents Ability is one.
