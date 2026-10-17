@@ -128,7 +128,7 @@ const planner = yield* agent({ systemPrompt: PLAN, content: query, terminal: pla
 const settle = yield* useAgent({ parent: spine, ...prompt, acceptFreeText: true });         // held open until the scope ends
 ```
 
-`agent` runs a single agent in its own scope and returns it finished. `useAgent` keeps its branch alive for the rest of the enclosing scope, so later work can fork from what it read. When its agent can never be seated, it throws `SpawnRefused` with the reason (`pressure_init`: no room above `softLimit` for its task; `no_sequence`: no free sequence), so a caller can keep what came before it.
+`agent` runs a single agent in its own scope and returns it finished. `useAgent` keeps its branch alive for the rest of the enclosing scope, so later work can fork from what it read. When its agent can never be seated, it throws `SpawnRefused` with the reason (`pressure_init`: no room above `softLimit` for its task; `no_sequence`: no free sequence), so a caller can keep what came before it. A pool's `outcomes` name a spawn that never had an agent the same way, by why: one of those two refusals, `spawn_error` when a throw on its way to a seat failed the run, or `withdrawn` when the pool closed before it was seated. An agent whose commit found no room reads `failed: "commit_failed"`, as a tool error reads `tool_error`.
 
 ## Trunk and spine {#trunk-and-spine}
 
