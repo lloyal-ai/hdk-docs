@@ -1,5 +1,6 @@
 # The judge runs locally, on the committer's own login, before every commit. A pull request is accepted
 # only when every commit carries the record hickey wrote into its message. Seconds, no model.
+# The site itself builds on Node 22 (see build.mjs); hickey needs 24, so this job alone runs on 24.
 name: gate
 
 on:
