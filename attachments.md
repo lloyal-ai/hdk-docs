@@ -197,7 +197,7 @@ The three refusals, as the reader sees them:
 | Into the reserve | Not enough space for work after attachments (*n* tokens). Try smaller attachments or adjust budgets (*k* max allowed for attachments). |
 
 ::: callout A run with no room says so
-In the research template, a run whose every inquiry was refused for room sends its answer with `unanswered: "no_room"`, and the view says the context had no room left, not that the sources found nothing. A run whose inquiries finished but whose settling pass had no room keeps what they found: the answer is their findings as written, marked `unsettled: "no_room"`, saved with the brief, and said wherever the answer goes, on the canvas, in the terminal, in the saved report and in a copy.
+In the research template, a run refused for room, at its first inquiry or at its settling pass, ends marked `no_room`, and the view says the context had no room left, not that the sources found nothing. What the template keeps of any run that ends short is on the [scheduler page](/scheduler#run-shapes).
 :::
 
 ## Related {#related}

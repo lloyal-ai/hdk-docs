@@ -117,7 +117,25 @@ const untilSettled = (questions: string[]): Orchestrator => function* (ctx) {
 | `failure` | What ended the pool early, or `null` |
 | `totalTokens`, `totalToolCalls` | Totals, for display |
 
-An outcome's `failed` says why an agent ended without a result — refused a seat, or its own failure — so one agent's failure never ends its siblings.
+An outcome's `failed` says why a spawn ended without a result, so one agent's failure never ends its siblings. Its values are two families: a spawn that never had an agent, and an agent that ended without reporting.
+
+| `failed` | The spawn never had an agent because |
+|---|---|
+| `pressure_init` | there was no room above `softLimit` for its task |
+| `no_sequence` | there was no free sequence |
+| `spawn_error` | a throw on its way to a seat failed the run; `failure` carries the throw |
+| `withdrawn` | the pool closed before it was seated, or a sibling's throw took it down |
+
+| `failed` | The agent ended without a result because |
+|---|---|
+| `tool_error` | a tool threw |
+| `tool_result_failed` | its tool result could not enter the cache |
+| `media_prefill_failed` | a page or image's prefill was refused by the engine |
+| `commit_failed` | the batched commit of its sampled token found no room; the batch gave way and the pool went on |
+| `recovery_skipped` | it was dropped with too little behind it to recover |
+| `no_terminal_call`, `empty_terminal_result` | its recovery report ended without a report |
+| `user_cancel` | the harness cancelled it |
+| `scope_error: …` | the pool closed partial under it, after a commit that left partial state behind |
 
 ## One agent {#one-agent}
 
