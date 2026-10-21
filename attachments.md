@@ -24,6 +24,14 @@ Video, checked against source, 2026-10-14:
   lloyal-sdk  packages/media/src/content-urls.ts  pushBlob (chunked, resumable), parseAttachmentMoment
   lloyal-sdk  packages/rig/src/distribution.ts    BlobUploads: the /v2 blob upload sessions
   lloyal-sdk  packages/rig/src/content-routes.ts  range reads of the original
+
+Video against llama.cpp, checked against source, 2026-10-21:
+  liblloyal   include/lloyal/mtmd.hpp             video_layout: "Video:", a timestamp after each frame crossing the next interval, frames mergeable
+  liblloyal   tests/integration/multimodal_integration_test.cpp  "a video's frames tokenize as the server's video does" (chunks, tokens, rows, positions)
+  llama.cpp   tools/mtmd/mtmd-helper.h/.cpp       fps_target 4, timestamp_interval_ms 5000; ffmpeg/ffprobe subprocesses; -f rawvideo rgb24 (no audio); per-frame ids
+  lloyal.node CMakeLists.txt                      MTMD_VIDEO OFF (FORCE): no runtime ffmpeg
+  lloyal-sdk  packages/media/src/video-sampling.ts  frameTimes: 4 fps, maxFrames 64 spread evenly
+  lloyal-sdk  packages/media/src/image.ts         sharp normalises images before the projector
 -->
 
 The research template takes attachments: drop a photo, a PDF or a video on the composer and ask about it. This page is how that works, and what to copy into your own harness.
@@ -145,6 +153,43 @@ The player plays the file as attached, seekable because the content plane answer
 On desktop, add `media-src attachment: blob:` to the page's Content-Security-Policy (the player's tracks are `blob:` URLs); in development, proxy `/v2` to the host beside `/v1/media`, with `xfwd: true` on a proxy that rewrites `Host` (`changeOrigin`), so the host recognises the page's uploads as its own.
 
 The host's blob surface is not a general registry. By default it admits only the original of a video, recognised by its container signature, and serves no blob's bytes by digest: a pushed original is read back through the attachment that holds it. `BlobUploads(…, { registry: true })` makes it the full registry that the OCI distribution conformance suite runs against. A write, whether an upload or a dictation, is accepted only from the host's own pages, or the origin the host is configured to allow: a request whose `Origin` names another host is refused with 403. A production reverse proxy that rewrites `Host` must set `X-Forwarded-Host`.
+
+### How it compares with llama.cpp {#video-and-llama-cpp}
+
+**What the model receives is the same.** lloyal lays a video out exactly as llama.cpp's own video helper does, the one behind `llama-server` and `llama-mtmd-cli`:
+
+- the text `Video:`;
+- then each frame;
+- a timestamp such as `[0m5.00s]` after every frame that crosses the next five-second mark;
+- every frame free to fuse with its neighbour.
+
+A test in liblloyal holds the two to the same result from the same frames, chunk for chunk: the same text tokens, the same image rows and the same positions. A model reads a video from lloyal as it would from `llama-server`.
+
+**Everything in front of that layout differs:**
+
+| | llama.cpp / `llama-server` (`MTMD_VIDEO=ON`) | lloyal |
+|---|---|---|
+| Who decodes | mtmd shells out to `ffmpeg` and `ffprobe` on the host | The page, with WebCodecs and Mediabunny; the host never runs ffmpeg |
+| What native code receives | A video file | Decoded frames and their times; `MtmdSource` never sees a container |
+| Sampling | 4 frames a second, no frame cap | 4 frames a second up to 64 frames, then spread evenly; 640 pixels on the longest edge; JPEG |
+| Frame times | Computed from the frame's index and the rate | The actual sample times, in milliseconds |
+| Frame ids | `"{hash}+{n}"` per frame, which `llama-server` keys its cache on | None |
+| Sound | Not part of the helper's layout | Transcribed separately and placed as text at its own time between frames |
+| Long clips | Always fuses, because the frames are dense | Stops fusing past about 320 seconds, where 64 frames are more than five seconds apart |
+| WebP images | Decoded through ffmpeg | Normalised by the host before native code |
+
+**What this unlocks over stock llama.cpp:**
+
+- **Video without ffmpeg on the machine.** Stock video input needs an `ffmpeg` binary on the host's `PATH`, started as a subprocess for every clip. lloyal.node builds mtmd with that support off, and the browser does the decoding. A desktop app ships with nothing to install beside the model. A served host never runs an external decoder over a file a stranger dropped in, and never parses its container.
+- **The same answer on every machine.** Native inference depends only on the frames it is given, not on which ffmpeg build happens to be installed. A run reads the same input on every platform the addon ships for, and replays the same from the store.
+- **Video on the web, decoded by the reader's own machine.** The page holds the file and the browser decodes it, often in hardware, so a clip works the same in a browser tab as in the desktop app. The original uploads in chunks that resume after a dropped connection, and the host keeps it to play back.
+- **The model hears the video.** The stock helper reads the picture only. lloyal transcribes the soundtrack and places each passage at its own time between the frames, so the model can answer what someone says at a moment, or what a slide shows while they talk over it.
+- **Moments a reader can open.** Timestamps are the times the frames were sampled at, so a report can cite `attachment://<digest prefix>/t/1m24.87s` and the player opens at the frame the model saw. The time slider shows those frames, and the transcript plays as captions.
+- **One projection for every agent.** A video is projected once, onto the conversation, and every agent forks from it. Ten agents asking about one clip pay for it once.
+- **A cost known before anything is read.** A video is capped at 64 frames and priced exactly before it is projected. With an [attachment budget](#attachment-budget), one that would not fit is refused with a sentence that says why, instead of failing halfway through a turn.
+- **Any image the host can read.** Images are normalised on the way in, so WebP, HEIF and other formats reach the projector as formats it reads directly, with no ffmpeg involved.
+
+**What it costs.** Stock sampling takes every quarter second of a clip, so it sees every moment, but a ten-minute clip becomes 2,400 frames, far more than a 32,768-token context holds. The 64-frame cap is what lets a video fit beside the question; the price is coverage on a long clip. An hour-long recording is seen as one frame about every 56 seconds. Past about five minutes twenty seconds, frames stop fusing, and the video costs about twice what it would if they did. Allow for that when you set the [attachment budget](#attachment-budget).
 
 ## Tune what an image costs {#image-cost}
 
