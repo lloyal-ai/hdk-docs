@@ -19,7 +19,7 @@ A service is every model beside the trunk — the reasoning model every agent br
 
 There are two shapes a service can take, and the difference is what a consumer gets back:
 
--   **An instance of its own.** The reranker runs on a context of its own, and a bound reranker is an object with methods: score, tokenize, dispose. It lives as long as the scope that bound it.
+-   **An instance of its own.** The reranker runs on a context of its own, and a bound reranker is an object with methods: score and tokenize. It lives as long as the scope that bound it, and nothing else ends it.
 -   **A capability of the trunk.** The vision projector is not an object anything calls: it goes onto the resident context so the trunk can see, and every agent forked from that trunk sees with it. What a consumer reads back is a marker that says the projector is there, and nothing to call. Sight is the context’s, not an object’s.
 
 The framework treats both through the same contract. It never asks a service what it can do; it asks the service’s *provider* how the artifact reaches the run, and a provider answers with one of two cells — `bind` for an instance, `trunk` for a capability — described under [the provider](/service-kinds#the-provider).
@@ -137,7 +137,7 @@ The uniformity is the lifecycle, not the method set. A bound service exposes wha
 
 | Service | Answers | Members |
 | --- | --- | --- |
-| `reranker` | `Reranker` | `score(query, chunks)` streams progressive results over pre-tokenized chunks; `scoreBatch(query, texts)` answers one logit difference per text, unbounded, positive meaning “yes”; `tokenize(text)` and `tokenizeChunks(chunks)` put text into the reranker’s own vocabulary; `dispose()` is idempotent and the owning scope calls it for you. |
+| `reranker` | `Reranker` | `score(query, chunks)` streams progressive results over pre-tokenized chunks; `scoreBatch(query, texts)` answers one logit difference per text, unbounded, positive meaning “yes”; `tokenize(text)` and `tokenizeChunks(chunks)` put text into the reranker’s own vocabulary. |
 | `vision` | `Trunk` | `artifact` only — the projector’s path. There is nothing to call: an image placed on a branch is projected by the context itself. |
 | `embedding` | `Embedder` | `embed(inputs)` answers one L2-normalized vector per input, in order, so cosine similarity is a dot product. An input is a string, or `{ parts, task?, role?, title? }` whose parts are text and attachments. The caller says what an input is for, a task such as `search` or `clustering` and a `query` or `document` role, and the encoder writes the model's own framing for it; a task the model has no framing for is refused before any work. `measure(inputs)` answers what each input costs in cells with nothing run, and `tokenize(text)` measures in the encoder's own vocabulary; all three are Operations. `dimension` is the length of every vector, `dimensions` the widths the model was trained to be cut to, `modalities` what it reads and `tasks` what it frames. |
 | `transcription` | `Transcriber` | `transcribe(audio)` takes an admitted recording by its content reference and answers its raw `text` and `language`, an Operation, one recording at a time on the decoder’s own context; `limits` are the bounds a recording is admitted against. Cleaning the transcript up is a harness’s own composition on a text service, never this one’s. |
