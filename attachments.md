@@ -112,12 +112,12 @@ The page does the decoding, because that is where a codec is: the browser's WebC
 
 The transcript reaches the model as text beside the frames, at the timestamp that ends each window, so what was said sits next to what was shown. Without a `transcription` block the video still arrives, with no transcript and no error. When something hears, the host tells the page the limits every one of them admits, and the page cuts each window short enough, and writes it at a rate low enough, for each to admit it. An embedding model that hears is given the soundtrack itself, window by window after the frames, so a video's vector carries what was heard as well as what was seen.
 
-Serve the command and let the composer take video:
+Serve the command and let the composer take video. Hand it the harness's config reader, as the template hands its briefs: it reads [`attachments.video`](/harness-yml#attachments) each time a video is described or composed, so a change applies to the next video, and a `maxDurationSeconds` set there refuses a longer clip before any byte is pushed. Without the reader, rig's defaults stand and no length limit applies.
 
 ```ts label="src/app.ts"
 import { useVideoCommands } from "@lloyal-labs/rig";
 
-const video = yield* useVideoCommands({ wire });
+const video = yield* useVideoCommands({ wire, config: runner.config });
 yield* serveCommands<Command>(commands, [brief, library, voice, video /* , … */], serveDefaults({ wire, run }));
 ```
 
