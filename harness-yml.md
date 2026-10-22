@@ -101,16 +101,20 @@ The projector through which the reasoning model sees an image. The block with no
 
 ### embedding {#embedding}
 
-The encoder a harness indexes with, one vector per text. A model’s pooling is its own property — Qwen3-Embedding reads its last token, nomic-embed averages — so a catalog id carries it and a local file must say.
+The encoder a harness indexes with: one vector per input, where an input is text, images, a video or a window of one, and recordings, in any order. A block that names no model takes EmbeddingGemma 2 and its projector, which read all of them into one space; `nomic-embed-text-v1.5-q4` embeds text alone at the least cost. A model's pooling is its own property, so a catalog id carries it and a local file must say.
 
 | Key | Takes | Applies | What it is |
 | --- | --- | --- | --- |
-| `model.embedding.id` | a catalog id | reload | The catalog id of the embedding model — the encoder a harness indexes with, one vector per text. |
+| `model.embedding.id` | a catalog id | reload | The catalog id of the embedding model — the encoder a harness indexes with, one vector per input. A block that names no model takes EmbeddingGemma 2 and its projector: one space for text, images, video and sound. |
 | `model.embedding.path` | a path to a `.gguf` | reload | A local .gguf for the embedding model; outranks the catalog id. |
-| `model.embedding.context` | a positive integer | boot | The most tokens one text may embed as; a longer text is refused, never truncated. |
+| `model.embedding.context` | a positive integer | boot | The most tokens one input may embed as; a longer input is refused, never truncated. Unset, a catalog model takes the context its entry gives, and a local file 2,048; a catalog model refuses more than it was trained to read. |
 | `model.embedding.pooling` | `mean` · `cls` · `last` | boot | How the model folds token states into one vector — its own property; a catalog id carries it, a local file must say. |
+| `model.embedding.projector.id` | a catalog id | reload | The projector a multimodal embedding model reads images, video and sound through; otherwise paired from the embedding model in the catalog. A text-only model has none. |
+| `model.embedding.projector.path` | a path to a `.gguf` | reload | A local projector for the embedding model; outranks its catalog id. |
+| `model.embedding.vision.minTokens` | a positive integer | reload | The floor on how many tokens the embedding projector reads one image or frame as: detail against cost. A catalog projector refuses a value outside the range it was trained for. |
+| `model.embedding.vision.maxTokens` | a positive integer | reload | The ceiling on what one image or frame costs the embedding context; lower it to fit more frames in one input. |
 
-Unset, `context` is 2048, which is the batch too: a text is encoded whole. A `path:` model with no `pooling` is refused at bind, naming the key. `nomic-embed-text-v1.5-q4` is the one to reach for on an edge box: a tenth of the memory and a quarter of the latency of the Qwen encoder; Qwen recalls more of what the reranker would confirm and suits an appliance-class box.
+Unset, `context` is 8,192 for EmbeddingGemma 2, its training length, and 2,048 for nomic. An input is encoded whole, so the context is also the batch. EmbeddingGemma 2's projector reads one image as 70 to 1,120 tokens: `vision.minTokens` or `vision.maxTokens` outside that range is refused, and so is either one on a model with no projector. A `path:` model with no `pooling` is refused at bind, naming the key.
 
 ### transcription {#transcription}
 
@@ -143,8 +147,9 @@ A catalog `id` is fetched on first launch into the project’s `models/<block>/<
 | `qwen3-reranker-0.6b-q8` · Q8\_0 | reranker | 630 MB | — |
 | `qwen3.5-4b-mmproj` · F16 | vision | 672 MB | — |
 | `qwen3.8-27b-mmproj` · F16 | vision | 928 MB | — |
+| `embeddinggemma-2-q8` · Q8\_0 | embedding | 310 MB | `embeddinggemma-2-mmproj-bf16`; pools `mean` |
+| `embeddinggemma-2-mmproj-bf16` · BF16 | embedding projector | 982 MB | — |
 | `nomic-embed-text-v1.5-q4` · Q4\_K\_M | embedding | 84 MB | pools `mean` |
-| `qwen3-embedding-0.6b-q8` · Q8\_0 | embedding | 639 MB | pools `last` |
 | `qwen3-asr-0.6b-q8` · Q8\_0 | transcription | 805 MB | `qwen3-asr-0.6b-mmproj-q8` |
 | `qwen3-asr-0.6b-mmproj-q8` · Q8\_0 | transcription projector | 214 MB | — |
 

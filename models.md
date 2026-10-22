@@ -28,8 +28,8 @@ Catalog (fetched + digest-verified on first run — no API key):
   llm       qwen3.8-27b-q4           Qwen3.8 27B · Q4_K_M · 16.5 GB
   llm       qwen3.8-27b-iq1          Qwen3.8 27B · UD-IQ1_S · 6.2 GB
   reranker  qwen3-reranker-0.6b-q8   Qwen3 Reranker 0.6B · Q8_0
+  embedding embeddinggemma-2-q8      EmbeddingGemma 2 · Q8_0
   embedding nomic-embed-text-v1.5-q4 nomic-embed-text v1.5 · Q4_K_M
-  embedding qwen3-embedding-0.6b-q8  Qwen3 Embedding 0.6B · Q8_0
   transcription qwen3-asr-0.6b-q8    Qwen3-ASR 0.6B · Q8_0
 
 Active (harness.yml, with harness.json over it):

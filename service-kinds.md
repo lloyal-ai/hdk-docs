@@ -39,11 +39,16 @@ export const providers: { [K in Service]: ProviderRow<K> } = {
       ({ mmprojPath: artifact, imageMinTokens: block.minTokens, imageMaxTokens: block.maxTokens }),
   },
   embedding: {
-    bind: (artifact, block) =>
-      createEmbedder(artifact, { nCtx: block.context, pooling: embeddingPooling(block) }),
+    derive: () => ({ id: "embeddinggemma-2-q8" }),
+    projector: { role: "embedding.projector", name: "embedding projector", select: block => pairedProjector("embedding", block) },
+    bind: (artifact, block, projector) =>
+      createEmbedder(artifact, {
+        nCtx: block.context, pooling: embeddingPooling(block),
+        projector, imageMinTokens: block.vision?.minTokens, imageMaxTokens: block.vision?.maxTokens,
+      }),
   },
   transcription: {
-    projector: { role: "transcription.projector", name: "audio projector", select: transcriptionProjector },
+    projector: { role: "transcription.projector", name: "audio projector", select: block => pairedProjector("transcription", block) },
     bind: (artifact, block, projector) => createTranscriber(artifact, projector, block),
   },
 };
@@ -51,10 +56,10 @@ export const providers: { [K in Service]: ProviderRow<K> } = {
 
 | Cell | Says |
 | --- | --- |
-| `derive(of)` | which model backs the service when its block names none, given the llm’s selection; `undefined` refuses, naming `model.<name>.id` |
+| `derive(of)` | which model backs the service when its block names none, from the llm’s selection or a default of the service’s own. Every other cell reads the block with that model in it, so a derived model is paired, refused and bound as a named one; `undefined` refuses, naming `model.<name>.id` |
 | `bind(artifact, block, projector?)` | the artifact as the instance `service(name)` answers — an Effection resource, so the instance lives as long as the scope that bound it and is torn down with it; a row with a `projector` cell receives that artifact third |
 | `trunk(artifact, block)` | the options the artifact contributes to the resident context; typed only for a service whose map entry is a `Trunk`, so an instance service cannot accidentally be folded into the trunk |
-| `projector` | a second artifact the service binds beside its model, with the role it is slotted under and how it is selected from the block: paired from the catalog by the decoder’s id, or named by `projector.id` or `projector.path`. The installer gives it a step of its own, and `bind` receives it as its third argument. |
+| `projector` | a second artifact the service binds beside its model, with the role it is slotted under and how it is selected from the block: paired from the catalog by the model’s id, or named by `projector.id` or `projector.path`. A model with no pair, such as a text-only embedding model, has no projector step at all. The installer gives it a step of its own, and `bind` receives it as its third argument. |
 
 `block` is the service’s `model.<name>` as the layering resolved it, typed from its keys, so a provider reads its tuning without parsing anything. The reranker row is one line; the binding it calls, `createReranker`, is one of the three files in the framework that open a second native context (the embedder’s `createEmbedder` and the transcriber’s `createTranscriber` are the others) and compose a runtime primitive over it, and each is its own file so a test can stand a fake at that boundary and prove the walk without loading a model. A new kind whose binding needs a different acquirer — a model that is not a `.gguf` in a slot — would add one more optional cell then; nothing today needs it, so it is not in the contract.
 

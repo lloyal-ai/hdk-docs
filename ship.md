@@ -36,7 +36,7 @@ Nothing else about packaging enters your project. The entitlements, the archive 
 
 They meet the same provisioning screen you did on your first `dev:desktop` run. There is no separate end-user path, because there is no separate code.
 
--   one row per model named in `harness.yml` — the reasoning model, and whichever of reranker, vision, embedding and transcription that harness declares, the transcription decoder and its audio projector as two rows;
+-   one row per model named in `harness.yml` — the reasoning model, and whichever of reranker, vision, embedding and transcription that harness declares, a model and the projector it is paired with as two rows, as the transcription decoder and EmbeddingGemma 2 are;
 -   each fetched and **digest-verified** against the SHA the catalogue pins, from the upstream source or the Lloyal mirror, whichever answers;
 -   the bytes, the rate and the time remaining, per row;
 -   a weight the reader already has, offered as an alternative to downloading it;
