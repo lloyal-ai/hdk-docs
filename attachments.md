@@ -101,16 +101,16 @@ It declares two services — `reranker` and `vision` — so the harness needs bo
 
 ## Video {#video}
 
-A video reaches the model as one video, the way llama.cpp's own server hands one over: its sampled frames in order, marked so that a projector with temporal merge (the Qwen-VL family) fuses neighbouring frames in pairs, with a timestamp every five seconds. It is one marker and one input, not a stack of separate pictures.
+A video reaches the model as one video, the way llama.cpp's own server hands one over: its sampled frames in order, marked so that a projector with temporal merge (the Qwen-VL family) fuses neighbouring frames in pairs, with a timestamp every five seconds by default. It is one marker and one input, not a stack of separate pictures.
 
 The page does the decoding, because that is where a codec is: the browser's WebCodecs, with Mediabunny reading the container. The host never decodes video. Attaching one takes four steps, and `ingestVideo` from `@lloyal-labs/ui` runs them:
 
 1. **The original is pushed as a blob**, in chunks, over the [OCI distribution](https://github.com/opencontainers/distribution-spec) blob upload API the host serves at `/v2/…/blobs/uploads/`. A dropped chunk resumes from what the host reports it holds, and the blob is admitted only under the digest of the whole file. It is kept: it is what the reader brought.
-2. **Frames are sampled** at the host's rate (4 per second by default, fewer for a long clip, each at most 640 pixels on its longer edge) and each enters the store as an image.
-3. **The soundtrack is cut into windows** of about five seconds, each ending at a quiet moment, and each enters as audio, but only when the harness has a `transcription` service.
-4. **One `video:compose` command** names them all. The host checks every reference, transcribes each window with the transcription service, and commits one attachment: the frames, the transcript, the timeline and the original.
+2. **Frames are sampled** at the host's rate ([`attachments.video`](/harness-yml#attachments): 4 per second by default, fewer for a long clip, each at most 640 pixels on its longer edge) and each enters the store as an image.
+3. **The soundtrack is cut into windows** of about five seconds, each ending at a quiet moment, and each enters as audio, but only when something the harness runs hears: a `transcription` service, or an embedding model that hears, as the default EmbeddingGemma 2 does with its projector.
+4. **One `video:compose` command** names them all. The host checks every reference, transcribes each window when a transcription service is bound, and commits one attachment: the frames, the soundtrack windows, the transcript, the timeline and the original.
 
-The transcript reaches the model as text beside the frames, at the timestamp that ends each window, so what was said sits next to what was shown. Without a `transcription` block the video still arrives, with no transcript and no error. With one, the host tells the page that service's limits, and the page cuts each window short enough, and writes it at a rate low enough, for the service to admit it.
+The transcript reaches the model as text beside the frames, at the timestamp that ends each window, so what was said sits next to what was shown. Without a `transcription` block the video still arrives, with no transcript and no error. When something hears, the host tells the page the limits every one of them admits, and the page cuts each window short enough, and writes it at a rate low enough, for each to admit it. An embedding model that hears is given the soundtrack itself, window by window after the frames, so a video's vector carries what was heard as well as what was seen.
 
 Serve the command and let the composer take video:
 
@@ -156,14 +156,14 @@ The host's blob surface is not a general registry. By default it admits only the
 
 ### How it compares with llama.cpp {#video-and-llama-cpp}
 
-**What the model receives is the same.** lloyal lays a video out exactly as llama.cpp's own video helper does, the one behind `llama-server` and `llama-mtmd-cli`:
+**What the model receives is laid out by the same rule.** lloyal lays a video out as llama.cpp's own video helper does, the one behind `llama-server` and `llama-mtmd-cli`:
 
 - the text `Video:`;
 - then each frame;
-- a timestamp such as `[0m5.00s]` after every frame that crosses the next five-second mark;
+- a timestamp such as `[0m5.00s]` after every frame that crosses the next mark, every five seconds by default; on a sparsely sampled clip the marks are spaced at least twice the widest gap between frames, so no two neighbouring frames are both followed by one;
 - every frame free to fuse with its neighbour.
 
-A test in liblloyal holds the two to the same result from the same frames, chunk for chunk: the same text tokens, the same image rows and the same positions. A model reads a video from lloyal as it would from `llama-server`.
+A test in liblloyal holds the two to the same result from the same frames and mark spacing, chunk for chunk: the same text tokens, the same image rows and the same positions. What differs is what lloyal chooses before the layout: which frames, and on a sparsely sampled clip, the spacing of its marks.
 
 **Everything in front of that layout differs:**
 
@@ -171,25 +171,25 @@ A test in liblloyal holds the two to the same result from the same frames, chunk
 |---|---|---|
 | Who decodes | mtmd shells out to `ffmpeg` and `ffprobe` on the host | The page, with WebCodecs and Mediabunny; the host never runs ffmpeg |
 | What native code receives | A video file | Decoded frames and their times; `MtmdSource` never sees a container |
-| Sampling | 4 frames a second, no frame cap | 4 frames a second up to 64 frames, then spread evenly; 640 pixels on the longest edge; JPEG |
+| Sampling | 4 frames a second, no frame cap | A frame rate up to a frame cap, then spread evenly, and a longest edge, each an [`attachments.video`](/harness-yml#attachments) setting; JPEG |
 | Frame times | Computed from the frame's index and the rate | The actual sample times, in milliseconds |
 | Frame ids | `"{hash}+{n}"` per frame, which `llama-server` keys its cache on | None |
-| Sound | Not part of the helper's layout | Transcribed separately and placed as text at its own time between frames |
-| Long clips | Always fuses, because the frames are dense | Stops fusing past about 320 seconds, where 64 frames are more than five seconds apart |
+| Sound | Not part of the helper's layout | Transcribed separately and placed as text at its own time between frames; an embedding model that hears is given the windows themselves |
+| Long clips | Always fuses, because the frames are dense | Keeps fusing: once frames are sparse, marks are laid out at twice the widest gap between frames instead of every five seconds |
 | WebP images | Decoded through ffmpeg | Normalised by the host before native code |
 
 **What this unlocks over stock llama.cpp:**
 
 - **Video without ffmpeg on the machine.** Stock video input needs an `ffmpeg` binary on the host's `PATH`, started as a subprocess for every clip. lloyal.node builds mtmd with that support off, and the browser does the decoding. A desktop app ships with nothing to install beside the model. A served host never runs an external decoder over a file a stranger dropped in, and never parses its container.
-- **The same answer on every machine.** Native inference depends only on the frames it is given, not on which ffmpeg build happens to be installed. A run reads the same input on every platform the addon ships for, and replays the same from the store.
+- **The same input on every machine.** Native inference is given the frames the page sampled, not whatever an installed ffmpeg build decodes. A run reads the same input on every platform the addon ships for, and replays the same input from the store. The answers to it can still differ between machines, as any model's do across backends.
 - **Video on the web, decoded by the reader's own machine.** The page holds the file and the browser decodes it, often in hardware, so a clip works the same in a browser tab as in the desktop app. The original uploads in chunks that resume after a dropped connection, and the host keeps it to play back.
-- **The model hears the video.** The stock helper reads the picture only. lloyal transcribes the soundtrack and places each passage at its own time between the frames, so the model can answer what someone says at a moment, or what a slide shows while they talk over it.
+- **The model hears the video.** The stock helper reads the picture only. lloyal transcribes the soundtrack and places each passage at its own time between the frames, so the model can answer what someone says at a moment, or what a slide shows while they talk over it. An embedding model that hears is given the soundtrack itself, so a search finds a moment by its sound, not only by its words.
 - **Moments a reader can open.** Timestamps are the times the frames were sampled at, so a report can cite `attachment://<digest prefix>/t/1m24.87s` and the player opens at the frame the model saw. The time slider shows those frames, and the transcript plays as captions.
 - **One projection for every agent.** A video is projected once, onto the conversation, and every agent forks from it. Ten agents asking about one clip pay for it once.
-- **A cost known before anything is read.** A video is capped at 64 frames and priced exactly before it is projected. With an [attachment budget](#attachment-budget), one that would not fit is refused with a sentence that says why, instead of failing halfway through a turn.
+- **A cost known before anything is read.** A video is capped at its frame limit, 64 by default, and priced exactly before it is projected. With an [attachment budget](#attachment-budget), one that would not fit is refused with a sentence that says why, instead of failing halfway through a turn.
 - **Any image the host can read.** Images are normalised on the way in, so WebP, HEIF and other formats reach the projector as formats it reads directly, with no ffmpeg involved.
 
-**What it costs.** Stock sampling takes every quarter second of a clip, so it sees every moment, but a ten-minute clip becomes 2,400 frames, far more than a 32,768-token context holds. The 64-frame cap is what lets a video fit beside the question; the price is coverage on a long clip. An hour-long recording is seen as one frame about every 56 seconds. Past about five minutes twenty seconds, frames stop fusing, and the video costs about twice what it would if they did. Allow for that when you set the [attachment budget](#attachment-budget).
+**What it costs.** Stock sampling takes every quarter second of a clip, so it sees every moment, but a ten-minute clip becomes 2,400 frames, far more than a 32,768-token context holds. The frame cap, 64 by default and set by [`attachments.video.maxFrames`](/harness-yml#attachments), is what lets a video fit beside the question; the price is coverage on a long clip. At the default an hour-long recording is seen as one frame about every 56 seconds. Frames keep fusing at any length, because a sparse clip's time marks are spaced at least two frames apart; the trade is coarser marks, about one every 112 seconds for an hour.
 
 ## Tune what an image costs {#image-cost}
 
@@ -197,17 +197,18 @@ How many tokens one image is projected into is yours: `model.vision.minTokens` f
 
 ## Cap what attachments take {#attachment-budget}
 
-A long video, or many images, can cost more of the context than a turn can spare: an hour-long recording brings 64 frames and an hour of transcript. Give `admitted` the largest fraction of the context the turn's attachments may fill, and it prices them exactly before anything is read in:
+A long video, or many images, can cost more of the context than a turn can spare: at the default frame cap an hour-long recording brings 64 frames and an hour of transcript. The share of the context a turn's attachments may fill is the harness's [`attachments.context`](/harness-yml#attachments); give it to `admitted`, and the attachments are priced exactly before anything is read in:
 
-```ts label="src/harness/budgets.ts"
-attachments: { context: 0.7 },
+```yaml label="harness.yml"
+attachments:
+  context: 0.7
 ```
 
 ```ts label="src/harness/brief.ts"
-const seen = yield* admitted(attachments, BUDGETS.attachments);
+const seen = yield* admitted(attachments, { context: config().attachments.context });
 ```
 
-A turn over the share is refused with what it would cost and what is allowed, and the conversation is untouched. So is a turn that fits the share but not what the context has free now, later in a long conversation. Without the limit, an attachment that does not fit fails while it is read in. When a sequence slot is free, the turn is written on a fork of the conversation, so only the fork is lost and the conversation carries on (see [fast-forward](/agent-policy-and-context-pressure#fast-forward)), but the reader has waited for nothing. With no slot free, the turn is written in place and a failure releases the conversation. The research template sets 70%. Leave it out for no limit.
+A turn over the share is refused with what it would cost and what is allowed, and the conversation is untouched. So is a turn that fits the share but not what the context has free now, later in a long conversation. Without the limit, an attachment that does not fit fails while it is read in. When a sequence slot is free, the turn is written on a fork of the conversation, so only the fork is lost and the conversation carries on (see [fast-forward](/agent-policy-and-context-pressure#fast-forward)), but the reader has waited for nothing. With no slot free, the turn is written in place and a failure releases the conversation. Unset, the share is the whole context: the attachments are still priced against what is free, and a turn that does not fit is still refused before anything is read in.
 
 ### Leave room for the run {#attachment-reserve}
 
@@ -216,7 +217,7 @@ An attachment that fits can still leave the run nothing to work in. The agent po
 ```ts label="src/harness/brief.ts"
 // The pool's own line for the effort this run will use.
 const reserve = BUDGETS.effort[config().defaults.effort].context.softLimit;
-const seen = yield* admitted(attachments, { ...BUDGETS.attachments, reserve });
+const seen = yield* admitted(attachments, { context: config().attachments.context, reserve });
 ```
 
 The refusal says what the attachments cost and the most they may take. Take the reserve from the same budget row the run will use, so the check and the pool agree: in the research template that is 2,048 cells at high effort and 8,192 at medium. A reserve of exactly `softLimit` keeps the pool's line clear but leaves nothing above it for the Agents' task prompts; add what they take to the reserve when a run must be able to start. Either way the check is about starting a run, not about room to finish it.
@@ -228,7 +229,7 @@ The refusal says what the attachments cost and the most they may take. Take the 
 ```ts label="src/harness/brief.ts"
 // A new brief lets the one on the canvas go first: its media lands in an empty context.
 const free = warm ? undefined : new ContextPressure(yield* Ctx.expect()).nCtx;
-const seen = yield* admitted(attachments, { ...BUDGETS.attachments, reserve, ...(free !== undefined ? { free } : {}) });
+const seen = yield* admitted(attachments, { context: config().attachments.context, reserve, ...(free !== undefined ? { free } : {}) });
 ```
 
 Without it, a long conversation on screen would refuse media that a new brief has room for.

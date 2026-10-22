@@ -1,10 +1,10 @@
 ---
 title: "harness.yml"
-description: "Every key a harness is configured with — the model blocks, your own keys, the abilities family, where each rung reads it, what it takes, and when a change applies. Derived from the tables the keys are declared in."
+description: "Every key a harness is configured with — the model blocks, the attachments family, your own keys, the abilities family, where each rung reads it, what it takes, and when a change applies. Derived from the tables the keys are declared in."
 lede: "Every key a harness is configured with: what it takes, where each rung reads it, and when a change applies."
 ---
 
-A harness declares its configuration once, as a table of keys. `harness.yml` is the committed manifest of those keys; everything here is read off the tables the keys are declared in — the model family every harness ships (`modelSettings`) and the template’s own — so the file that disagrees with this page is the one to read.
+A harness declares its configuration once, as a table of keys. `harness.yml` is the committed manifest of those keys; everything here is read off the tables the keys are declared in — the model family every harness ships (`modelSettings`), the attachments family (`attachmentSettings`) and the template’s own — so the file that disagrees with this page is the one to read.
 
 ::: pull
 Naming a model  
@@ -155,6 +155,20 @@ A catalog `id` is fetched on first launch into the project’s `models/<block>/<
 
 The CLI writes the selection for you: `lloyal models:use <id> [--role llm|reranker|vision|embedding|transcription]` writes the block’s `id`, `lloyal models:add <path> [--role]` its `path`, each replacing the other; `lloyal models:list` shows the catalog, your pins and what is on disk. An `llm` block that names neither and has exactly one `.gguf` in its slot adopts it; two is refused as ambiguous.
 
+## The attachments family {#attachments}
+
+What a turn's attachments may take of the context, and how a video is sampled. Spread `attachmentSettings` from `@lloyal-labs/rig` into your `defineConfig` beside `modelSettings`; each bound is enforced by the load and said by its refusal.
+
+| Key | Takes | Applies | What it is |
+| --- | --- | --- | --- |
+| `attachments.context` | a number from 0.1 to 1 | session | The share of the context a turn's attachments may fill, which the app passes to `admitted`. A tenth is the least: in a 4,096-cell context that holds one 640-pixel frame, about 410 cells. |
+| `attachments.video.fps` | a number from 0.1 to 30 | session | Frames a second a video is sampled at, up to its frame cap; a longer clip is sampled more sparsely. Past 30 a source rarely has more distinct frames, and repeats are dropped; under 0.1 a moment of speech has no picture. |
+| `attachments.video.maxFrames` | a whole number from 1 to 3600 | session | The most frames one video keeps. What a video costs is still measured when it is attached, and refused if it does not fit; 3,600 is an hour at one frame a second. |
+| `attachments.video.maxEdgePx` | a whole number from 64 to 1920 | session | The longest edge a frame is scaled to, in pixels: detail against tokens per frame. 1,920 is a full HD frame; under 64 a frame shows nothing to read. |
+| `attachments.video.maxDurationSeconds` | a whole number from 1 to 86400 | session | The longest clip a harness takes, refused before any byte is pushed; unset, a clip of any length is taken. Length costs upload and one transcription per soundtrack window. A limit set here is at most a day. |
+
+Unset, attachments may fill the whole context, and a video is sampled at 4 frames a second up to 64 frames, each at most 640 pixels on its longer edge, at any length. The time marks between frames are not a setting: a video is composed with a mark every five seconds, or, when its frames are sparser, at least twice the widest gap between them, so neighbouring frames keep fusing.
+
 ## When a change applies {#when-a-change-applies}
 
 Each key declares when a change to it takes effect, and the settings pane offers a control only where one can do something.
@@ -174,6 +188,7 @@ A template declares its configuration in `src/config.ts`: the model family sprea
 ```ts label="src/config.ts"
 export const config = defineConfig({
   ...modelSettings,
+  ...attachmentSettings,
   "sources.outputDir": {
     yml: "sources.outputDir", path: true, default: "reports",
     describe: "Where settled briefs, their annexures and the session trace are written.",

@@ -21,6 +21,7 @@ Add a line to the table:
 ```ts label="src/config.ts"
 export const config = defineConfig({
   ...modelSettings,
+  ...attachmentSettings,
   "sources.outputDir": { yml: "sources.outputDir", cli: "outputDir", path: true, default: ".", describe: "Where the session trace is written." },
   "answer.words": { yml: "answer.words", integer: true, default: 400, describe: "How long a settled article may run." },
 });
