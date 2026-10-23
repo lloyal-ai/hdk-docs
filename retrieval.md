@@ -7,7 +7,7 @@ lede: "Put only what answers the question into an agent's context — the source
 <!--
 Checked against source, 2026-09-30:
   lloyal-sdk  packages/rig/src/admission.ts        admitChunks, AdmitSelect (budget | threshold), AdmitResult; exploit = min(tool, original)
-  lloyal-sdk  packages/rig/src/retrieval.ts        Reranker (score, scoreBatch, tokenizeChunks, tokenize, dispose), Chunk
+  lloyal-sdk  packages/rig/src/retrieval.ts        Reranker (score, scoreBatch, tokenizeChunks, tokenize), Chunk
   lloyal-sdk  packages/rig/src/sources/chunking.ts chunkHtml(html, url, title)
   lloyal-sdk  packages/rig/src/source.ts           Source, createScorer (entailment, similarity, shouldProceed), _entailmentFloor 0
   lloyal-sdk  packages/agents/src/scorer.ts        EntailmentScorer — three methods (scoreRelevanceBatch no longer exists)
