@@ -107,7 +107,7 @@ The page does the decoding, because that is where a codec is: the browser's WebC
 
 1. **The original is pushed as a blob**, in chunks, over the [OCI distribution](https://github.com/opencontainers/distribution-spec) blob upload API the host serves at `/v2/…/blobs/uploads/`. A dropped chunk resumes from what the host reports it holds, and the blob is admitted only under the digest of the whole file. It is kept: it is what the reader brought.
 2. **Frames are sampled** at the host's rate ([`attachments.video`](/harness-yml#attachments): 4 per second by default, fewer for a long clip, each at most 640 pixels on its longer edge) and each enters the store as an image.
-3. **The soundtrack is cut into windows** of about five seconds, each ending at a quiet moment, and each enters as audio, but only when something the harness runs hears: a `transcription` service, or an embedding model that hears, as the default EmbeddingGemma 2 does with its projector.
+3. **The soundtrack is cut into windows** as long as the spacing of the frames' timestamps (five seconds by default, wider on a sparsely sampled clip), each ending at a quiet moment, and each enters as audio, but only when something the harness runs hears: a `transcription` service, or an embedding model that hears, as the default EmbeddingGemma 2 does with its projector.
 4. **One `video:compose` command** names them all. The host checks every reference, transcribes each window when a transcription service is bound, and commits one attachment: the frames, the soundtrack windows, the transcript, the timeline and the original.
 
 The transcript reaches the model as text beside the frames, at the timestamp that ends each window, so what was said sits next to what was shown. Without a `transcription` block the video still arrives, with no transcript and no error. When something hears, the host tells the page the limits every one of them admits, and the page cuts each window short enough, and writes it at a rate low enough, for each to admit it. An embedding model that hears is given the soundtrack itself, window by window after the frames, so a video's vector carries what was heard as well as what was seen.
@@ -171,11 +171,11 @@ A test in liblloyal holds the two to the same result from the same frames and ma
 |---|---|---|
 | Who decodes | mtmd shells out to `ffmpeg` and `ffprobe` on the host | The page, with WebCodecs and Mediabunny; the host never runs ffmpeg |
 | What native code receives | A video file | Decoded frames and their times; `MtmdSource` never sees a container |
-| Sampling | 4 frames a second, no frame cap | A frame rate up to a frame cap, then spread evenly, and a longest edge, each an [`attachments.video`](/harness-yml#attachments) setting; JPEG |
+| Sampling | 4 frames a second by default (`--video-fps`), no frame cap | A frame rate up to a frame cap, then spread evenly, and a longest edge, each an [`attachments.video`](/harness-yml#attachments) setting; JPEG |
 | Frame times | Computed from the frame's index and the rate | The actual sample times, in milliseconds |
 | Frame ids | `"{hash}+{n}"` per frame, which `llama-server` keys its cache on | None |
 | Sound | Not part of the helper's layout | Transcribed separately and placed as text at its own time between frames; an embedding model that hears is given the windows themselves |
-| Long clips | Always fuses, because the frames are dense | Keeps fusing: once frames are sparse, marks are laid out at twice the widest gap between frames instead of every five seconds |
+| Long clips | Fuses at its default rate, where frames are dense; at a rate low enough that frames fall further apart than the marks, nothing fuses | Keeps fusing: once frames are sparse, marks are laid out at twice the widest gap between frames instead of every five seconds |
 | WebP images | Decoded through ffmpeg | Normalised by the host before native code |
 
 **What this unlocks over stock llama.cpp:**
