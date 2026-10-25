@@ -15,23 +15,9 @@ Checked against source and a 1.13.0 research scaffold, 2026-09-30:
   lloyal-sdk  packages/abilities/documents/ability.json  tools search_documents/read_document/view_page; services reranker + vision
   lloyal-sdk  README.md                           the content plane (duplex: projection in, citation out)
 
-Video, checked against source, 2026-10-14:
-  lloyal-sdk  packages/ui/src/video-player.tsx     VideoPlayer: Video.js skin; thumbnails, captions and chapter tracks from videoTracks
-  lloyal-sdk  packages/ui/src/video-view.ts        videoView, videoTracks
-  lloyal-sdk  packages/ui/src/video.ts            ingestVideo: push the original, sample frames, cut soundtrack windows, one video:compose
-  lloyal-sdk  packages/rig/src/video.ts           useVideoCommands: video:describe / video:compose; transcription read from Services
-  lloyal-sdk  packages/media/src/video.ts         composeVideo, resolveVideo, VideoMeta, the transcript representation
-  lloyal-sdk  packages/media/src/content-urls.ts  pushBlob (chunked, resumable), parseAttachmentMoment
-  lloyal-sdk  packages/rig/src/distribution.ts    BlobUploads: the /v2 blob upload sessions
-  lloyal-sdk  packages/rig/src/content-routes.ts  range reads of the original
-
-Video against llama.cpp, checked against source, 2026-10-21:
-  liblloyal   include/lloyal/mtmd.hpp             video_layout: "Video:", a timestamp after each frame crossing the next interval, frames mergeable
-  liblloyal   tests/integration/multimodal_integration_test.cpp  "a video's frames tokenize as the server's video does" (chunks, tokens, rows, positions)
-  llama.cpp   tools/mtmd/mtmd-helper.h/.cpp       fps_target 4, timestamp_interval_ms 5000; ffmpeg/ffprobe subprocesses; -f rawvideo rgb24 (no audio); per-frame ids
-  lloyal.node CMakeLists.txt                      MTMD_VIDEO OFF (FORCE): no runtime ffmpeg
-  lloyal-sdk  packages/media/src/video-sampling.ts  frameTimes: 4 fps, maxFrames 64 spread evenly
-  lloyal-sdk  packages/media/src/image.ts         sharp normalises images before the projector
+Video, checked against source, 2026-10-24:
+  lloyal-sdk  packages/rig/src/admitted.ts        a video is one input and named among the videos
+  the video pages                                 video.md and the pages it links
 -->
 
 The research template takes attachments: drop a photo, a PDF or a video on the composer and ask about it. This page is how that works, and what to copy into your own harness.
@@ -101,95 +87,11 @@ It declares two services — `reranker` and `vision` — so the harness needs bo
 
 ## Video {#video}
 
-A video reaches the model as one video, the way llama.cpp's own server hands one over: its sampled frames in order, marked so that a projector with temporal merge (the Qwen-VL family) fuses neighbouring frames in pairs, with a timestamp every five seconds by default. It is one marker and one input, not a stack of separate pictures.
-
-The page does the decoding, because that is where a codec is: the browser's WebCodecs, with Mediabunny reading the container. The host never decodes video. Attaching one takes four steps, and `ingestVideo` from `@lloyal-labs/ui` runs them:
-
-1. **The original is pushed as a blob**, in chunks, over the [OCI distribution](https://github.com/opencontainers/distribution-spec) blob upload API the host serves at `/v2/…/blobs/uploads/`. A dropped chunk resumes from what the host reports it holds, and the blob is admitted only under the digest of the whole file. It is kept: it is what the reader brought.
-2. **Frames are sampled** at the host's rate ([`attachments.video`](/harness-yml#attachments): 4 per second by default, fewer for a long clip, each at most 640 pixels on its longer edge) and each enters the store as an image.
-3. **The soundtrack is cut into windows** as long as the spacing of the frames' timestamps (five seconds by default, wider on a sparsely sampled clip), each ending at a quiet moment, and each enters as audio, but only when something the harness runs hears: a `transcription` service, or an embedding model that hears, as the default EmbeddingGemma 2 does with its projector.
-4. **One `video:compose` command** names them all. The host checks every reference, transcribes each window when a transcription service is bound, and commits one attachment: the frames, the soundtrack windows, the transcript, the timeline and the original.
-
-The transcript reaches the model as text beside the frames, at the timestamp that ends each window, so what was said sits next to what was shown. Without a `transcription` block the video still arrives, with no transcript and no error. When something hears, the host tells the page the limits every one of them admits, and the page cuts each window short enough, and writes it at a rate low enough, for each to admit it. An embedding model that hears is given the soundtrack itself, window by window after the frames, so a video's vector carries what was heard as well as what was seen.
-
-Serve the command and let the composer take video. Hand it the harness's config reader, as the template hands its briefs: it reads [`attachments.video`](/harness-yml#attachments) each time a video is described or composed, so a change applies to the next video, and a `maxDurationSeconds` set there refuses a longer clip before any byte is pushed. Without the reader, rig's defaults stand and no length limit applies.
-
-```ts label="src/app.ts"
-import { useVideoCommands } from "@lloyal-labs/rig";
-
-const video = yield* useVideoCommands({ wire, config: runner.config });
-yield* serveCommands<Command>(commands, [brief, library, voice, video /* , … */], serveDefaults({ wire, run }));
-```
-
-```ts label="src/ui/parts/Composer.tsx"
-import { ingestVideo, useHarness, useVideoCapabilities } from "@lloyal-labs/ui";
-import { isVideoContainer } from "@lloyal-labs/media";
-
-const { bridge } = useHarness();
-const video = useVideoCapabilities();
-// in the attach handler, the bytes decide:
-const root = isVideoContainer(new Uint8Array(await file.slice(0, 64).arrayBuffer()))
-  ? (await ingestVideo({ origin, bridge, file, capabilities: video, onProgress })).root
-  : await ingestMedia(origin, new Uint8Array(await file.arrayBuffer()));
-```
-
-From there a video is an attachment like any other: `admitted` checks it, and `seen.bitmaps` carries it as one input. `seen.videos` names the videos, so the question can tell the model each one's address, and a report can cite a moment as `attachment://<digest prefix>/t/0m5.00s`. `parseAttachmentMoment` reads that back in the view.
-
-Show and play it with ui's video components, built on Video.js and themed from your `--harness-*` variables like the rest of `@lloyal-labs/ui`:
-
-```tsx
-import { Lightbox, VideoCard, videoView } from "@lloyal-labs/ui";
-import type { VideoView } from "@lloyal-labs/ui";
-import "@lloyal-labs/ui/video.css"; // once, in the page entry
-
-const [open, setOpen] = useState<VideoView | null>(null);
-const view = videoView(origin, digest, asset);            // asset from useAssets
-<VideoCard video={view} onOpen={() => setOpen(view)} />   // poster, play mark, length
-{open && <Lightbox video={open} onClose={() => setOpen(null)} />}   // the player, while open
-```
-
-The player plays the file as attached, seekable because the content plane answers range requests. Hover or drag its time slider to see the frame the model saw at that moment; the transcript plays as captions. A cited moment opens like a video shared with a time: pass `videoView(origin, digest, asset, moment.tMs)` and it starts there, the time slider broken into a chapter that begins at the moment. Video.js loads only when a video is first opened.
-
-On desktop, add `media-src attachment: blob:` to the page's Content-Security-Policy (the player's tracks are `blob:` URLs); in development, proxy `/v2` to the host beside `/v1/media`, with `xfwd: true` on a proxy that rewrites `Host` (`changeOrigin`), so the host recognises the page's uploads as its own.
-
-The host's blob surface is not a general registry. By default it admits only the original of a video, recognised by its container signature, and serves no blob's bytes by digest: a pushed original is read back through the attachment that holds it. `BlobUploads(…, { registry: true })` makes it the full registry that the OCI distribution conformance suite runs against. A write, whether an upload or a dictation, is accepted only from the host's own pages, or the origin the host is configured to allow: a request whose `Origin` names another host is refused with 403. A production reverse proxy that rewrites `Host` must set `X-Forwarded-Host`.
+A video is an attachment like any other: `admitted` checks it, and `seen.bitmaps` carries it as one input, its frames in order with time marks and its transcript beside them. `seen.videos` names the videos, so the question can tell the model each one's address. The page decodes it, the host stores it by digest, and the embedding service can search it by what was seen, said and heard. [Video](/video) is the whole of it: how a video is taken, stored, projected, searched, cited and played.
 
 ### How it compares with llama.cpp {#video-and-llama-cpp}
 
-**What the model receives is laid out by the same rule.** lloyal lays a video out as llama.cpp's own video helper does, the one behind `llama-server` and `llama-mtmd-cli`:
-
-- the text `Video:`;
-- then each frame;
-- a timestamp such as `[0m5.00s]` after every frame that crosses the next mark, every five seconds by default; on a sparsely sampled clip the marks are spaced at least twice the widest gap between frames, so no two neighbouring frames are both followed by one;
-- every frame free to fuse with its neighbour.
-
-A test in liblloyal holds the two to the same result from the same frames and mark spacing, chunk for chunk: the same text tokens, the same image rows and the same positions. What differs is what lloyal chooses before the layout: which frames, and on a sparsely sampled clip, the spacing of its marks.
-
-**Everything in front of that layout differs:**
-
-| | llama.cpp / `llama-server` (`MTMD_VIDEO=ON`) | lloyal |
-|---|---|---|
-| Who decodes | mtmd shells out to `ffmpeg` and `ffprobe` on the host | The page, with WebCodecs and Mediabunny; the host never runs ffmpeg |
-| What native code receives | A video file | Decoded frames and their times; `MtmdSource` never sees a container |
-| Sampling | 4 frames a second by default (`--video-fps`), no frame cap | A frame rate up to a frame cap, then spread evenly, and a longest edge, each an [`attachments.video`](/harness-yml#attachments) setting; JPEG |
-| Frame times | Computed from the frame's index and the rate | The actual sample times, in milliseconds |
-| Frame ids | `"{hash}+{n}"` per frame, which `llama-server` keys its cache on | None |
-| Sound | Not part of the helper's layout | Transcribed separately and placed as text at its own time between frames; an embedding model that hears is given the windows themselves |
-| Long clips | Fuses at its default rate, where frames are dense; at a rate low enough that frames fall further apart than the marks, nothing fuses | Keeps fusing: once frames are sparse, marks are laid out at twice the widest gap between frames instead of every five seconds |
-| WebP images | Decoded through ffmpeg | Normalised by the host before native code |
-
-**What this unlocks over stock llama.cpp:**
-
-- **Video without ffmpeg on the machine.** Stock video input needs an `ffmpeg` binary on the host's `PATH`, started as a subprocess for every clip. lloyal.node builds mtmd with that support off, and the browser does the decoding. A desktop app ships with nothing to install beside the model. A served host never runs an external decoder over a file a stranger dropped in, and never parses its container.
-- **The same input on every machine.** Native inference is given the frames the page sampled, not whatever an installed ffmpeg build decodes. A run reads the same input on every platform the addon ships for, and replays the same input from the store. The answers to it can still differ between machines, as any model's do across backends.
-- **Video on the web, decoded by the reader's own machine.** The page holds the file and the browser decodes it, often in hardware, so a clip works the same in a browser tab as in the desktop app. The original uploads in chunks that resume after a dropped connection, and the host keeps it to play back.
-- **The model hears the video.** The stock helper reads the picture only. lloyal transcribes the soundtrack and places each passage at its own time between the frames, so the model can answer what someone says at a moment, or what a slide shows while they talk over it. An embedding model that hears is given the soundtrack itself, so a search finds a moment by its sound, not only by its words.
-- **Moments a reader can open.** Timestamps are the times the frames were sampled at, so a report can cite `attachment://<digest prefix>/t/1m24.87s` and the player opens at the frame the model saw. The time slider shows those frames, and the transcript plays as captions.
-- **One projection for every agent.** A video is projected once, onto the conversation, and every agent forks from it. Ten agents asking about one clip pay for it once.
-- **A cost known before anything is read.** A video is capped at its frame limit, 64 by default, and priced exactly before it is projected. With an [attachment budget](#attachment-budget), one that would not fit is refused with a sentence that says why, instead of failing halfway through a turn.
-- **Any image the host can read.** Images are normalised on the way in, so WebP, HEIF and other formats reach the projector as formats it reads directly, with no ffmpeg involved.
-
-**What it costs.** Stock sampling takes every quarter second of a clip, so it sees every moment, but a ten-minute clip becomes 2,400 frames, far more than a 32,768-token context holds. The frame cap, 64 by default and set by [`attachments.video.maxFrames`](/harness-yml#attachments), is what lets a video fit beside the question; the price is coverage on a long clip. At the default an hour-long recording is seen as one frame about every 56 seconds. Frames keep fusing at any length, because a sparse clip's time marks are spaced at least two frames apart; the trade is coarser marks, about one every 112 seconds for an hour.
+lloyal lays a video out as llama.cpp's own video helper does, and differs in everything before that layout: who decodes, what is sampled, what is heard. The comparison is on [Video](/video#video-and-llama-cpp).
 
 ## Tune what an image costs {#image-cost}
 
