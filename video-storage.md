@@ -1,7 +1,7 @@
 ---
 title: "Content-addressed video storage"
-description: "A stored video is one OCI image manifest: its frames, soundtrack windows, transcript and original as layers, its timeline as the typed config. One digest pins the whole video, a frame is stored once however many videos share it, and every read is checked against its digest."
-lede: "One digest pins a whole video. A frame is stored once, and every read is checked."
+description: "A stored video is one OCI image manifest: its frames, soundtrack windows, transcript and original as layers, its timeline as the typed config. One digest pins the whole video, a frame is stored once however many videos share it, and every whole read is checked against its digest."
+lede: "One digest pins a whole video. A frame is stored once, and every whole read is checked."
 ---
 
 <!--
@@ -50,9 +50,11 @@ A timeline that would not read back, frames out of order or past the clip, a sou
 
 The transcript is `{ provenance, segments[] }`, each segment `{ startMs, endMs, text, language? }` on the same clock.
 
-## Every read is checked {#checked}
+## Every whole read is checked {#checked}
 
-A blob is read back only if its bytes still hash to its name. A frame, a window, the timeline or the transcript that has drifted on disk raises `ContentLost`, and a video whose transcript drifted refuses to be replayed rather than replaying something else. The content plane never serves drifted bytes under their digest.
+A blob is read back only if its bytes still hash to its name. A frame, a window, the timeline or the transcript that has drifted on disk raises `ContentLost`, and a video whose transcript drifted refuses to be replayed rather than replaying something else. The content plane never serves drifted bytes under their digest from a whole read.
+
+A range read is not checked: it never holds the whole blob, so there is nothing to hash. That is how the player streams the original, so a drifted original plays its drifted bytes. What the model reads, the frames, the windows and the transcript, is always read whole.
 
 The store never deletes. A blob is written beside a temporary name and moved into place, so a reader never sees half a blob.
 
