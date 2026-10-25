@@ -43,12 +43,13 @@ const root = isVideoContainer(new Uint8Array(await file.slice(0, 64).arrayBuffer
   : await ingestMedia(origin, new Uint8Array(await file.arrayBuffer()));
 ```
 
-Serve the commands on the host, with the harness's config reader, so each video is described and composed under [`attachments.video`](/harness-yml#attachments) as it stands when it arrives:
+Serve the commands on the host, with the harness's config reader, so each video is described and composed under [`attachments.video`](/harness-yml#attachments). The video keys are set in `harness.yml` and fixed for the run, since the page samples by the policy it was described. The group answers only once it is served with the others:
 
 ```ts label="src/app.ts"
-import { useVideoCommands } from "@lloyal-labs/rig";
+import { serveCommands, serveDefaults, useVideoCommands } from "@lloyal-labs/rig";
 
 const video = yield* useVideoCommands({ wire, config: runner.config });
+yield* serveCommands<Command>(commands, [brief, library, voice, video /* , … */], serveDefaults({ wire, run }));
 ```
 
 ## Sampling {#sampling}

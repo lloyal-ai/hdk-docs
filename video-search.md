@@ -112,12 +112,12 @@ const index = new VectorIndex<Attachment>({ widths: embedder.dimensions });
 windows.forEach((window, i) => index.add(window, vectors[i]));
 
 const [query] = yield* embedder.embed([{ parts: ["a cat"], role: "query" }]);
-const best = index.search(query, { k: 20, scan: { width: 128, keep: Math.ceil(index.size / 4) } });
+const best = index.search(query, { k: 20, scan: { width: 128, keep: Math.max(20, Math.ceil(index.size / 4)) } });
 ```
 
 On EmbeddingGemma 2's vectors of all 615 frames of a ten-minute pet compilation, a 128-wide scan that keeps a quarter of the frames, decided at 768, answers exactly the full 768-wide scan's first 20 frames, in order, for "a cat", "a dog" and "a kitten".
 
-Two vectors are only ever compared at one width: both are cut to it and made unit length again. A width the model was not trained to be cut to is refused, naming the ones it was; a scan that keeps fewer entries than it is asked for, or is not narrower than the answer, is refused. `stored` keeps entries at a narrower width, so a long index stays small, and then no search can compare wider than it.
+Two vectors are only ever compared at one width: both are cut to it and made unit length again. A width the model was not trained to be cut to is refused, naming the ones it was; a scan that keeps fewer entries than it is asked for, or is not narrower than the answer, is refused, which is why the shortlist above never keeps fewer than the 20 asked for. `stored` keeps entries at a narrower width, so a long index stays small, and then no search can compare wider than it.
 
 ## Sensor fusion {#sensor-fusion}
 

@@ -49,7 +49,7 @@ const digest = moment && resolvePrefix(moment.prefix, digests);
 
 What a harness tells its model about citing a moment is the harness's own prompt. Give the model each video's address and the form to cite it in, and it copies them.
 
-A view finds a cited moment however the model wrote it: a markdown link whose address is the moment, or the bare address in a sentence. `Markdown` and `linksOf` from `@lloyal-labs/ui/prose` read with one grammar, `REMARK_PLUGINS`, which links a bare attachment address as GitHub's flavour links a bare URL, so a moment the page draws as a link is one `linksOf` reports. An address inside a link or in code is left as it is, and the sentence's closing punctuation stays outside it:
+A view finds a cited moment however the model wrote it: a markdown link whose address is the moment, or the bare address in a sentence. `Markdown` from `@lloyal-labs/ui` and `linksOf` from `@lloyal-labs/ui/prose` read with one grammar, `REMARK_PLUGINS`, which links a bare attachment address as GitHub's flavour links a bare URL, so a moment the page draws as a link is one `linksOf` reports. An address inside a link or in code is left as it is, and the sentence's closing punctuation stays outside it:
 
 ```ts
 import { linksOf } from "@lloyal-labs/ui/prose";

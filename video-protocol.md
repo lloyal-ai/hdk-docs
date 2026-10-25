@@ -49,7 +49,7 @@ The commands and events travel on the harness's wire like any other, and carry r
 
 | Field | Is |
 |---|---|
-| `sampling` | `{ fps, timestampIntervalMs, maxFrames, maxEdgePx }`: how the host samples, from [`attachments.video`](/harness-yml#attachments) |
+| `sampling` | `{ fps, timestampIntervalMs, maxFrames, maxEdgePx, soundtrackWindowMs }`: how the host samples, from [`attachments.video`](/harness-yml#attachments). `soundtrackWindowMs` is the length the page cuts the soundtrack into, in milliseconds, from `soundtrackWindowSeconds` |
 | `maxDurationMs` | The longest clip the host composes, when it sets a limit. The page refuses a longer one before pushing any byte. |
 | `soundtrack` | The limits each soundtrack window must meet to be kept, or `null` when nothing the host runs hears. The page cuts the soundtrack only when there are limits. |
 

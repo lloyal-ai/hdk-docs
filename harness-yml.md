@@ -157,16 +157,16 @@ The CLI writes the selection for you: `lloyal models:use <id> [--role llm|rerank
 
 ## The attachments family {#attachments}
 
-What a turn's attachments may take of the context, and how a video is sampled. Spread `attachmentSettings` from `@lloyal-labs/rig` into your `defineConfig` beside `modelSettings`; each bound is enforced by the load and said by its refusal.
+What a turn's attachments may take of the context, and how a video is sampled. Spread `attachmentSettings` from `@lloyal-labs/rig` into your `defineConfig` beside `modelSettings`; each bound is enforced by the load and said by its refusal. The video keys are set in `harness.yml` and read when the harness starts: the page samples by the policy it was described, so a change takes a restart.
 
 | Key | Takes | Applies | What it is |
 | --- | --- | --- | --- |
 | `attachments.context` | a number from 0.1 to 1 | session | The share of the context a turn's attachments may fill, which the app passes to `admitted`. A tenth is the least: in a 4,096-cell context that holds one 640-pixel frame, about 410 cells. |
-| `attachments.video.fps` | a number from 0.1 to 30 | session | Frames a second a video is sampled at, up to its frame cap; a longer clip is sampled more sparsely. Past 30 a source rarely has more distinct frames, and repeats are dropped; under 0.1 a moment of speech has no picture. |
-| `attachments.video.maxFrames` | a whole number from 1 to 3600 | session | The most frames one video keeps. What a video costs is still measured when it is attached, and refused if it does not fit; 3,600 is an hour at one frame a second. |
-| `attachments.video.maxEdgePx` | a whole number from 64 to 1920 | session | The longest edge a frame is scaled to, in pixels: detail against tokens per frame. 1,920 is a full HD frame; under 64 a frame shows nothing to read. |
-| `attachments.video.soundtrackWindowSeconds` | a number from 1 to 60 | session | How long each window a video's soundtrack is cut into runs, in seconds. Each window is transcribed and heard on its own and becomes one caption: shorter gives finer captions, search by sound and placement of what was said, longer gives fewer transcriptions. Cut at the quietest point near its end, and never longer than the services that hear admit. Under 1 a window holds no word; past 60 no service admits one by default. |
-| `attachments.video.maxDurationSeconds` | a whole number from 1 to 86400 | session | The longest clip a harness takes, refused before any byte is pushed; unset, a clip of any length is taken. Length costs upload and one transcription per soundtrack window. A limit set here is at most a day. |
+| `attachments.video.fps` | a number from 0.1 to 30 | boot | Frames a second a video is sampled at, up to its frame cap; a longer clip is sampled more sparsely. Past 30 a source rarely has more distinct frames, and repeats are dropped; under 0.1 a moment of speech has no picture. |
+| `attachments.video.maxFrames` | a whole number from 1 to 3600 | boot | The most frames one video keeps. What a video costs is still measured when it is attached, and refused if it does not fit; 3,600 is an hour at one frame a second. |
+| `attachments.video.maxEdgePx` | a whole number from 64 to 1920 | boot | The longest edge a frame is scaled to, in pixels: detail against tokens per frame. 1,920 is a full HD frame; under 64 a frame shows nothing to read. |
+| `attachments.video.soundtrackWindowSeconds` | a number from 1 to 60 | boot | How long each window a video's soundtrack is cut into runs, in seconds. Each window is transcribed and heard on its own and becomes one caption: shorter gives finer captions, search by sound and placement of what was said, longer gives fewer transcriptions. Cut at the quietest point near its end, and never longer than the services that hear admit. Under 1 a window holds no word; past 60 no service admits one by default. |
+| `attachments.video.maxDurationSeconds` | a whole number from 1 to 86400 | boot | The longest clip a harness takes, refused before any byte is pushed; unset, a clip of any length is taken. Length costs upload and one transcription per soundtrack window. A limit set here is at most a day. |
 
 Unset, attachments may fill the whole context, and a video is sampled at 4 frames a second up to 64 frames, each at most 640 pixels on its longer edge, at any length, with its soundtrack cut into 5-second windows. The time marks between frames are not a setting: a video is composed with a mark every five seconds, or, when its frames are sparser, at least twice the widest gap between them, so neighbouring frames keep fusing.
 
@@ -178,7 +178,7 @@ Each key declares when a change to it takes effect, and the settings pane offers
 | --- | --- | --- |
 | `session` | at once, for what runs next; remembered locally | `set_config` — the pane’s control |
 | `reload` | it names the residency: saved now, the next launch loads it | `reload_runtime` — saved, then the process ends and relaunches |
-| `boot` | it sizes the context the process already built | `harness.yml` (or the key’s env), then a restart |
+| `boot` | fixed for the run: it sizes the context the process already built, or the page holds a copy of it, as it holds a video's sampling | `harness.yml` (or the key’s env), then a restart |
 
 Every key of the model family is `reload` or `boot`: the family describes the **running residency**, which a save cannot change, so it stays boot-frozen for the life of the process — what a session reports is what it runs. A served session saves in memory only (its keys read `session`) and cannot reload the runtime: the host chose its model when it started and serves every session from that one residency.
 

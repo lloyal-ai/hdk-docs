@@ -5,8 +5,8 @@ lede: "Every setting has bounds, and a value outside them is refused. Here is wh
 ---
 
 <!--
-Checked against source, 2026-10-24:
-  lloyal-sdk  packages/rig/src/config.ts            attachmentSettings, modelSettings: keys, bounds, defaults
+Checked against source, 2026-10-25:
+  lloyal-sdk  packages/rig/src/config.ts            attachmentSettings, modelSettings: keys, bounds, defaults; the attachments.video keys are boot
   lloyal-sdk  packages/rig/src/video.ts             useVideoCommands reads attachments.video when a video is described or composed
   lloyal-sdk  packages/rig/src/admitted.ts          context, reserve, free
   lloyal-sdk  packages/rig/src/content-routes.ts    maxUploadBytes
@@ -28,7 +28,7 @@ Each key's bounds, default and when a change applies are on [harness.yml](/harne
 | [`attachments.video.soundtrackWindowSeconds`](/harness-yml#attachments) | How long each window of the soundtrack runs. Each is transcribed on its own and becomes one caption, one span of search by sound, and one note beside the frames. Shorter is finer; longer means fewer transcriptions. It doesn't follow the frames' time marks. |
 | [`attachments.video.maxDurationSeconds`](/harness-yml#attachments) | The longest clip a harness takes, refused before any byte is pushed. Unset, a clip of any length is taken; length costs upload and one transcription per soundtrack window. |
 
-The host reads these each time a video is described or composed, so a change applies to the next video. The time marks between frames are not a setting: they follow the frames' spacing, so frames keep fusing at any length.
+These are set in `harness.yml` and fixed for the run: the page samples a clip by the policy the host described to it, so a change takes a restart. The time marks between frames are not a setting: they follow the frames' spacing, so frames keep fusing at any length.
 
 ## Hearing it {#hearing}
 
