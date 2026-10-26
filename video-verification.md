@@ -45,7 +45,7 @@ The footage is third-party video supplied for testing, and none of it is shown h
 615 frames of short pet clips, each clip labelled by what it shows: 62 cats, 40 dogs, and 37 unclear and not scored. Every frame is embedded as an image, and a clip ranks by its best frame.
 
 - The first 20 clips a query for "a cat" ranks, and the first 10 for "a dog", all show that animal.
-- At least 0.9 of the cat clips, and 0.8 of the dog clips, come before any clip of the other animal. On 2026-10-22, 58 of the 62 cat clips came first.
+- Of the first 62 clips a query for "a cat" ranks, as many as there are cat clips, at least 0.9 show a cat; of the first 40 for "a dog", at least 0.8 show a dog. On 2026-10-22, 58 of the first 62 showed a cat.
 - **Coarse to fine:** a 128-wide scan of every frame, with the better half decided at 768, keeps at least 95% of the clips the full 768-wide scan finds.
 
 The limit: a query that names an action can outweigh the object. "A dog jumping" also finds jumping cats.

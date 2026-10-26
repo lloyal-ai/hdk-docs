@@ -61,7 +61,7 @@ The commands and events travel on the harness's wire like any other, and carry r
 |---|---|
 | `GET /v2/` | The API version check |
 | `POST /v2/<name>/blobs/uploads/` | Opens an upload session, or uploads in one request with `?digest=` |
-| `PATCH /v2/<name>/blobs/uploads/<id>` | Appends the next chunk; `Content-Range` must start where the last ended |
+| `PATCH /v2/<name>/blobs/uploads/<id>` | Appends the next chunk. `Content-Range` names its bytes, both ends inclusive, and starts one past the last chunk's end: after `0-99`, the next starts at `100` |
 | `GET /v2/<name>/blobs/uploads/<id>` | How far the session got, to resume from |
 | `PUT /v2/<name>/blobs/uploads/<id>?digest=` | Closes the session: the whole is checked against the digest, then admitted |
 | `DELETE /v2/<name>/blobs/uploads/<id>` | Cancels the session |
