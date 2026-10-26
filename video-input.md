@@ -63,7 +63,7 @@ The settings and their bounds are on [harness.yml](/harness-yml#attachments). [C
 
 ## Transcription {#transcription}
 
-With a [`transcription`](/harness-yml#transcription) service bound, the host transcribes each soundtrack window when the video is composed. A silent window is skipped. A window the service fails on is reported back as untranscribed, with its reason, and the video is composed without it. Without a transcription service the video still arrives, with no transcript and no error.
+With a [`transcription`](/harness-yml#transcription) service bound, the host transcribes each soundtrack window when the video is composed. A silent window is skipped. A window the service fails on is reported back as untranscribed, with its reason. The video keeps that window's recording; only its transcript is missing. Without a transcription service the video still arrives, with no transcript and no error.
 
 ## Swapping the decoder {#decoders}
 
