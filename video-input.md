@@ -16,7 +16,7 @@ Checked against source, 2026-10-24:
   lloyal-sdk  packages/binding/src/video.ts         VideoCommand, VideoEvent, VideoCapabilities
 Tests:
   lloyal-sdk  packages/ui/test/video.test.ts        push, ingest, compose; refused from the container's duration before any byte; abort sends nothing
-  lloyal-sdk  packages/media/test/clip.test.ts      sampling, stamping, mixing, placing late sound, cutting at the mark interval, abort
+  lloyal-sdk  packages/media/test/clip.test.ts      sampling, stamping, mixing, placing late sound, cutting at the policy's window however far apart the marks fall, abort
   lloyal-sdk  packages/rig/test/video-commands.test.ts  describe, compose, transcription, refusals, cancel
   lloyal-sdk  packages/rig/test/distribution.test.ts     chunked push, resume, digest, refusals
 -->
@@ -34,7 +34,7 @@ A video enters a harness in one place, the page that holds the file, and becomes
 
 ```ts label="src/ui/parts/Composer.tsx"
 import { ingestVideo, useHarness, useVideoCapabilities } from "@lloyal-labs/ui";
-import { isVideoContainer } from "@lloyal-labs/media";
+import { ingestMedia, isVideoContainer } from "@lloyal-labs/media";
 
 const { bridge } = useHarness();
 const video = useVideoCapabilities();
@@ -63,7 +63,7 @@ The settings and their bounds are on [harness.yml](/harness-yml#attachments). [C
 
 ## Transcription {#transcription}
 
-With a [`transcription`](/harness-yml#transcription) service bound, the host transcribes each soundtrack window when the video is composed. A silent window is skipped. A window the service fails on is reported back as untranscribed, with its reason. The video keeps that window's recording; only its transcript is missing. Without a transcription service the video still arrives, with no transcript and no error.
+With a [`transcription`](/harness-yml#transcription) service bound, the host transcribes each soundtrack window when the video is composed. A silent window is skipped. A window the service fails on is reported back as untranscribed, with its reason. The video keeps that window's recording; only its transcript is missing. Without a transcription service the video still arrives, with no transcript and no error. When an embedding model that hears is bound, the soundtrack is still cut and kept, and each window comes back untranscribed, because transcription is not configured.
 
 ## Swapping the decoder {#decoders}
 
@@ -99,7 +99,7 @@ Aborting `ingestVideo` stops the decoder and ingests nothing more. Aborted as co
 
 ## Progress {#progress}
 
-The page reports `sampling`, then `ingesting` with how many of the frames are in. The host reports `transcribing`, window by window, as `video:progress`.
+`ingestVideo` reports `uploading` with how much of the original is pushed, `sampling`, `ingesting` with how many of the frames are in, then `composing` once it sends the compose. While the host transcribes, it reports each window as `video:progress`, which `ingestVideo` passes on as `transcribing`.
 
 ## Live capture {#live-capture}
 

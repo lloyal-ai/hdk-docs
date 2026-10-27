@@ -19,7 +19,7 @@ The comparison with llama.cpp, moved from attachments.md, checked against source
   liblloyal   tests/integration/multimodal_integration_test.cpp  "a video's frames tokenize as the server's video does" (chunks, tokens, rows, positions)
   llama.cpp   tools/mtmd/mtmd-helper.h/.cpp       fps_target 4, timestamp_interval_ms 5000; ffmpeg/ffprobe subprocesses; -f rawvideo rgb24 (no audio); per-frame ids
   lloyal.node CMakeLists.txt                      MTMD_VIDEO OFF (FORCE): no runtime ffmpeg
-  lloyal-sdk  packages/media/src/video-sampling.ts  frameTimes: 4 fps, maxFrames 64 spread evenly
+  lloyal-sdk  packages/media/src/clip.ts            frameTimes: 4 fps, maxFrames 64 spread evenly
   lloyal-sdk  packages/media/src/image.ts         sharp normalises images before the projector
 -->
 

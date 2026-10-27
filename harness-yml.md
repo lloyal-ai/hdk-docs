@@ -17,7 +17,7 @@ Every declared key is resolved through the same four rungs, highest first, and t
 
 | Rung | Where | Temper |
 | --- | --- | --- |
-| `env` | the environment variable a key names | a value the key cannot take falls through to the rung beneath; an integer key parses digits only |
+| `env` | the environment variable a key names | a value the key cannot take falls through to the rung beneath; a numeric key reads the text as a decimal, then judges it as any rung's value |
 | `file` | `harness.json`, beside the manifest | machine-written by the settings pane; a hand edit the key cannot take falls through |
 | `yml` | `harness.yml`, committed | a deliberate deploy: a value the key cannot take **fails the boot**, naming the path and what it takes |
 | `default` | the key’s declaration | stands when no rung supplies a value; a key with a default is always present |
@@ -43,6 +43,14 @@ model:
 sources:
   outputDir: reports
 
+attachments:
+  context: 0.7
+  video:
+    fps: 4
+    maxFrames: 64
+    maxEdgePx: 640
+    soundtrackWindowSeconds: 5
+
 defaults:
   effort: low
   guards:
@@ -52,7 +60,7 @@ defaults:
       scope: cohort
 ```
 
-The `research` template’s manifest as scaffolded. `model` is the family every harness ships; `sources` and `defaults` are this template’s own keys; `targets` is the scaffold’s.
+The `research` template’s manifest as scaffolded. `model` is the family every harness ships; `attachments` is the attachments family, which the template spreads in; `sources` and `defaults` are this template’s own keys; `targets` is the scaffold’s.
 
 ## The model family {#the-model-family}
 
@@ -114,7 +122,7 @@ The encoder a harness indexes with: one vector per input, where an input is text
 | `model.embedding.vision.minTokens` | a positive integer | reload | The floor on how many tokens the embedding projector reads one image or frame as: detail against cost. A catalog projector refuses a value outside the range it was trained for. |
 | `model.embedding.vision.maxTokens` | a positive integer | reload | The ceiling on what one image or frame costs the embedding context; lower it to fit more frames in one input. |
 
-Unset, `context` is 8,192 for EmbeddingGemma 2, its training length, and 2,048 for nomic. An input is encoded whole, so the context is also the batch. EmbeddingGemma 2's projector reads one image as 70 to 1,120 tokens: `vision.minTokens` or `vision.maxTokens` outside that range is refused, and so is either one on a model with no projector. A `path:` model with no `pooling` is refused at bind, naming the key.
+Unset, `context` is 8,192 for EmbeddingGemma 2, its training length, and 2,048 for nomic. An input is encoded whole, so the context is also the batch. EmbeddingGemma 2's projector reads one image as 70 to 1,120 tokens: `vision.minTokens` or `vision.maxTokens` outside that range is refused, and so is either one on a model with no projector. A `path:` model with no `pooling` is refused before anything is fetched, naming the key.
 
 ### transcription {#transcription}
 
@@ -208,7 +216,8 @@ export type Config = ConfigOf<typeof config>;
 | `env` | the environment variable that outranks both files |
 | `cli` | the name a boot’s overrides carry it under |
 | `path` | a path: `~` expanded and made absolute at the boundary, whichever rung supplied it |
-| `integer` | a positive integer; the env rung parses digits, the others refuse anything else |
+| `integer` | a whole number: positive, or within `min` and `max` when it has them |
+| `min`, `max` | the least and most a number may be, inclusive; a committed value outside them fails the load, naming the range, and a local one falls through |
 | `oneOf` | the values it may take; a committed value outside them fails the load |
 | `check` | any other rule; a committed value that fails it fails the load, a local one falls through |
 | `default` | what stands when no rung supplies a value — inside a model block, only once the block is present |

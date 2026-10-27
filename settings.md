@@ -21,7 +21,6 @@ Add a line to the table:
 ```ts label="src/config.ts"
 export const config = defineConfig({
   ...modelSettings,
-  ...attachmentSettings,
   "sources.outputDir": { yml: "sources.outputDir", cli: "outputDir", path: true, default: ".", describe: "Where the session trace is written." },
   "answer.words": { yml: "answer.words", integer: true, default: 400, describe: "How long a settled article may run." },
 });
@@ -61,7 +60,8 @@ Because it is read at each use, a save in the dev pane applies at the next read 
 | `env` | An environment variable that outranks both files |
 | `cli` | A flag name a boot's overrides carry it under |
 | `path` | A path: `~` expanded and made absolute, whichever layer supplied it |
-| `integer` | A positive integer |
+| `integer` | A whole number: positive, or within `min` and `max` |
+| `min`, `max` | The least and most a number may be, inclusive |
 | `oneOf` | The values it may take |
 | `check` | Any other rule |
 | `default` | What stands when nothing supplies a value |

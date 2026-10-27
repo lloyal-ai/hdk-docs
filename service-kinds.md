@@ -23,6 +23,19 @@ A provider row is what a contributor writes, from the contract alone: a `name` a
 
 ```ts label="packages/rig/src/providers/index.ts"
 export const providers: { [K in Service]: ProviderRow<K> } = {
+  transcription: {
+    name: "transcription model",
+    projector: {
+      role: "transcription.projector", name: "audio projector",
+      // A decoder needs its projector, and a file answers that, so the step refuses rather than the row.
+      select: block => pairedProjector("transcription", block)
+        ?? fail("set model.transcription.projector.id or model.transcription.projector.path; no audio projector follows from this decoder"),
+    },
+    bind: (artifact, block, projector) => {
+      if (!projector) throw new Error("transcription requires its audio projector");
+      return createTranscriber(artifact, projector, block);
+    },
+  },
   reranker: {
     name: "reranker",
     bind: (artifact, block) =>
@@ -60,15 +73,6 @@ export const providers: { [K in Service]: ProviderRow<K> } = {
         ...(projector ? { projector, imageMinTokens: block.vision?.minTokens, imageMaxTokens: block.vision?.maxTokens } : {}),
       });
     },
-  },
-  transcription: {
-    name: "transcription model",
-    projector: {
-      role: "transcription.projector", name: "audio projector",
-      // A decoder needs its projector, and a file answers that, so the step refuses rather than the row.
-      select: block => pairedProjector("transcription", block) ?? fail("set model.transcription.projector.id or .path"),
-    },
-    bind: (artifact, block, projector) => createTranscriber(artifact, projector, block),
   },
 };
 ```
