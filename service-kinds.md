@@ -4,8 +4,6 @@ description: "For framework contributors: how a new kind of model beside the tru
 lede: "For contributors to the platform: a new kind of service is four places, and the compiler names whichever you skip."
 ---
 
-<!-- Moved unchanged from Services (2026-09-30): the contributor half of that page. -->
-
 This page is for contributors to `@lloyal-labs/rig`. To **use** a service, see [Services](/services).
 
 ## Adding a kind {#adding-a-kind}
@@ -21,15 +19,30 @@ Adding a service touches four places, and the compiler names whichever you skip.
 
 ### The provider {#the-provider}
 
-A provider row is what a contributor writes, from the contract alone. Four optional cells; a row has one of the two binding cells, `derive` only when a block can mean something without naming a model, and `projector` only when the model binds beside a second artifact.
+A provider row is what a contributor writes, from the contract alone: a `name` and five optional cells. A row has one of the two binding cells, `derive` only when a block can mean something without naming a model, `projector` only when the model binds beside a second artifact, and `refuse` only when a selection can still be unbindable in a way no file answers.
 
 ```ts label="packages/rig/src/providers/index.ts"
 export const providers: { [K in Service]: ProviderRow<K> } = {
+  transcription: {
+    name: "transcription model",
+    projector: {
+      role: "transcription.projector", name: "audio projector",
+      // A decoder needs its projector, and a file answers that, so the step refuses rather than the row.
+      select: block => pairedProjector("transcription", block)
+        ?? fail("set model.transcription.projector.id or model.transcription.projector.path; no audio projector follows from this decoder"),
+    },
+    bind: (artifact, block, projector) => {
+      if (!projector) throw new Error("transcription requires its audio projector");
+      return createTranscriber(artifact, projector, block);
+    },
+  },
   reranker: {
+    name: "reranker",
     bind: (artifact, block) =>
       createReranker(artifact, { nCtx: block.context, instruction: block.instruction }),
   },
   vision: {
+    name: "vision projector",
     derive: ({ llm }) => {
       if (llm.path || !llm.id) return undefined;               // bytes the catalog cannot pair
       const paired = catalogEntry("llm", llm.id)?.vision;
@@ -39,22 +52,39 @@ export const providers: { [K in Service]: ProviderRow<K> } = {
       ({ mmprojPath: artifact, imageMinTokens: block.minTokens, imageMaxTokens: block.maxTokens }),
   },
   embedding: {
-    bind: (artifact, block) =>
-      createEmbedder(artifact, { nCtx: block.context, pooling: embeddingPooling(block) }),
-  },
-  transcription: {
-    projector: { role: "transcription.projector", name: "audio projector", select: transcriptionProjector },
-    bind: (artifact, block, projector) => createTranscriber(artifact, projector, block),
+    name: "embedding model",
+    derive: () => ({ id: "embeddinggemma-2-q8" }),
+    projector: {
+      role: "embedding.projector", name: "embedding projector",
+      select: block => pairedProjector("embedding", block),
+    },
+    // Pooling, a context longer than the model was trained to read, image detail outside its projector's range.
+    refuse: (block) => {
+      const binding = embeddingBinding(block);
+      return "refused" in binding ? binding.refused : undefined;
+    },
+    bind: (artifact, block, projector) => {
+      const binding = embeddingBinding(block);
+      if ("refused" in binding) throw new Error(binding.refused);
+      const { framing, dimensions, recommendedContext } = catalogedEmbedding(block) ?? {};
+      return createEmbedder(artifact, {
+        nCtx: block.context ?? recommendedContext, pooling: binding.pooling,
+        ...(framing ? { framing } : {}), ...(dimensions ? { dimensions } : {}),
+        ...(projector ? { projector, imageMinTokens: block.vision?.minTokens, imageMaxTokens: block.vision?.maxTokens } : {}),
+      });
+    },
   },
 };
 ```
 
 | Cell | Says |
 | --- | --- |
-| `derive(of)` | which model backs the service when its block names none, given the llm’s selection; `undefined` refuses, naming `model.<name>.id` |
+| `name` | what a reader calls the thing the row acquires, "the reranker" or "the embedding projector", as the installer names its step |
+| `derive(of)` | which model backs the service when its block names none, from the llm’s selection or a default of the service’s own. Every other cell reads the block with that model in it, so a derived model is paired, refused and bound as a named one; `undefined` refuses, naming `model.<name>.id` |
 | `bind(artifact, block, projector?)` | the artifact as the instance `service(name)` answers — an Effection resource, so the instance lives as long as the scope that bound it and is torn down with it; a row with a `projector` cell receives that artifact third |
 | `trunk(artifact, block)` | the options the artifact contributes to the resident context; typed only for a service whose map entry is a `Trunk`, so an instance service cannot accidentally be folded into the trunk |
-| `projector` | a second artifact the service binds beside its model, with the role it is slotted under and how it is selected from the block: paired from the catalog by the decoder’s id, or named by `projector.id` or `projector.path`. The installer gives it a step of its own, and `bind` receives it as its third argument. |
+| `projector` | a second artifact the service binds beside its model, with the role it is slotted under and how it is selected from the block: paired from the catalog by the model’s id, or named by `projector.id` or `projector.path`. A model with no pair, such as a text-only embedding model, has no projector step at all. The installer gives it a step of its own, and `bind` receives it as its third argument. |
+| `refuse(block)` | why a block that selects a model still cannot be bound in a way no file answers, a pooling nothing says or a context the model was not trained for, said at plan time, before a byte is fetched or the trunk loads; `undefined` when there is nothing to say. A refusal a file does answer, a decoder with no projector, belongs to the projector's `select`, so the installer can offer that file at its step |
 
 `block` is the service’s `model.<name>` as the layering resolved it, typed from its keys, so a provider reads its tuning without parsing anything. The reranker row is one line; the binding it calls, `createReranker`, is one of the three files in the framework that open a second native context (the embedder’s `createEmbedder` and the transcriber’s `createTranscriber` are the others) and compose a runtime primitive over it, and each is its own file so a test can stand a fake at that boundary and prove the walk without loading a model. A new kind whose binding needs a different acquirer — a model that is not a `.gguf` in a slot — would add one more optional cell then; nothing today needs it, so it is not in the contract.
 

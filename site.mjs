@@ -40,6 +40,21 @@ export const TABS = [
     ],
   },
   {
+    id: 'video',
+    label: 'Video',
+    pages: [
+      { slug: 'video', label: 'Video' },
+      { slug: 'video-input', label: 'Video input' },
+      { slug: 'video-storage', label: 'Content-addressed video storage' },
+      { slug: 'video-inference', label: 'Video inference' },
+      { slug: 'video-search', label: 'Search inside video' },
+      { slug: 'video-playback', label: 'Playback and citations' },
+      { slug: 'video-configuration', label: 'Configuring video' },
+      { slug: 'video-protocol', label: 'Video protocol reference' },
+      { slug: 'video-verification', label: 'How video is verified' },
+    ],
+  },
+  {
     id: 'abilities',
     label: 'Abilities',
     pages: [

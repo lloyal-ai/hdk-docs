@@ -1,10 +1,10 @@
 ---
 title: "harness.yml"
-description: "Every key a harness is configured with — the model blocks, your own keys, the abilities family, where each rung reads it, what it takes, and when a change applies. Derived from the tables the keys are declared in."
+description: "Every key a harness is configured with — the model blocks, the attachments family, your own keys, the abilities family, where each rung reads it, what it takes, and when a change applies. Derived from the tables the keys are declared in."
 lede: "Every key a harness is configured with: what it takes, where each rung reads it, and when a change applies."
 ---
 
-A harness declares its configuration once, as a table of keys. `harness.yml` is the committed manifest of those keys; everything here is read off the tables the keys are declared in — the model family every harness ships (`modelSettings`) and the template’s own — so the file that disagrees with this page is the one to read.
+A harness declares its configuration once, as a table of keys. `harness.yml` is the committed manifest of those keys; everything here is read off the tables the keys are declared in — the model family every harness ships (`modelSettings`), the attachments family (`attachmentSettings`) and the template’s own — so the file that disagrees with this page is the one to read.
 
 ::: pull
 Naming a model  
@@ -17,7 +17,7 @@ Every declared key is resolved through the same four rungs, highest first, and t
 
 | Rung | Where | Temper |
 | --- | --- | --- |
-| `env` | the environment variable a key names | a value the key cannot take falls through to the rung beneath; an integer key parses digits only |
+| `env` | the environment variable a key names | a value the key cannot take falls through to the rung beneath; a numeric key reads the text as a decimal, then judges it as any rung's value |
 | `file` | `harness.json`, beside the manifest | machine-written by the settings pane; a hand edit the key cannot take falls through |
 | `yml` | `harness.yml`, committed | a deliberate deploy: a value the key cannot take **fails the boot**, naming the path and what it takes |
 | `default` | the key’s declaration | stands when no rung supplies a value; a key with a default is always present |
@@ -43,6 +43,14 @@ model:
 sources:
   outputDir: reports
 
+attachments:
+  context: 0.7
+  video:
+    fps: 4
+    maxFrames: 64
+    maxEdgePx: 640
+    soundtrackWindowSeconds: 5
+
 defaults:
   effort: low
   guards:
@@ -52,7 +60,7 @@ defaults:
       scope: cohort
 ```
 
-The `research` template’s manifest as scaffolded. `model` is the family every harness ships; `sources` and `defaults` are this template’s own keys; `targets` is the scaffold’s.
+The `research` template’s manifest as scaffolded. `model` is the family every harness ships; `attachments` is the attachments family, which the template spreads in; `sources` and `defaults` are this template’s own keys; `targets` is the scaffold’s.
 
 ## The model family {#the-model-family}
 
@@ -101,16 +109,20 @@ The projector through which the reasoning model sees an image. The block with no
 
 ### embedding {#embedding}
 
-The encoder a harness indexes with, one vector per text. A model’s pooling is its own property — Qwen3-Embedding reads its last token, nomic-embed averages — so a catalog id carries it and a local file must say.
+The encoder a harness indexes with: one vector per input, where an input is text, images, a video or a window of one, and recordings, in any order. A block that names no model takes EmbeddingGemma 2 and its projector, which read all of them into one space; `nomic-embed-text-v1.5-q4` embeds text alone at the least cost. A model's pooling is its own property, so a catalog id carries it and a local file must say.
 
 | Key | Takes | Applies | What it is |
 | --- | --- | --- | --- |
-| `model.embedding.id` | a catalog id | reload | The catalog id of the embedding model — the encoder a harness indexes with, one vector per text. |
+| `model.embedding.id` | a catalog id | reload | The catalog id of the embedding model — the encoder a harness indexes with, one vector per input. A block that names no model takes EmbeddingGemma 2 and its projector: one space for text, images, video and sound. |
 | `model.embedding.path` | a path to a `.gguf` | reload | A local .gguf for the embedding model; outranks the catalog id. |
-| `model.embedding.context` | a positive integer | boot | The most tokens one text may embed as; a longer text is refused, never truncated. |
+| `model.embedding.context` | a positive integer | boot | The most tokens one input may embed as; a longer input is refused, never truncated. Unset, a catalog model takes the context its entry gives, and a local file 2,048; a catalog model refuses more than it was trained to read. |
 | `model.embedding.pooling` | `mean` · `cls` · `last` | boot | How the model folds token states into one vector — its own property; a catalog id carries it, a local file must say. |
+| `model.embedding.projector.id` | a catalog id | reload | The projector a multimodal embedding model reads images, video and sound through; otherwise paired from the embedding model in the catalog. A text-only model has none. |
+| `model.embedding.projector.path` | a path to a `.gguf` | reload | A local projector for the embedding model; outranks its catalog id. |
+| `model.embedding.vision.minTokens` | a positive integer | reload | The floor on how many tokens the embedding projector reads one image or frame as: detail against cost. A catalog projector refuses a value outside the range it was trained for. |
+| `model.embedding.vision.maxTokens` | a positive integer | reload | The ceiling on what one image or frame costs the embedding context; lower it to fit more frames in one input. |
 
-Unset, `context` is 2048, which is the batch too: a text is encoded whole. A `path:` model with no `pooling` is refused at bind, naming the key. `nomic-embed-text-v1.5-q4` is the one to reach for on an edge box: a tenth of the memory and a quarter of the latency of the Qwen encoder; Qwen recalls more of what the reranker would confirm and suits an appliance-class box.
+Unset, `context` is 8,192 for EmbeddingGemma 2, its training length, and 2,048 for nomic. An input is encoded whole, so the context is also the batch. EmbeddingGemma 2's projector reads one image as 70 to 1,120 tokens: `vision.minTokens` or `vision.maxTokens` outside that range is refused, and so is either one on a model with no projector. A `path:` model with no `pooling` is refused before anything is fetched, naming the key.
 
 ### transcription {#transcription}
 
@@ -143,12 +155,28 @@ A catalog `id` is fetched on first launch into the project’s `models/<block>/<
 | `qwen3-reranker-0.6b-q8` · Q8\_0 | reranker | 630 MB | — |
 | `qwen3.5-4b-mmproj` · F16 | vision | 672 MB | — |
 | `qwen3.8-27b-mmproj` · F16 | vision | 928 MB | — |
+| `embeddinggemma-2-q8` · Q8\_0 | embedding | 310 MB | `embeddinggemma-2-mmproj-bf16`; pools `mean` |
+| `embeddinggemma-2-mmproj-bf16` · BF16 | embedding projector | 982 MB | — |
 | `nomic-embed-text-v1.5-q4` · Q4\_K\_M | embedding | 84 MB | pools `mean` |
-| `qwen3-embedding-0.6b-q8` · Q8\_0 | embedding | 639 MB | pools `last` |
 | `qwen3-asr-0.6b-q8` · Q8\_0 | transcription | 805 MB | `qwen3-asr-0.6b-mmproj-q8` |
 | `qwen3-asr-0.6b-mmproj-q8` · Q8\_0 | transcription projector | 214 MB | — |
 
 The CLI writes the selection for you: `lloyal models:use <id> [--role llm|reranker|vision|embedding|transcription]` writes the block’s `id`, `lloyal models:add <path> [--role]` its `path`, each replacing the other; `lloyal models:list` shows the catalog, your pins and what is on disk. An `llm` block that names neither and has exactly one `.gguf` in its slot adopts it; two is refused as ambiguous.
+
+## The attachments family {#attachments}
+
+What a turn's attachments may take of the context, and how a video is sampled. Spread `attachmentSettings` from `@lloyal-labs/rig` into your `defineConfig` beside `modelSettings`; each bound is enforced by the load and said by its refusal. The video keys are set in `harness.yml` and read when the harness starts: the page samples by the policy it was described, so a change takes a restart.
+
+| Key | Takes | Applies | What it is |
+| --- | --- | --- | --- |
+| `attachments.context` | a number from 0.1 to 1 | session | The share of the context a turn's attachments may fill, which the app passes to `admitted`. A tenth is the least: in a 4,096-cell context that holds one 640-pixel frame, about 410 cells. |
+| `attachments.video.fps` | a number from 0.1 to 30 | boot | Frames a second a video is sampled at, up to its frame cap; a longer clip is sampled more sparsely. Past 30 a source rarely has more distinct frames, and repeats are dropped; under 0.1 a moment of speech has no picture. |
+| `attachments.video.maxFrames` | a whole number from 1 to 3600 | boot | The most frames one video keeps. What a video costs is still measured when it is attached, and refused if it does not fit; 3,600 is an hour at one frame a second. |
+| `attachments.video.maxEdgePx` | a whole number from 64 to 1920 | boot | The longest edge a frame is scaled to, in pixels: detail against tokens per frame. 1,920 is a full HD frame; under 64 a frame shows nothing to read. |
+| `attachments.video.soundtrackWindowSeconds` | a number from 1 to 60 | boot | How long each window a video's soundtrack is cut into runs, in seconds. Each window is transcribed and heard on its own and becomes one caption: shorter gives finer captions, search by sound and placement of what was said, longer gives fewer transcriptions. Cut at the quietest point near its end, and never longer than the services that hear admit. Under 1 a window holds no word; past 60 no service admits one by default. |
+| `attachments.video.maxDurationSeconds` | a whole number from 1 to 86400 | boot | The longest clip a harness takes, refused before any byte is pushed; unset, a clip of any length is taken. Length costs upload and one transcription per soundtrack window. A limit set here is at most a day. |
+
+Unset, attachments may fill the whole context, and a video is sampled at 4 frames a second up to 64 frames, each at most 640 pixels on its longer edge, at any length, with its soundtrack cut into 5-second windows. The time marks between frames are not a setting: a video is composed with a mark every five seconds, or, when its frames are sparser, at least twice the widest gap between them, so neighbouring frames keep fusing.
 
 ## When a change applies {#when-a-change-applies}
 
@@ -158,7 +186,7 @@ Each key declares when a change to it takes effect, and the settings pane offers
 | --- | --- | --- |
 | `session` | at once, for what runs next; remembered locally | `set_config` — the pane’s control |
 | `reload` | it names the residency: saved now, the next launch loads it | `reload_runtime` — saved, then the process ends and relaunches |
-| `boot` | it sizes the context the process already built | `harness.yml` (or the key’s env), then a restart |
+| `boot` | fixed for the run: it sizes the context the process already built, or the page holds a copy of it, as it holds a video's sampling | `harness.yml` (or the key’s env), then a restart |
 
 Every key of the model family is `reload` or `boot`: the family describes the **running residency**, which a save cannot change, so it stays boot-frozen for the life of the process — what a session reports is what it runs. A served session saves in memory only (its keys read `session`) and cannot reload the runtime: the host chose its model when it started and serves every session from that one residency.
 
@@ -169,6 +197,7 @@ A template declares its configuration in `src/config.ts`: the model family sprea
 ```ts label="src/config.ts"
 export const config = defineConfig({
   ...modelSettings,
+  ...attachmentSettings,
   "sources.outputDir": {
     yml: "sources.outputDir", path: true, default: "reports",
     describe: "Where settled briefs, their annexures and the session trace are written.",
@@ -187,7 +216,8 @@ export type Config = ConfigOf<typeof config>;
 | `env` | the environment variable that outranks both files |
 | `cli` | the name a boot’s overrides carry it under |
 | `path` | a path: `~` expanded and made absolute at the boundary, whichever rung supplied it |
-| `integer` | a positive integer; the env rung parses digits, the others refuse anything else |
+| `integer` | a whole number: positive, or within `min` and `max` when it has them |
+| `min`, `max` | the least and most a number may be, inclusive; a committed value outside them fails the load, naming the range, and a local one falls through |
 | `oneOf` | the values it may take; a committed value outside them fails the load |
 | `check` | any other rule; a committed value that fails it fails the load, a local one falls through |
 | `default` | what stands when no rung supplies a value — inside a model block, only once the block is present |
