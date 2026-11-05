@@ -5,22 +5,23 @@ lede: "A cited moment opens like a video shared with a time: the original plays 
 ---
 
 <!--
-Checked against source, 2026-10-25:
+Checked against source, 2026-11-05:
   lloyal-sdk  packages/media/src/content-urls.ts    parseAttachmentMoment, parseAttachmentHref, resolvePrefix
   lloyal-sdk  packages/ui/src/prose.ts              REMARK_PLUGINS: the one grammar Markdown renders with and linksOf reads with
   lloyal-sdk  packages/ui/src/attachment-links.ts   a bare attachment address in prose is a link
   lloyal-sdk  packages/ui/src/video-player.tsx      VideoPlayer: Video.js skin, tracks, start-at, audio output recovery
   lloyal-sdk  packages/ui/src/start-at.ts           useStartAt: both players
-  lloyal-sdk  packages/ui/src/lightbox.tsx          Lightbox: the player, the browser's own player as fallback, the frames without an original
+  lloyal-sdk  packages/ui/src/lightbox.tsx          Lightbox: the player, the browser's own player as fallback, the frames without an original, the wait over the poster
   lloyal-sdk  packages/ui/src/video-view.ts         videoView, videoTracks: thumbnails, captions, a chapter at a cited moment, momentClock
   lloyal-sdk  packages/desktop/src/content.ts       the attachment: scheme
   lloyal-sdk  packages/rig/src/content-routes.ts    range reads of the original
+  lloyal-ai   templates/research/src/ui/viewing.ts  the hold an open video puts on the run, and when it waits
 Tests:
   lloyal-sdk  packages/media/test/content-urls.test.ts  the moment grammar, and nothing else; a prefix resolves to exactly one digest or to nothing
   lloyal-sdk  packages/ui/test/prose.test.ts        a bare address is a link where it stands, without the sentence's punctuation; not in a link or in code
   lloyal-sdk  packages/ui/test/markdown.test.ts     the renderer hands a bare address to the link component, once
   lloyal-sdk  packages/ui/test/video-view.test.ts   frame previews, captions, a chapter at a cited moment
-  lloyal-sdk  packages/ui/test/lightbox.test.ts     plays the original with its tracks; opens at the cited moment; recovers its audio output
+  lloyal-sdk  packages/ui/test/lightbox.test.ts     plays the original with its tracks; opens at the cited moment; recovers its audio output; waits over the poster with no player loaded
   lloyal-sdk  packages/ui/test/lightbox-fallback.test.ts  the browser's own player: the same file, moment and captions; a new moment of the same file
   lloyal-sdk  packages/ui/test/video-player.test.ts audio output recovery belongs to the clip
 -->
@@ -78,6 +79,9 @@ const view = videoView(origin, digest, asset, moment?.tMs);   // asset from useA
 - **The transcript plays as captions.**
 - **A cited moment opens like a video shared with a time.** Pass the moment to `videoView` and the player starts there, the time slider broken into a chapter that begins at it. Opening another moment of the same file moves the player there.
 - **It loads only when needed.** Video.js loads when a video is first opened.
+- **It can wait.** Pass `waiting`, a sentence saying why the video cannot play yet, and the poster stands in for the player with that sentence over it. No player loads while it is set; once it is gone, the player opens at the cited moment.
+
+Where the page and the model share a GPU, a video cannot play while the model decodes. The research template's open video holds the run whenever the run works, and lets go of that hold when it closes; until the hold takes, `waiting` says so over the poster. A hold the reader made stays theirs.
 
 If Video.js cannot run, the lightbox plays the same file in the browser's own player, from the same moment, with the same captions. A video kept without its original shows the frames the model saw, each with its time.
 
